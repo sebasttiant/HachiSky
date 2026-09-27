@@ -1,0 +1,120 @@
+name: hachisky
+
+networks:
+  app-net:
+    driver: bridge
+  test-net:
+    driver: bridge
+    internal: true
+
+volumes:
+  pgdata: {}
+
+services:
+  db:
+    image: postgres:18.6-trixie@sha256:5a5a84b19854a9ffaa54082c166ff4ec27473a361e496e5ea167f298f2da9722
+    environment:
+      POSTGRES_DB: hachisky
+      POSTGRES_USER: hachisky
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hachisky -d hachisky"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - app-net
+
+  migrate:
+    image: hachisky-web:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    command: ["node", "src/db/migrate.ts"]
+    environment:
+      APP_ENV: development
+      PGHOST: db
+      PGPORT: "5432"
+      PGDATABASE: hachisky
+      PGUSER: hachisky
+      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+    networks:
+      - app-net
+
+  web:
+    image: hachisky-web:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    environment:
+      APP_ENV: development
+      PGHOST: db
+      PGPORT: "5432"
+      PGDATABASE: hachisky
+      PGUSER: hachisky
+      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    ports:
+      - "127.0.0.1:${HACHISKY_WEB_PORT:-3100}:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - app-net
+
+  db-test:
+    profiles: ["test"]
+    image: postgres:18.6-trixie@sha256:5a5a84b19854a9ffaa54082c166ff4ec27473a361e496e5ea167f298f2da9722
+    command: ["postgres", "-c", "cluster_name=hachisky-test", "-c", "fsync=off"]
+    environment:
+      POSTGRES_DB: hachisky_test
+      POSTGRES_USER: hachisky_test
+      POSTGRES_PASSWORD: hachisky_test_disposable
+    tmpfs:
+      - /var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hachisky_test -d hachisky_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - test-net
+
+  test:
+    profiles: ["test"]
+    image: hachisky-web-test:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: test
+    environment:
+      APP_ENV: test
+      PGHOST: db-test
+      PGPORT: "5432"
+      PGDATABASE: hachisky_test
+      PGUSER: hachisky_test
+      PGPASSWORD: hachisky_test_disposable
+    depends_on:
+      db-test:
+        condition: service_healthy
+    networks:
+      - test-net

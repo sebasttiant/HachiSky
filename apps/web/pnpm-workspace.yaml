@@ -1,0 +1,9 @@
+# Build-script policy (pnpm 12.6.0 `allowBuilds`, as written by `pnpm approve-builds esbuild`).
+# Only esbuild may run install scripts; every other package stays blocked by default.
+# Transitive esbuild versions covered (all pulled in by drizzle-kit 0.31.11, per pnpm-lock.yaml):
+#   - esbuild 0.25.12  <- drizzle-kit 0.31.11
+#   - esbuild 0.28.2   <- tsx 4.23.15 <- drizzle-kit 0.31.11
+#   - esbuild 0.18.20  <- @esbuild-kit/core-utils 3.3.2 (deprecated) <- drizzle-kit 0.31.11
+# Approved by the project owner on 2026-09-27 (U1). No release-age exclusions are configured here.
+allowBuilds:
+  esbuild: true
