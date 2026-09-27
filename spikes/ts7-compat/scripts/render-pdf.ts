@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { deflateSync } from "node:zlib";
@@ -112,7 +112,8 @@ function buildRows(count: number): string {
   for (let i = 1; i <= count; i++) {
     const activity = ACTIVITY_NAMES[i % ACTIVITY_NAMES.length];
     const responsible = RESPONSIBLES[i % RESPONSIBLES.length];
-    const status = i % 3 === 0 ? "Pendiente" : i % 3 === 1 ? "En progreso" : "Completado";
+    const status =
+      i % 3 === 0 ? "Pendiente" : i % 3 === 1 ? "En progreso" : "Completado";
     rows.push(
       `<tr><td>${i}</td><td>${activity} #${i}</td><td>${responsible}</td><td>${status}</td></tr>`,
     );

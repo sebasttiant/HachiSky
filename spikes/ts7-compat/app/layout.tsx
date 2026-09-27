@@ -5,11 +5,7 @@ export const metadata = {
   description: "Prototipo de compatibilidad TypeScript 7 con Next.js 16.",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: ReactNode;
-}) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="es">
       <body>{children}</body>
