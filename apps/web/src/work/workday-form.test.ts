@@ -1,34 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { sampleWorkday } from "./sample-workday.ts";
-import { canSubmit, workdayForm } from "./workday-form.ts";
+import { parseMinutes, totalMinutes, workdayForm } from "./workday-form.ts";
 
-describe("workday form preview", () => {
-  it("cannot be submitted: no action, no submit target, disabled button", () => {
-    assert.equal(workdayForm.action, null);
-    assert.equal(workdayForm.container, "group");
+describe("workday form model", () => {
+  it("keeps the save action disabled with an explanatory label", () => {
     assert.equal(workdayForm.submit.disabled, true);
-    assert.equal(canSubmit(workdayForm), false);
     assert.match(workdayForm.submit.label, /no disponible/i);
-  });
-
-  it("canSubmit only ever returns true for a fully enabled, action-bound form", () => {
-    assert.equal(
-      canSubmit({
-        ...workdayForm,
-        action: "/x",
-        submit: { ...workdayForm.submit, disabled: false },
-      }),
-      true,
-    );
-    assert.equal(canSubmit({ ...workdayForm, action: "/x" }), false);
-    assert.equal(
-      canSubmit({
-        ...workdayForm,
-        submit: { ...workdayForm.submit, disabled: false },
-      }),
-      false,
-    );
   });
 
   it("binds every field to a unique id with a visible label", () => {
@@ -43,5 +21,49 @@ describe("workday form preview", () => {
     assert.equal(sampleWorkday.isSample, true);
     for (const c of sampleWorkday.clients) assert.match(c.name, /ejemplo/i);
     assert.ok(sampleWorkday.activities.length >= 2);
+  });
+});
+
+describe("parseMinutes", () => {
+  it("reads whole non-negative numbers", () => {
+    assert.equal(parseMinutes("90"), 90);
+    assert.equal(parseMinutes(" 45 "), 45);
+    assert.equal(parseMinutes("0"), 0);
+  });
+
+  it("floors decimals", () => {
+    assert.equal(parseMinutes("12.9"), 12);
+  });
+
+  it("treats empty, blank and non-numeric input as zero", () => {
+    assert.equal(parseMinutes(""), 0);
+    assert.equal(parseMinutes("   "), 0);
+    assert.equal(parseMinutes("abc"), 0);
+    assert.equal(parseMinutes("12abc"), 0);
+  });
+
+  it("treats negative and non-finite input as zero", () => {
+    assert.equal(parseMinutes("-5"), 0);
+    assert.equal(parseMinutes("-0.5"), 0);
+    assert.equal(parseMinutes("Infinity"), 0);
+    assert.equal(parseMinutes("1e999"), 0);
+    assert.equal(parseMinutes("NaN"), 0);
+  });
+});
+
+describe("totalMinutes", () => {
+  it("sums the sample activities", () => {
+    assert.equal(
+      totalMinutes(sampleWorkday.activities.map((a) => String(a.minutes))),
+      240,
+    );
+  });
+
+  it("recomputes from edited values and ignores invalid or negative ones", () => {
+    assert.equal(totalMinutes(["60", "", "abc", "-30", "15"]), 75);
+  });
+
+  it("is zero for no activities", () => {
+    assert.equal(totalMinutes([]), 0);
   });
 });

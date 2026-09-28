@@ -74,6 +74,18 @@
   background: var(--color-surface-alt);
 }
 
+.sample {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-info-surface);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.minutes {
+  min-width: 0;
+}
+
 .total {
   margin-top: var(--space-4);
   text-align: right;

@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { formatDate } from "../shared/format/date.ts";
 import {
   formatDuration,
@@ -15,13 +14,15 @@ export function ReportSheet() {
     <article className={styles.sheet} aria-labelledby="report-title">
       <header className={styles.head}>
         <div className={styles.brand}>
-          <Image
+          {/* biome-ignore lint/performance/noImgElement: tiny static derivatives, no optimizer */}
+          <img
             className={styles.logo}
-            src="/brand/hachisky-mark.png"
+            src="/brand/hachisky-mark-96.png"
+            srcSet="/brand/hachisky-mark-96.png 96w, /brand/hachisky-mark-144.png 144w"
+            sizes="56px"
             alt=""
-            width={512}
-            height={506}
-            unoptimized
+            width={56}
+            height={55}
           />
           <div>
             <Wordmark size="sm" />

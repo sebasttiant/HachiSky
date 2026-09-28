@@ -72,5 +72,13 @@ Until now deliveries were infrastructure and decision records. The owner needs r
   - RDD: assess `--base-ref 4ced89e --committed-only` (untracked excluded) → high (`executable_mode`, `process_boundary`, `shell_source`), `review_due: true`. The returned STATUS projected the correct 6-path base-diff but required intended-untracked selection; the provider-issued submission dropped `--base-ref`/`--committed-only` and re-derived an unrelated current-changes target. START not invoked. Known Gentle AI defect #4890 (open, no published fix in 3.7.0); owner consented; one occurrence comment added. Outcome: review **unavailable**, no approval, no receipt; reviewed boundary stays at `4ced89e`.
 - Grouping change (owner decision): original commits 2 and 3 merged because commit 2 alone would fail `navigation.test.ts` (route pages live in group 3). Commit 2 = shell, home and the four preview/unavailable screens with their sample data, tests and this document.
 
+- Commit 2 `ffd74b0` feat(web): shell, operational home and previews (47 files, +2358/−16). Gitleaks staged scan: no leaks. RDD: same outcome as commit 1 (high, #4890 selector loss on the intended-untracked submission; START not invoked; review unavailable, no receipt).
+
+## Independent review and scoped correction (2026-09-28)
+- Ordinary independent read-only review of `4ced89e..ffd74b0` (not RDD, no receipt): all text files read; verdict fit to push with follow-ups; no critical findings.
+- Owner-authorized correction (follow-up commit): PostgreSQL pool limits (connect 2 s, query/statement 4 s; reproduced hang before, ~2 s `database_unavailable` after) and `Suspense` around the system status; real render test of `WorkdayPreview` replacing a disconnected descriptor; small logo/icon derivatives (mark 96/144 px, icon 96 px, apple icon 180 px); contrast (border `#6b8294`, focus ring `#006bb8` with halo); total computed from edited minutes (client-only state, sample notice); missing `.minutes` class; decorative header logo `alt=""`; accurate health error wording; `isActive` tests; brand doc moved to `apps/web/brand/README.md`; `.gitignore` `**/LOGO HACHISKY.png`.
+- Test runner: `--conditions=react-server` removed and the `next/dist/build/swc` loader risk documented in `apps/web/README.md` ("Test runner notes"). `next` stays pinned.
+- Evidence: `.verification/visible-shell-fix/` (local, ignored).
+
 ## Next step
 - Owner reviews the local commits; push/PR remain owner decisions (work-unit commits) and RDD assess. After U-V1: U2 auth (Better Auth, close spike conditions first) → clients persisted → work sessions persisted; reports modeled on prior HTML reports (reference set pending owner confirmation).

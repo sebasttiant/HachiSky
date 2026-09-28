@@ -24,28 +24,33 @@ versioned derivatives below; the original is needed solely to regenerate them.
 
 | Output | Crop rect (WxH+X+Y) | Size | sha256 |
 | --- | --- | --- | --- |
-| `public/brand/hachisky-mark.png` | 632x625+25+30 | 512x506 | `591a3df88c74530af2ab02a47bfa3e6da2f56c0be2978772ac7b06da264db44d` |
-| `app/icon.png` | 316x316+62+655 | 256x256 | `92a4211cb223720ac1dbe90c74cce920c388f52ffc5a859bc05e88689b078213` |
-| `app/apple-icon.png` | 316x316+62+655 | 180x180 | `c8c794a82131c9ed1cdcd5da1f2abd293691335d349e5ff08e10cbfe84bbab7b` |
+| `public/brand/hachisky-mark-96.png` | 632x625+25+30 | 96x95 (16,822 B) | `9c451e3d0769d91ae8e67ab5cf625b85ea648d5f345218846ec0caa468802501` |
+| `public/brand/hachisky-mark-144.png` | 632x625+25+30 | 144x142 (34,889 B) | `be333e70061a76ef50b73823f96a1b5f412829faebba88ad4909f1a5bd87c154` |
+| `app/icon.png` | 316x316+62+655 | 96x96 (19,091 B) | `2bb07852da2a6a62fae66504f92aed7411e8bd8a4e08695283f6223a2eac2362` |
+| `app/apple-icon.png` | 316x316+62+655 | 180x180 (20,240 B) | `a5ab6082959e8c5df29c48667514352bc3c7bbd9f9f8cfb9fa6cefc07db1e54e` |
 
+The header mark is shown at 48 px and the report mark at 56 px; the 96/144 px
+files are selected with `srcSet` for 1x/2x/3x screens. `apple-icon.png` is an
+8-bit palette PNG (254 colors, no dithering, opaque) to cut it from ~57 KB to
+~20 KB; it was compared against the truecolor version at 300% (PSNR ~37.9 dB)
+with no visible difference. The other files are truecolor.
 The script prints the current hashes; re-run it to verify.
 
 ## Quality review (honest)
 
 - The source is a 1536x1024 sheet, so every derivative is resolution-limited.
-  The mark is a 632 px crop resized to 512 (mild downscale). The app icon source square is
-  only ~316 px: `icon.png` (256) is a slight downscale; `apple-icon.png` (180)
-  is a downscale. None is upscaled beyond the source.
-- All outputs are opaque RGB with a near-white background (about 254,254,254).
+  The mark is a 632 px crop downscaled to 96/144 px and the app icon source
+  square is only ~316 px downscaled to 96/180 px. None is upscaled.
+- All outputs are opaque with a near-white background (about 254,254,254).
   There is NO transparency; use them on white or very light surfaces. The app
   icon has white (not transparent) rounded-square corners.
 - The source shows faint JPEG-like halo noise around the fur and letters; it is
   visible only when magnified or on tinted surfaces.
 - Only the derivatives the app uses are generated and versioned. The site
-  header and the report sheet use `hachisky-mark.png` plus a live HTML
-  wordmark, so no tagline is rendered at an illegible size. A horizontal
-  logo (crop `1500x603+25+35`, which stops at y=638 to avoid the logo row
-  below) was evaluated and dropped because the app does not use it.
+  header and the report sheet use the mark plus a live HTML wordmark, so no
+  tagline is rendered at an illegible size. A horizontal logo (crop
+  `1500x603+25+35`) and a 512 px mark were evaluated and dropped because the
+  app does not use them.
 - Not suitable as-is for: dark backgrounds, print at large size, or a
   maskable/transparent PWA icon. A vector or transparent master is
   recommended before those uses.

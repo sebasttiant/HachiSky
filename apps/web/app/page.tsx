@@ -1,8 +1,12 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { AvailabilityBadge } from "../src/shell/AvailabilityBadge.tsx";
 import { ModuleIcon } from "../src/shell/icons.tsx";
 import { MODULES } from "../src/shell/navigation.ts";
-import { SystemStatus } from "../src/system/SystemStatus.tsx";
+import {
+  SystemStatus,
+  SystemStatusFallback,
+} from "../src/system/SystemStatus.tsx";
 import styles from "./page.module.css";
 
 // The system status must reflect the database at request time, not at build.
@@ -45,7 +49,9 @@ export default function HomePage() {
           </ul>
         </section>
 
-        <SystemStatus />
+        <Suspense fallback={<SystemStatusFallback />}>
+          <SystemStatus />
+        </Suspense>
       </div>
     </div>
   );

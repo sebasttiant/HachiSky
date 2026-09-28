@@ -16,9 +16,29 @@ async function readHealth(): Promise<HealthView> {
     }
     return describeHealth(result);
   } catch {
+    // getPool() failures (e.g. invalid configuration) are thrown inside the
+    // callback above and reported by checkDatabaseHealth as
+    // "database_unavailable". This catch only covers an unexpected failure of
+    // the check itself.
     console.error("Health check could not run");
     return describeHealthError();
   }
+}
+
+// Shown while the database check runs, so the rest of the page is not blocked.
+export function SystemStatusFallback() {
+  return (
+    <section
+      className={styles.panel}
+      aria-labelledby="system-title"
+      aria-busy="true"
+    >
+      <h2 id="system-title">Estado del sistema</h2>
+      <p role="status" className={styles.pending}>
+        Consultando estado…
+      </p>
+    </section>
+  );
 }
 
 export async function SystemStatus() {

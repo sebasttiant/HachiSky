@@ -6,6 +6,7 @@ import {
   AVAILABILITY_LABEL,
   AVAILABILITY_STATUSES,
   type Availability,
+  isActive,
   MODULES,
 } from "./navigation.ts";
 
@@ -84,5 +85,28 @@ describe("shell navigation", () => {
       );
       assert.ok(existsSync(page), `missing ${page}`);
     }
+  });
+});
+
+describe("isActive", () => {
+  it("matches home only on the exact root path", () => {
+    assert.equal(isActive("/", "/"), true);
+    assert.equal(isActive("/", "/clients"), false);
+    assert.equal(isActive("/clients", "/"), false);
+  });
+
+  it("matches a section on its exact path", () => {
+    assert.equal(isActive("/work", "/work"), true);
+  });
+
+  it("does not match a different path sharing the prefix", () => {
+    assert.equal(isActive("/work", "/workx"), false);
+    assert.equal(isActive("/work", "/work-other"), false);
+  });
+
+  it("matches nested paths and a trailing slash", () => {
+    assert.equal(isActive("/work", "/work/x"), true);
+    assert.equal(isActive("/work", "/work/x/y"), true);
+    assert.equal(isActive("/work", "/work/"), true);
   });
 });

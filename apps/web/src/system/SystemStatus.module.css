@@ -54,3 +54,11 @@
 .error {
   background: #c93a3a;
 }
+
+.pending {
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
+  font-weight: 600;
+}

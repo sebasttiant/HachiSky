@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Derives web brand assets from the private logo source sheet.
 # Only crops and resizes (Lanczos); no redraw, recolor or retouch.
-# The source sheet is NOT versioned; provide it locally (see public/brand/README.md).
+# The source sheet is NOT versioned; provide it locally (see brand/README.md).
 # Usage: HACHISKY_LOGO_SOURCE=/path/to/source.png apps/web/scripts/derive-brand-assets.sh
 #        (defaults to "LOGO HACHISKY.png" at the repository root)
 set -euo pipefail
@@ -37,15 +37,22 @@ else
   exit 1
 fi
 
-# $1 crop rect, $2 output width (height keeps aspect) or WxH, $3 output.
+# $1 crop rect, $2 output width (height keeps aspect) or WxH, $3 output,
+# $4 optional extra ImageMagick arguments (e.g. "-type Palette").
 derive() {
+  # shellcheck disable=SC2086
   "${im[@]}" "$src" -crop "$1" +repage -filter Lanczos -resize "$2" \
-    -strip -define png:compression-level=9 "$3"
+    -strip -define png:compression-level=9 -define png:compression-strategy=1 \
+    ${4:-} "$3"
 }
 
-derive "$RECT_MARK" 512x "$brand/hachisky-mark.png"
-derive "$RECT_ICON" 256x256! "$web/app/icon.png"
-derive "$RECT_ICON" 180x180! "$web/app/apple-icon.png"
+# Header/report mark: 96 px (48 px @2x) and 144 px (48 px @3x).
+derive "$RECT_MARK" 96x "$brand/hachisky-mark-96.png"
+derive "$RECT_MARK" 144x "$brand/hachisky-mark-144.png"
+derive "$RECT_ICON" 96x96! "$web/app/icon.png"
+# 8-bit palette (no dithering): visually checked, PSNR ~37.9 dB vs truecolor,
+# ~20 KB instead of ~57 KB.
+derive "$RECT_ICON" 180x180! "$web/app/apple-icon.png" "-type Palette"
 
 echo "Derived brand assets from: $src"
 sha256sum "$brand"/*.png "$web/app/icon.png" "$web/app/apple-icon.png"

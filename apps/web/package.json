@@ -10,7 +10,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "biome check .",
-    "test": "node --conditions=react-server --test --test-concurrency=1 \"src/**/*.test.ts\" \"tests/**/*.test.ts\"",
+    "test": "node --test --test-concurrency=1 \"src/**/*.test.ts\" \"tests/**/*.test.ts\"",
     "build": "next build",
     "start": "next start -H 0.0.0.0 -p 3000",
     "db:generate": "drizzle-kit generate",

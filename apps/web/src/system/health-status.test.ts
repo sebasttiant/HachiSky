@@ -60,10 +60,27 @@ describe("describeHealth", () => {
   });
 });
 
+describe("failures inside the query callback", () => {
+  it("maps a getPool() failure (e.g. invalid configuration) to database_unavailable without leaking it", async () => {
+    // SystemStatus builds the pool inside the callback, so an invalid
+    // configuration throws there and checkDatabaseHealth reports it as an
+    // unreachable database, not as a separate "missing configuration" state.
+    const result = await checkDatabaseHealth(() => {
+      throw new Error("Invalid environment configuration: PGPASSWORD");
+    });
+    assert.equal(result.failure, "database_unavailable");
+    const view = describeHealth(result);
+    assert.equal(view.tone, "error");
+    assert.equal(view.summary, "Base de datos sin conexión");
+    assert.doesNotMatch(JSON.stringify(view), /PGPASSWORD|Invalid environment/);
+  });
+});
+
 describe("describeHealthError", () => {
-  it("maps an unexpected failure (e.g. missing configuration) to a safe error view", () => {
+  it("maps an unexpected failure of the check itself to a safe error view", () => {
     const view = describeHealthError();
     assert.equal(view.tone, "error");
     assert.equal(view.summary, "Base de datos sin conexión");
+    assert.equal(view.detail, "No se pudo comprobar el estado");
   });
 });

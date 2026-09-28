@@ -43,7 +43,10 @@ export function describeHealth(result: HealthResult): HealthView {
   }
 }
 
-// Used when the check itself cannot run (e.g. missing configuration).
+// Fallback for an unexpected failure of the check itself (an exception that
+// escapes checkDatabaseHealth). Connection and configuration errors thrown
+// by the query callback, such as getPool() failing, never reach here: they
+// are reported as "database_unavailable" by checkDatabaseHealth.
 export function describeHealthError(): HealthView {
   return {
     tone: "error",

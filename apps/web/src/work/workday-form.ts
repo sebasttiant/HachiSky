@@ -1,6 +1,7 @@
 // Descriptor of the workday form preview. The preview is deliberately not a
 // <form>: it renders as a labelled group, has no action and its only button
-// is disabled, so it cannot submit by click or by pressing Enter.
+// is disabled, so it cannot submit by click or by pressing Enter. Only what
+// WorkdayPreview actually reads lives here.
 export interface FormField {
   id: string;
   label: string;
@@ -8,15 +9,11 @@ export interface FormField {
 }
 
 export interface WorkdayFormModel {
-  container: "group" | "form";
-  action: string | null;
   submit: { disabled: boolean; label: string };
   fields: readonly FormField[];
 }
 
 export const workdayForm: WorkdayFormModel = {
-  container: "group",
-  action: null,
   submit: {
     disabled: true,
     label: "Guardar (no disponible en la vista previa)",
@@ -38,6 +35,15 @@ export const workdayForm: WorkdayFormModel = {
   ],
 };
 
-export function canSubmit(form: WorkdayFormModel): boolean {
-  return form.action !== null && !form.submit.disabled;
+// Minutes typed in an input: whole, non-negative and finite. Anything else
+// (empty, text, negative, NaN, Infinity) counts as 0; decimals are floored.
+export function parseMinutes(raw: string): number {
+  const text = raw.trim();
+  if (text === "") return 0;
+  const value = Number(text);
+  return Number.isFinite(value) && value > 0 ? Math.floor(value) : 0;
+}
+
+export function totalMinutes(raw: readonly string[]): number {
+  return raw.reduce((sum, value) => sum + parseMinutes(value), 0);
 }

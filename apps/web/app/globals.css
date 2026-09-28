@@ -16,7 +16,10 @@
   --color-sky-50: #f2f8fe;
   --color-sky-100: #dcedfc;
   --color-border: #d3dfe8;
-  --color-border-strong: #9fb3c2;
+  /* Control borders: 4.0:1 on #fff and 3.69:1 on --color-surface-alt (WCAG 1.4.11). */
+  --color-border-strong: #6b8294;
+  /* Focus ring: 5.53:1 on #fff and 5.10:1 on the body background. */
+  --color-focus: #006bb8;
 
   /* Status pairs (text on surface, all >= 4.5:1) */
   --color-ok-text: #0d5a2c;
@@ -107,8 +110,10 @@ a:hover {
 }
 
 :focus-visible {
-  outline: 3px solid var(--color-accent);
+  outline: 3px solid var(--color-focus);
   outline-offset: 2px;
+  /* White halo fills the offset gap so the ring also reads on dark surfaces. */
+  box-shadow: 0 0 0 2px #fff;
 }
 
 .container {

@@ -1,4 +1,4 @@
-import { formatDuration } from "../shared/format/duration.ts";
+import { ActivityMinutes } from "./ActivityMinutes.tsx";
 import { sampleWorkday } from "./sample-workday.ts";
 import styles from "./WorkdayPreview.module.css";
 import { workdayForm } from "./workday-form.ts";
@@ -17,11 +17,13 @@ export function WorkdayPreview() {
   const start = field("workday-start");
   const end = field("workday-end");
   const notes = field("workday-notes");
-  const total = sampleWorkday.activities.reduce((a, x) => a + x.minutes, 0);
 
   return (
     // biome-ignore lint/a11y/useSemanticElements: intentional non-form group so the preview cannot submit
     <div role="group" aria-label="Registro de jornada" className={styles.root}>
+      <p className={styles.sample}>
+        Datos de ejemplo: los cambios no se guardan.
+      </p>
       <fieldset className={styles.fieldset}>
         <legend>Datos de la jornada</legend>
         <div className={styles.grid}>
@@ -66,37 +68,7 @@ export function WorkdayPreview() {
         <p className={styles.hint}>
           Describe cada actividad y cuánto tiempo tomó, en minutos.
         </p>
-        <ol className={styles.activities}>
-          {sampleWorkday.activities.map((activity, index) => (
-            <li key={activity.description} className={styles.activity}>
-              <div className={styles.field}>
-                <label htmlFor={`activity-${index}-description`}>
-                  Actividad {index + 1}
-                </label>
-                <textarea
-                  id={`activity-${index}-description`}
-                  rows={2}
-                  defaultValue={activity.description}
-                />
-              </div>
-              <div className={`${styles.field} ${styles.minutes}`}>
-                <label htmlFor={`activity-${index}-minutes`}>
-                  Duración (min)
-                </label>
-                <input
-                  id={`activity-${index}-minutes`}
-                  type="number"
-                  min={0}
-                  step={5}
-                  defaultValue={activity.minutes}
-                />
-              </div>
-            </li>
-          ))}
-        </ol>
-        <p className={styles.total}>
-          Total: <strong>{formatDuration(total)}</strong>
-        </p>
+        <ActivityMinutes activities={sampleWorkday.activities} />
       </fieldset>
 
       <fieldset className={styles.fieldset}>
