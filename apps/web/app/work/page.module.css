@@ -1,0 +1,37 @@
+.layout {
+  display: grid;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.tips {
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--color-info-surface);
+  color: var(--color-primary);
+}
+
+.tips h2 {
+  font-size: var(--text-lg);
+  margin-bottom: var(--space-3);
+}
+
+.tips ol {
+  margin: 0;
+  padding-left: var(--space-5);
+}
+
+.tips li + li {
+  margin-top: var(--space-2);
+}
+
+@media (min-width: 62rem) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr) 19rem;
+  }
+
+  .tips {
+    position: sticky;
+    top: 6.5rem;
+  }
+}

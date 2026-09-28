@@ -1,0 +1,10 @@
+.notice {
+  background: var(--color-brand-navy);
+  color: #fff;
+  font-size: var(--text-sm);
+  padding-block: var(--space-2);
+}
+
+.notice strong {
+  color: var(--color-accent-on-dark);
+}
