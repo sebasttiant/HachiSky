@@ -1,1 +1,4 @@
 /.verification/
+
+# Private brand source sheet; only its derivatives in apps/web are versioned.
+/LOGO HACHISKY.png
