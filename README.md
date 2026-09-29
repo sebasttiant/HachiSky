@@ -53,7 +53,7 @@ documento para el detalle.
 
 ## Próximos pasos
 
-1. Respaldo de código y documentación de U1 en GitHub, rama `feat/u1-infrastructure` (autorizado el 2026-09-27; sin merge a `main`). La base de datos, `.env` y otros archivos locales no se respaldan en GitHub.
+1. Respaldo de código y documentación de U1 en GitHub: rama `feat/u1-infrastructure` publicada el 2026-09-27 tras escaneos de secretos con Gitleaks v8.28.0 (sin hallazgos) y entregada mediante el PR #2 hacia `main` (aún sin merge). La base de datos, `.env` y otros archivos locales no se respaldan en GitHub.
 2. Unidad 2: autenticación y permisos (solo planificación; sin biblioteca ni roles aprobados todavía).
 3. Unidad 3: cliente → jornada → actividades persistidas.
 4. Unidades posteriores: Informes, Facturación (cuentas de cobro), tablero.

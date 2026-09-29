@@ -1,6 +1,6 @@
 # HachiSky — Resumen y continuidad
 
-> Estado: Unidad 1 (infraestructura) implementada y verificada en `apps/web/` — Next.js, PostgreSQL, migraciones y verificación de salud, con Docker de extremo a extremo. Código y documentación de U1 respaldados en GitHub en la rama `feat/u1-infrastructure` (autorizado el 2026-09-27; sin merge a `main`); la base de datos y los archivos locales excluidos no forman parte de ese respaldo. Este archivo organiza decisiones y próximos pasos, no certifica pruebas ni autoriza por sí solo implementación, commits o despliegues. Detalle completo de evidencia: [docs/units/u1-infrastructure.md](docs/units/u1-infrastructure.md).
+> Estado: Unidad 1 (infraestructura) implementada y verificada en `apps/web/` — Next.js, PostgreSQL, migraciones y verificación de salud, con Docker de extremo a extremo. Código y documentación de U1 respaldados en GitHub en la rama `feat/u1-infrastructure` (publicada el 2026-09-27 tras escaneos con Gitleaks v8.28.0 sin hallazgos; PR #2 hacia `main` abierto, sin merge); la base de datos y los archivos locales excluidos no forman parte de ese respaldo. Este archivo organiza decisiones y próximos pasos, no certifica pruebas ni autoriza por sí solo implementación, commits o despliegues. Detalle completo de evidencia: [docs/units/u1-infrastructure.md](docs/units/u1-infrastructure.md).
 
 ## Lectura rápida para Claude Code
 
@@ -239,8 +239,10 @@ prototipo puramente visual.
 
 ### Próximos pasos vigentes
 
-1. Respaldo en GitHub de U1 (commit/push en `feat/u1-infrastructure`),
-   autorizado el 2026-09-27; merge a `main` y PR pendientes de decisión.
+1. Respaldo en GitHub de U1: commits y push realizados el 2026-09-27 en
+   `feat/u1-infrastructure` tras escaneos con Gitleaks v8.28.0 sin hallazgos
+   (detalle en `docs/units/u1-infrastructure.md`); PR #2 hacia `main` abierto,
+   merge pendiente de decisión.
    Respaldo de la base de datos y de archivos locales: pendiente, por separado.
 2. Unidad 2: autenticación y permisos — solo planificación por ahora (Better
    Auth 1.7.6 propuesto, no aprobado; roles y reglas por definir en esa

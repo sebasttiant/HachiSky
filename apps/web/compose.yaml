@@ -20,7 +20,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U hachisky -d hachisky"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U hachisky -d hachisky"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -92,7 +92,7 @@ services:
     tmpfs:
       - /var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U hachisky_test -d hachisky_test"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U hachisky_test -d hachisky_test"]
       interval: 5s
       timeout: 5s
       retries: 10

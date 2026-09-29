@@ -2,7 +2,7 @@
 
 ## Estado
 
-U1 implementada y correcciones revisadas independientemente en modo lectura: base LOCAL operativa, apta para diseñar U2. Los tres hallazgos están resueltos en fuente con registros de comprobación; no es aprobación de producción ni certificación de todos los bytes actuales. Documentación preparada por Claude. Según la coordinación transmitida por el propietario, commits y push a la rama de trabajo están autorizados condicionados a revisar archivos e historial y completar escaneo de secretos; permanecen bloqueados porque Gitleaks no llegó a ejecutarse. Este documento no concede autorizaciones adicionales ni habilita U2/U3 o despliegue público.
+U1 implementada y correcciones revisadas independientemente en modo lectura: base LOCAL operativa, apta para diseñar U2. Los tres hallazgos están resueltos en fuente con registros de comprobación; no es aprobación de producción ni certificación de todos los bytes actuales. Documentación preparada por Claude. Entrega Git: commits y push de U1 realizados el 2026-09-27 tras escaneos con Gitleaks v8.28.0 (archivos, dos veces; contenido preparado de cada commit; historial `21e6268..HEAD` de 6 commits), todos con «no leaks found» e informes JSON vacíos; evidencia local no publicada en `.verification/publish-scan/20260927T145805/`; limitación: los códigos de salida numéricos no se guardaron en archivo. U1 está publicada en `origin/feat/u1-infrastructure` y se entrega mediante el PR #2 hacia `main` (aún sin merge). Este documento no concede autorizaciones adicionales ni habilita U2/U3 o despliegue público.
 
 ## Objetivo
 
@@ -15,7 +15,7 @@ Aplicación mínima real con Next.js y TypeScript 7, PostgreSQL persistente, mig
 - Preservar spike, RESUMEN.md, .atl/ y cambios existentes.
 - Rama de entrega reportada por Claude: feat/u1-infrastructure. No cambiar o descartar trabajo automáticamente.
 - TDD: Claude reportó Strict TDD activo en su configuración global; confirmar origen antes de implementar. Runner propuesto: node:test mediante `pnpm test` dentro del servicio test de Docker. Comando exacto del script pendiente de la definición de package.json.
-- Commits/push: autorización condicionada reportada en la coordinación; no realizados al último informe. Bloqueo actual: detector de secretos no ejecutado por fallos de descarga. No omitir el control ni confundir fallo con ausencia de hallazgos.
+- Commits/push: Commits y push de U1 realizados el 2026-09-27 tras escaneos con Gitleaks v8.28.0 (archivos, dos veces; contenido preparado de cada commit; historial `21e6268..HEAD` de 6 commits), todos con «no leaks found» e informes JSON vacíos; evidencia local no publicada en `.verification/publish-scan/20260927T145805/`; limitación: los códigos de salida numéricos no se guardaron en archivo. U1 está publicada en `origin/feat/u1-infrastructure` y se entrega mediante el PR #2 hacia `main` (aún sin merge).
 - Presupuesto orientativo de revisión: unas 400 líneas por unidad, no límite de calidad. U1 puede superarlo por infraestructura y pruebas; reportar tamaño real y proponer separación antes de entrega/publicación, sin omitir pruebas. Estrategia ask-on-risk, sin PR autorizado.
 
 ## Tareas
@@ -56,11 +56,11 @@ El endpoint `/api/health` exige declarar expresamente `apps/web/app/api/health/r
 - No modificación del spike; Git enumera exclusivamente cambios nuevos autorizados y preexistentes preservados.
 - Logs ignorados y secretos excluidos verificados.
 - Restore/backup no cubiertos: quedan pendientes antes de datos reales.
-- Evidencia y commits: pendientes; no marcar U1 finalizada solo por escribir archivos.
+- Evidencia y commits: completados; commits y push registrados en la línea «Commits/push» de este documento. No marcar una unidad finalizada solo por escribir archivos.
 
 ## Siguiente etapa
 
-U1.4 resuelta. Completar escaneo de secretos y privacidad sobre bytes finales e historial del push; después efectuar entrega Git condicionada. Si cambia este seguimiento u otro archivo tras copiarlo al directorio de escaneo, renovar la copia y verificar hashes antes de publicar. Diseño de U2 puede avanzar; implementación sigue pendiente de aprobación. Luego U2 autenticación y U3 cliente → jornada → actividades persistidas.
+U1.4 resuelta. Entrega Git de U1 completada (ver «Commits/push»); pendiente la decisión de merge del PR #2 a `main`. Si cambia un archivo después del escaneo, repetir el escaneo de secretos antes de publicar. Diseño de U2 puede avanzar; implementación sigue pendiente de aprobación. Luego U2 autenticación y U3 cliente → jornada → actividades persistidas.
 
 ## Revisión independiente
 
