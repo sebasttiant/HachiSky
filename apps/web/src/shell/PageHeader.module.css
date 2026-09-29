@@ -1,0 +1,44 @@
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: var(--radius-md);
+  background: var(--color-sky-100);
+  color: var(--color-brand-navy);
+}
+
+.text {
+  flex: 1 1 18rem;
+  min-width: 0;
+}
+
+.titleRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.titleRow h1 {
+  font-size: var(--text-2xl);
+}
+
+.text p {
+  margin-top: var(--space-1);
+  color: var(--color-text-muted);
+  max-width: 44rem;
+}
+
+.actions {
+  flex: none;
+}

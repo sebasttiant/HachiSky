@@ -1,0 +1,17 @@
+.wordmark {
+  color: var(--color-brand-navy);
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.sm {
+  font-size: var(--text-xl);
+}
+
+/* #1a8fe3 on white is 3.5:1; the wordmark is large bold text (>= 18.66px
+   bold), which only requires 3:1 (WCAG AA large text). */
+.sky {
+  color: #1a8fe3;
+}

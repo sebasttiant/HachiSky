@@ -1,0 +1,125 @@
+.root {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.fieldset {
+  margin: 0;
+  padding: var(--space-5);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  min-width: 0;
+}
+
+.fieldset legend {
+  padding: 0 var(--space-2);
+  color: var(--color-brand-navy);
+  font-weight: 700;
+  font-size: var(--text-lg);
+}
+
+.grid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.field {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.field label {
+  font-weight: 600;
+  font-size: var(--text-sm);
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: #fff;
+  color: var(--color-text);
+  font: inherit;
+}
+
+.field textarea {
+  resize: vertical;
+}
+
+.hint {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.activities {
+  list-style: none;
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-4);
+}
+
+.activity {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-alt);
+}
+
+.sample {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-info-surface);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.minutes {
+  min-width: 0;
+}
+
+.total {
+  margin-top: var(--space-4);
+  text-align: right;
+}
+
+.actions {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+}
+
+.actions button {
+  min-height: 2.75rem;
+  padding: 0 var(--space-5);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-neutral-surface);
+  color: var(--color-neutral-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: not-allowed;
+}
+
+@media (min-width: 40rem) {
+  .grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .wide {
+    grid-column: 1 / -1;
+  }
+
+  .activity {
+    grid-template-columns: 1fr 10rem;
+    align-items: start;
+  }
+}

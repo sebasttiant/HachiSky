@@ -91,6 +91,24 @@ docker compose -p hachisky --project-directory apps/web -f apps/web/compose.yaml
   sh -c 'pnpm typecheck && pnpm lint && pnpm test && pnpm build'
 ```
 
+### Test runner notes
+
+- `pnpm test` runs `node --test` **without** `--conditions=react-server`.
+  That condition was removed because it makes `react-dom/server` throw and
+  hides client hooks such as `useState`, which prevented rendering real
+  components in tests. No source module depends on the `react-server`
+  export condition or on `server-only`, and the whole suite passes without
+  it. The suite keeps covering the database layer (connection, migrations,
+  health, pool limits), pure formatting and navigation logic, and renders
+  `WorkdayPreview` to static markup to assert it cannot submit.
+- `src/work/WorkdayPreview.test.ts` registers an in-process loader that
+  compiles `.tsx` with the SWC build bundled inside Next
+  (`next/dist/build/swc`, a Next.js internal, not a public API) and stubs
+  CSS Modules. No extra dependency is installed, but a Next.js upgrade may
+  move or change that internal and break the test. `next` is pinned to an
+  exact version in `package.json`; when upgrading it, run the suite and fix
+  the loader (or replace it with a public transform) before merging.
+
 Clean up the disposable test database afterwards:
 
 ```bash

@@ -1,0 +1,127 @@
+.wrapper {
+  display: flex;
+  align-items: center;
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.75rem;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-brand-navy);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.toggle:hover {
+  background: var(--color-sky-50);
+}
+
+.burger,
+.burger::before,
+.burger::after {
+  display: block;
+  width: 1.1rem;
+  height: 2px;
+  background: currentColor;
+  border-radius: 2px;
+}
+
+.burger {
+  position: relative;
+}
+
+.burger::before,
+.burger::after {
+  content: "";
+  position: absolute;
+  left: 0;
+}
+
+.burger::before {
+  top: -6px;
+}
+
+.burger::after {
+  top: 6px;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-2) var(--space-4) var(--space-4);
+  display: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  box-shadow: var(--shadow-md);
+}
+
+.list[data-open="true"] {
+  display: block;
+}
+
+.link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 2.75rem;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  color: var(--color-brand-navy);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.link:hover {
+  background: var(--color-sky-50);
+  color: var(--color-brand-navy);
+}
+
+.link[aria-current="page"] {
+  background: var(--color-sky-100);
+  box-shadow: inset 3px 0 0 var(--color-link);
+}
+
+.status {
+  margin-left: auto;
+}
+
+@media (min-width: 62rem) {
+  /* Statuses live on the pages and tiles; the desktop bar stays clean. */
+  .status {
+    display: none;
+  }
+
+  .toggle {
+    display: none;
+  }
+
+  .list {
+    display: flex;
+    position: static;
+    padding: 0;
+    gap: var(--space-1);
+    border: 0;
+    box-shadow: none;
+    background: transparent;
+  }
+
+  .link {
+    padding: 0 var(--space-3);
+    box-shadow: none;
+  }
+
+  .link[aria-current="page"] {
+    box-shadow: inset 0 -3px 0 var(--color-link);
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+  }
+}

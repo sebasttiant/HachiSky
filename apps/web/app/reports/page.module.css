@@ -1,0 +1,11 @@
+.disabledButton {
+  min-height: 2.75rem;
+  padding: 0 var(--space-5);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-neutral-surface);
+  color: var(--color-neutral-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: not-allowed;
+}
