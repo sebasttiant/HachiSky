@@ -100,7 +100,17 @@ The owner chose maintained auth (Better Auth) over custom sessions, with only tw
 
 - `src/db/migrate.ts` uses the same fragile `file://${argv[1]}` entry check (skips the migrator silently with spaces or symlinks in the path).
 - Optional DB CHECK on `user.role` (admin/staff); not added to migration 0001.
-- Owner-owned: add `BETTER_AUTH_SECRET=` to `apps/web/.env.example` (agents cannot edit it).
+- Done by the owner: `BETTER_AUTH_SECRET=` added to `apps/web/.env.example` (dc5d418).
+
+## Follow-ups from the PR #4 review (judgment day, 2026-09-29)
+
+Target `128dd49..aa5d278`; two blind read-only judges; no confirmed CRITICAL/WARNING findings, no contradictions, so no fix round (owner decides). Judge B: clean. Judge A suggestions:
+
+- SUGGESTION `apps/web/src/auth/bootstrap-admin.ts:211-219`: if `COMMIT` succeeds on the server but the reply is lost, the run exits `4` (`record_failed`/`lock_lost`) although admin and record are persisted; the next run exits `2`. Document this case in the README.
+- SUGGESTION `apps/web/src/auth/bootstrap-admin.ts:77-89`: the lock client sets no TCP keepalive; a half-open connection loses the server-side lock without a local error until the next query. Detection is weaker than the README implies.
+- SUGGESTION `apps/web/src/auth/bootstrap-admin.ts:221-233`: waiting on the lock longer than the 60 s `statement_timeout` exits `1` with `bootstrap-admin: error`; the README exit-code table does not describe it.
+
+Limitations: neither judge loaded the criteria skills; Judge A did not read the test files.
 
 ## Next step
 
