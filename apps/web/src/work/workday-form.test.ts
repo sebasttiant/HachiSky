@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { formatDuration } from "../shared/format/duration.ts";
 import { sampleWorkday } from "./sample-workday.ts";
-import { parseMinutes, totalMinutes, workdayForm } from "./workday-form.ts";
+import {
+  MAX_ACTIVITY_MINUTES,
+  parseMinutes,
+  totalMinutes,
+  workdayForm,
+} from "./workday-form.ts";
 
 describe("workday form model", () => {
   it("keeps the save action disabled with an explanatory label", () => {
@@ -51,7 +57,43 @@ describe("parseMinutes", () => {
   });
 });
 
+describe("parseMinutes limits", () => {
+  it("caps a single activity at one day", () => {
+    assert.equal(MAX_ACTIVITY_MINUTES, 1440);
+    assert.equal(parseMinutes("1440"), 1440);
+    assert.equal(parseMinutes("1441"), 0);
+    assert.equal(parseMinutes("1440.9"), 1440);
+    assert.equal(parseMinutes("1441.0"), 0);
+    assert.equal(parseMinutes("999999999999999999999"), 0);
+  });
+
+  it("rejects exponent notation that exceeds the cap", () => {
+    assert.equal(parseMinutes("1e308"), 0);
+    assert.equal(parseMinutes("1e20"), 0);
+  });
+
+  it("accepts only plain decimal numbers, not hex, binary or signed forms", () => {
+    assert.equal(parseMinutes("0x10"), 0);
+    assert.equal(parseMinutes("0b11"), 0);
+    assert.equal(parseMinutes("0o7"), 0);
+    assert.equal(parseMinutes("+5"), 0);
+    assert.equal(parseMinutes("1e2"), 0);
+    assert.equal(parseMinutes("12."), 0);
+    assert.equal(parseMinutes(".5"), 0);
+    assert.equal(parseMinutes("007"), 7);
+  });
+});
+
 describe("totalMinutes", () => {
+  it("stays finite and renderable with huge entries", () => {
+    const total = totalMinutes(["1e308", "1e308"]);
+    assert.equal(total, 0);
+    assert.doesNotThrow(() => formatDuration(total));
+    const many = totalMinutes(["1440", "1440", "1440", "1441", "0x10"]);
+    assert.equal(many, 4320);
+    assert.doesNotThrow(() => formatDuration(many));
+  });
+
   it("sums the sample activities", () => {
     assert.equal(
       totalMinutes(sampleWorkday.activities.map((a) => String(a.minutes))),

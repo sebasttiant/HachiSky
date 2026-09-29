@@ -43,6 +43,7 @@ export async function load(url, context, nextLoad) {
 register(`data:text/javascript,${encodeURIComponent(LOADER)}`);
 
 const { WorkdayPreview } = await import("./WorkdayPreview.tsx");
+const { default: WorkError } = await import("../../app/work/error.tsx");
 
 describe("WorkdayPreview (rendered component)", () => {
   const html = renderToStaticMarkup(createElement(WorkdayPreview));
@@ -64,7 +65,28 @@ describe("WorkdayPreview (rendered component)", () => {
     assert.match(html, /Datos de ejemplo: los cambios no se guardan\./);
   });
 
+  it("bounds every minutes input between 0 and one day", () => {
+    const inputs = html.match(/<input[^>]*type="number"[^>]*>/g) ?? [];
+    assert.ok(inputs.length >= 2);
+    for (const input of inputs) {
+      assert.match(input, /min="0"/);
+      assert.match(input, /max="1440"/);
+    }
+  });
+
   it("renders the total computed from the sample minutes", () => {
     assert.match(html, /Total:[^<]*<strong>4 h<\/strong>/);
+  });
+});
+
+describe("/work error boundary", () => {
+  const html = renderToStaticMarkup(
+    createElement(WorkError, { reset: () => {} }),
+  );
+
+  it("announces the failure in Spanish and offers a retry button", () => {
+    assert.match(html, /role="alert"/);
+    assert.match(html, /No pudimos mostrar el registro de jornada/);
+    assert.match(html, /<button[^>]*type="button"[^>]*>Intentar de nuevo</);
   });
 });

@@ -35,13 +35,21 @@ export const workdayForm: WorkdayFormModel = {
   ],
 };
 
-// Minutes typed in an input: whole, non-negative and finite. Anything else
-// (empty, text, negative, NaN, Infinity) counts as 0; decimals are floored.
+// One activity cannot last longer than a day. Bounding each entry also bounds
+// the total, so it always stays a finite integer that formatDuration accepts.
+export const MAX_ACTIVITY_MINUTES = 1440;
+
+// Plain decimal digits only: no sign, exponent, hex/binary/octal or bare dot.
+const DECIMAL_NUMBER = /^\d+(\.\d+)?$/;
+
+// Minutes typed in an input: a plain decimal number between 0 and
+// MAX_ACTIVITY_MINUTES; decimals are floored. Anything else (empty, text,
+// negative, exponent or hex notation, above the cap) counts as 0.
 export function parseMinutes(raw: string): number {
   const text = raw.trim();
-  if (text === "") return 0;
-  const value = Number(text);
-  return Number.isFinite(value) && value > 0 ? Math.floor(value) : 0;
+  if (!DECIMAL_NUMBER.test(text)) return 0;
+  const value = Math.floor(Number(text));
+  return value <= MAX_ACTIVITY_MINUTES ? value : 0;
 }
 
 export function totalMinutes(raw: readonly string[]): number {
