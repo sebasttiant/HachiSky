@@ -4,7 +4,7 @@ import { useState } from "react";
 import { formatDuration } from "../shared/format/duration.ts";
 import type { SampleActivity } from "./sample-workday.ts";
 import styles from "./WorkdayPreview.module.css";
-import { totalMinutes } from "./workday-form.ts";
+import { MAX_ACTIVITY_MINUTES, totalMinutes } from "./workday-form.ts";
 
 // Activities with editable minutes. The total is derived from local state
 // only: nothing is saved, persisted or sent anywhere.
@@ -40,6 +40,7 @@ export function ActivityMinutes({
                 id={`activity-${index}-minutes`}
                 type="number"
                 min={0}
+                max={MAX_ACTIVITY_MINUTES}
                 step={5}
                 value={minutes[index]}
                 onChange={(event) => {

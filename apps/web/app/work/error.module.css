@@ -1,0 +1,30 @@
+.card {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-6);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.card h1 {
+  font-size: var(--text-xl);
+}
+
+.card p {
+  max-width: 40rem;
+  color: var(--color-text-muted);
+}
+
+.retry {
+  justify-self: start;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-brand-navy);
+  border-radius: var(--radius-md);
+  background: var(--color-brand-navy);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}

@@ -2,7 +2,7 @@
 
 ## Estado
 
-U1 implementada, publicada en `origin/feat/u1-infrastructure` (c1f7e98) tras escaneo de secretos, y recuperada el 2026-09-28 después de un incidente externo de limpieza de Docker. Base LOCAL operativa, apta para diseñar U2; no es aprobación de producción. La política de reinicio de `web` está aplicada en el árbol de trabajo y pendiente de commit autorizado. Este documento no concede autorizaciones adicionales ni habilita U2/U3 o despliegue público.
+U1 implementada, publicada en `origin/feat/u1-infrastructure` (c1f7e98) tras escaneos de secretos con Gitleaks v8.28.0 (sin hallazgos; ver «Commits/push de U1»), entregada mediante el PR #2 hacia `main` (aún sin merge), y recuperada el 2026-09-28 después de un incidente externo de limpieza de Docker. Base LOCAL operativa, apta para diseñar U2; no es aprobación de producción. La política de reinicio de `web` ya está aplicada en esta rama (`2def050`). Este documento no concede autorizaciones adicionales ni habilita U2/U3 o despliegue público.
 
 ## Objetivo
 
@@ -16,7 +16,7 @@ Aplicación mínima real con Next.js y TypeScript 7, PostgreSQL persistente, mig
 - Preservar spike, RESUMEN.md, .atl/ y cambios existentes.
 - Rama de entrega reportada por Claude: feat/u1-infrastructure. No cambiar o descartar trabajo automáticamente.
 - TDD: Claude reportó Strict TDD activo en su configuración global; confirmar origen antes de implementar. Runner propuesto: node:test mediante `pnpm test` dentro del servicio test de Docker. Comando exacto del script pendiente de la definición de package.json.
-- Commits/push de U1: realizados el 2026-09-27 tras Gitleaks v8.28.0 (archivos dos veces, contenido preparado por commit y historial `21e6268..HEAD` de 6 commits), todos con "no leaks found" y reportes JSON vacíos. Evidencia local no publicada: `.verification/publish-scan/20260927T145805/`. Limitación: los códigos de salida numéricos no se guardaron en archivo.
+- Commits/push de U1: realizados el 2026-09-27 tras Gitleaks v8.28.0 (archivos dos veces, contenido preparado por commit y historial `21e6268..HEAD` de 6 commits), todos con "no leaks found" y reportes JSON vacíos. Evidencia local no publicada: `.verification/publish-scan/20260927T145805/`. Limitación: los códigos de salida numéricos no se guardaron en archivo. U1 está publicada en `origin/feat/u1-infrastructure` y se entrega mediante el PR #2 hacia `main` (aún sin merge).
 - Presupuesto orientativo de revisión: unas 400 líneas por unidad, no límite de calidad. U1 puede superarlo por infraestructura y pruebas; reportar tamaño real y proponer separación antes de entrega/publicación, sin omitir pruebas. Estrategia ask-on-risk, sin PR autorizado.
 
 ## Tareas
@@ -27,7 +27,7 @@ Aplicación mínima real con Next.js y TypeScript 7, PostgreSQL persistente, mig
 - [x] U1.3: registros históricos revisados respaldan checks y persistencia; servicio y base comprobados saludables en vivo. No se reejecutó toda la suite ni se vinculó íntegramente el árbol actual a los registros.
 - [x] U1.4: tres hallazgos corregidos y revisados independientemente. Fuente y logs coinciden; comprobación viva GET salud exitosa en 3100. No se reejecutaron los caminos de fallo en esta revisión.
 - [x] U1.5: recuperación tras limpieza externa de Docker (2026-09-28). Respaldo previo `pg_dump -Fc` fuera de Git (`~/Backups/hachisky/20260928T135715Z/`, SHA-256 `e8af65ce…14be4`, `pg_restore --list` legible; restauración no ensayada). Solo se reconstruyó `hachisky-web:local`; `migrate` salió con 0 sin aplicar cambios; `web` saludable; `db` con mismo ID y StartedAt; contenido de `app_instance` y migraciones idéntico. Evidencia: `.verification/u1-recovery/20260928T135715Z/`.
-- [ ] U1.6: política `restart: unless-stopped` en `web`. Aplicada y verificada en el árbol de trabajo (16 pasos con salida 0; salud 200; `db` sin cambios). Evidencia: `.verification/u1-web-restart/20260928T144145Z/`. Pendiente: revisión de Cursor y commit autorizado en `feat/u1-infrastructure`.
+- [x] U1.6: política `restart: unless-stopped` en `web`. Aplicada y verificada en el árbol de trabajo (16 pasos con salida 0; salud 200; `db` sin cambios). Evidencia: `.verification/u1-web-restart/20260928T144145Z/`. Confirmada en el commit `2def050` (`fix(web): restart web service after docker daemon restarts`), incluido en `feat/u1-infrastructure`.
 
 ## Superficie del ejecutor
 
@@ -59,11 +59,11 @@ El endpoint `/api/health` exige declarar expresamente `apps/web/app/api/health/r
 - No modificación del spike; Git enumera exclusivamente cambios nuevos autorizados y preexistentes preservados.
 - Logs ignorados y secretos excluidos verificados.
 - Backup: existe un respaldo lógico manual (U1.5). Restauración ensayada y política de respaldos siguen pendientes antes de datos reales.
-- Evidencia y commits de U1.1–U1.4: publicados (c1f7e98). U1.6 pendiente de commit.
+- Evidencia y commits de U1.1–U1.4: publicados (c1f7e98). U1.6 commiteada en `2def050` y seguimiento en `4ced89e`.
 
 ## Siguiente etapa
 
-1. Revisión de Cursor y commit autorizado de U1.6 (y de este seguimiento).
+1. Merge del PR #2 a `main`, decisión del propietario (U1.6 y este seguimiento ya están commiteados).
 2. Relanzar el spike de Better Auth (`spikes/better-auth/`, rama local `spike/better-auth`, sin commits). La corrida oficial `.verification/better-auth-spike/20260928T133217Z/` se detuvo en el paso 08 con salida 125 porque la limpieza externa borró su imagen; la compatibilidad sigue pendiente. Los resultados de las corridas de desarrollo no son evidencia.
 3. Con `RESULTS.md` del spike, decidir la autenticación y proponer U2.1. Implementación de U2 pendiente de aprobación. Luego U3 cliente → jornada → actividades persistidas.
 
@@ -87,3 +87,25 @@ Hallazgos originales (resueltos en la revisión posterior de U1.4; ubicaciones h
 Revisión posterior de U1.4: fuente confirma 503 ante fallo/cero migraciones, SQLSTATE validado en el logger real y puerto consultado a Compose. Logs `.verification/u1-fix/20260927T141358/` respaldan 22 pruebas, checks y puertos 3100/3101; `port-envfile-case.log` respalda 3102 y restauración 3100. GET vivo de salud aprobado. No se reejecutó toda la suite en la revisión independiente.
 
 TDD estricto de U1 original no demostrado. Claude reporta RED de módulo/export faltante y GREEN en correcciones; RED no localizado independientemente, ni prueba por sí solo cobertura conductual. Runtime con dependencias de desarrollo, backups/restauración y hardening pendientes antes de producción.
+
+
+## Follow-ups de la revisión del PR #2 (2026-09-29)
+
+Ubicaciones a `c1f7e98`. Severidad: W = advertencia, S = sugerencia. Ninguno bloquea el merge; los marcados «antes de datos reales» deben resolverse antes de guardar datos reales.
+
+Resuelto en el PR #2 (commit `fix(infra)`): los healthchecks `pg_isready` de `db` y `db-test` sondean TCP con `-h 127.0.0.1`, con prueba automática en `apps/web/tests/infra/compose.test.ts`. La advertencia sobre el listener de errores del pool, el timeout y el reinicio de `web` ya está resuelta en #3 (`128dd49`, `2def050`).
+
+- [ ] W `apps/web/compose.yaml:17-19,43,62-64`: la app y `migrate` se conectan como superusuario de Postgres. Separar un rol propietario de migraciones y un rol de aplicación de mínimo privilegio antes de datos reales.
+- [ ] S `apps/web/src/db/migrate.ts:71-73`: comprobación de punto de entrada frágil (`file://${argv[1]}`).
+- [ ] S `apps/web/src/shared/config/env.ts:8`: `PGPORT` acepta `""`, negativos y valores mayores de 65535.
+- [ ] S `apps/web/src/db/test-guard.ts:58`: el guard de pruebas es opt-in por archivo; faltan pruebas negativas de `assertTestDatabase`.
+- [ ] S Prueba de migración base: no comprueba el rechazo de una segunda fila en `app_instance`.
+- [ ] S `apps/web/src/db/migrate.ts:17-20`: `countAppliedMigrations` traga errores; la ruta de health mapea `EnvValidationError` a `database_unavailable`.
+- [ ] S `apps/web/src/db/migrate.ts:29`: sin advisory lock de migración.
+- [ ] S Endurecimiento de contenedores: `no-new-privileges`, `cap_drop`, `read_only`, límites de recursos; pnpm como PID 1; corepack como root; falta `NEXT_TELEMETRY_DISABLED`.
+- [ ] S Añadir `import "server-only"` al cliente de base de datos y a la configuración de entorno.
+- [ ] S `APP_ENV=development` con `NODE_ENV=production` resulta confuso; clarificar o unificar.
+- [ ] S El comando de arranque difiere entre `docs/local-operation.md:35` y `apps/web/README.md:28`.
+- [ ] S `spikes/ts7-compat/scripts/render-pdf.ts:221`: Chromium sin sandbox; requisito duro para cualquier worker de PDF futuro.
+- [ ] S Pruebas casi vacías: `apps/web/src/db/health.test.ts:77-92` y `apps/web/src/shared/config/env.test.ts:48-56`.
+- [ ] S `spikes/ts7-compat/scripts/render-pdf.ts:101-108`: el propietario debe confirmar que el nombre de muestra «Sebastián Roa» es ficticio (no se modifica).
