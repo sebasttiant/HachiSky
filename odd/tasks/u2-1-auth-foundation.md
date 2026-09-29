@@ -89,12 +89,11 @@ The owner chose maintained auth (Better Auth) over custom sessions, with only tw
 - Owner decisions: `jobTitle` required at the CLI; ON DELETE RESTRICT kept and documented; `.gitignore` (.atl/) stays out of U2.1 commits.
 - 2026-09-29: Final bounded correction (delegated writer, one `fix(auth)` commit; hash recorded by the coordinator): entry-file structure test (no main-module check, non-zero default exit code before `await main()`), exact-statement lock-key test with comments stripped, recovery SQL refuses a banned admin, run-twice test (second run fails, 1 record, 1 admin, 1 credential, CLI then exits 2), README recovery command line breaks fixed. RED observed: banned-admin test failed before the SQL guard; both entry tests failed with the old `import.meta.url` guard reintroduced (reverted, not committed); the lock-key test failed with the key altered in the SQL (reverted). Resolved pending items removed. Commit a5a86b3.
 - 2026-09-29: Coordinator checks for a5a86b3: full suite in the compose test profile 127/127 pass, 0 fail (writer also reported typecheck clean, lint 0 errors). Throwaway `ops` check (separate compose project and image tag, removed afterwards; real stack and `hachisky_pgdata` untouched): run 1 `created` exit 0, run 2 `already_bootstrapped` exit 2; state 1 admin, 1 credential account, 1 bootstrap record. Independent delta verification (722d2c2..a5a86b3): fit with follow-ups, no CRITICAL.
+- 2026-09-29: Last adjustment (delegated writer, one `fix(auth)` commit; hash recorded by the coordinator): every negative recovery-SQL test now requires the script's own `guard failed` message (`runRecordSql` returns the error message); SQL header lists the "not banned" guard. RED: with an invalid column deliberately put in the SQL text, the five recovery tests failed (two admins, no credential/not admin, banned, second run, plus the success case) with `column ... does not exist` instead of `guard failed`; reverted, not committed.
 
 ## Open review findings (not fixed; owner to decide)
 
-- Entry-guard test misses variants: `process.argv.at(1)`, argv destructuring, `import.meta.dirname`, an early `process.exit(0)` guard, or a guard inside `main()`.
-- `runRecordSql` maps every error to `ok: false`, so the negative recovery tests could pass on a broken script; assert the `guard failed` message.
-- Recovery SQL header comment does not list the "not banned" guard (README and SQL body do).
+- Accepted risk (owner, 2026-09-29): covered by code review. Entry-guard test misses variants: `process.argv.at(1)`, argv destructuring, `import.meta.dirname`, an early `process.exit(0)` guard, or a guard inside `main()`.
 - Minor: naive comment stripping in the entry test; banned test lacks explicit preconditions; run-twice test could assert the recorded admin id.
 
 ## Follow-ups (out of U2.1)

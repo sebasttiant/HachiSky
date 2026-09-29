@@ -489,7 +489,19 @@ const RECORD_SQL = readFileSync(
   "utf8",
 );
 
-async function runRecordSql(adminId: string): Promise<{ ok: boolean }> {
+interface RecordSqlOutcome {
+  ok: boolean;
+  message: string;
+}
+
+// A negative outcome only counts when the script's own guard refused. Any
+// other error (syntax, missing column, connection) must fail the test.
+function assertGuardFailed(outcome: RecordSqlOutcome, label: string) {
+  assert.equal(outcome.ok, false, label);
+  assert.match(outcome.message, /guard failed/, `${label}: ${outcome.message}`);
+}
+
+async function runRecordSql(adminId: string): Promise<RecordSqlOutcome> {
   const client = new Client({
     host: process.env.PGHOST,
     port: Number(process.env.PGPORT ?? 5432),
@@ -506,10 +518,10 @@ async function runRecordSql(adminId: string): Promise<{ ok: boolean }> {
         `'${adminId.replaceAll("'", "''")}'`,
       ),
     );
-    return { ok: true };
-  } catch {
+    return { ok: true, message: "" };
+  } catch (error) {
     await client.query("ROLLBACK").catch(() => undefined);
-    return { ok: false };
+    return { ok: false, message: (error as Error).message };
   } finally {
     await client.end().catch(() => undefined);
   }
@@ -561,7 +573,7 @@ describe("documented recovery SQL (record-bootstrap-admin.sql)", () => {
     await deps.client.end().catch(() => {});
     const [first] = (await state()).users;
     assert.ok(first);
-    assert.equal((await runRecordSql(first.id)).ok, false);
+    assertGuardFailed(await runRecordSql(first.id), "two admins");
     assert.equal((await state()).records.length, 0);
   });
 
@@ -585,8 +597,8 @@ describe("documented recovery SQL (record-bootstrap-admin.sql)", () => {
     await deps.client.end().catch(() => {});
     const [admin] = (await state()).users.filter((u) => u.role === "admin");
     assert.ok(admin);
-    assert.equal((await runRecordSql(admin.id)).ok, false, "no credential");
-    assert.equal((await runRecordSql(staff.id)).ok, false, "not an admin");
+    assertGuardFailed(await runRecordSql(admin.id), "no credential");
+    assertGuardFailed(await runRecordSql(staff.id), "not an admin");
     assert.equal((await state()).records.length, 0);
   });
 
@@ -605,7 +617,7 @@ describe("documented recovery SQL (record-bootstrap-admin.sql)", () => {
     await getPool().query('update "user" set banned = true');
     const [admin] = (await state()).users;
     assert.ok(admin);
-    assert.equal((await runRecordSql(admin.id)).ok, false);
+    assertGuardFailed(await runRecordSql(admin.id), "banned admin");
     assert.equal((await state()).records.length, 0);
   });
 
@@ -620,7 +632,7 @@ describe("documented recovery SQL (record-bootstrap-admin.sql)", () => {
     const [admin] = (await state()).users;
     assert.ok(admin);
     assert.equal((await runRecordSql(admin.id)).ok, true);
-    assert.equal((await runRecordSql(admin.id)).ok, false);
+    assertGuardFailed(await runRecordSql(admin.id), "second run");
     const after = await state();
     assert.equal(after.records.length, 1);
     assert.equal(after.users.filter((u) => u.role === "admin").length, 1);

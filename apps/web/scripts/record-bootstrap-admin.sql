@@ -12,6 +12,7 @@
 -- src/auth/bootstrap-admin.ts). The row is inserted only when ALL hold:
 --   - no admin_bootstrap record exists yet;
 --   - the given user id has the `admin` role;
+--   - that user is not banned;
 --   - that user is the ONLY admin;
 --   - that user has exactly ONE credential account.
 -- If the insert does not affect exactly one row the block raises an error, the
