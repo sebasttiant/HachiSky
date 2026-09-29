@@ -27,7 +27,7 @@ Aplicación mínima real con Next.js y TypeScript 7, PostgreSQL persistente, mig
 - [x] U1.3: registros históricos revisados respaldan checks y persistencia; servicio y base comprobados saludables en vivo. No se reejecutó toda la suite ni se vinculó íntegramente el árbol actual a los registros.
 - [x] U1.4: tres hallazgos corregidos y revisados independientemente. Fuente y logs coinciden; comprobación viva GET salud exitosa en 3100. No se reejecutaron los caminos de fallo en esta revisión.
 - [x] U1.5: recuperación tras limpieza externa de Docker (2026-09-28). Respaldo previo `pg_dump -Fc` fuera de Git (`~/Backups/hachisky/20260928T135715Z/`, SHA-256 `e8af65ce…14be4`, `pg_restore --list` legible; restauración no ensayada). Solo se reconstruyó `hachisky-web:local`; `migrate` salió con 0 sin aplicar cambios; `web` saludable; `db` con mismo ID y StartedAt; contenido de `app_instance` y migraciones idéntico. Evidencia: `.verification/u1-recovery/20260928T135715Z/`.
-- [ ] U1.6: política `restart: unless-stopped` en `web`. Aplicada y verificada en el árbol de trabajo (16 pasos con salida 0; salud 200; `db` sin cambios). Evidencia: `.verification/u1-web-restart/20260928T144145Z/`. Pendiente: revisión de Cursor y commit autorizado en `feat/u1-infrastructure`.
+- [x] U1.6: política `restart: unless-stopped` en `web`. Aplicada y verificada en el árbol de trabajo (16 pasos con salida 0; salud 200; `db` sin cambios). Evidencia: `.verification/u1-web-restart/20260928T144145Z/`. Confirmada en el commit `2def050` (`fix(web): restart web service after docker daemon restarts`), incluido en `feat/u1-infrastructure`.
 
 ## Superficie del ejecutor
 
@@ -59,11 +59,11 @@ El endpoint `/api/health` exige declarar expresamente `apps/web/app/api/health/r
 - No modificación del spike; Git enumera exclusivamente cambios nuevos autorizados y preexistentes preservados.
 - Logs ignorados y secretos excluidos verificados.
 - Backup: existe un respaldo lógico manual (U1.5). Restauración ensayada y política de respaldos siguen pendientes antes de datos reales.
-- Evidencia y commits de U1.1–U1.4: publicados (c1f7e98). U1.6 pendiente de commit.
+- Evidencia y commits de U1.1–U1.4: publicados (c1f7e98). U1.6 commiteada en `2def050` y seguimiento en `4ced89e`.
 
 ## Siguiente etapa
 
-1. Revisión de Cursor y commit autorizado de U1.6 (y de este seguimiento).
+1. Merge del PR #2 a `main`, decisión del propietario (U1.6 y este seguimiento ya están commiteados).
 2. Relanzar el spike de Better Auth (`spikes/better-auth/`, rama local `spike/better-auth`, sin commits). La corrida oficial `.verification/better-auth-spike/20260928T133217Z/` se detuvo en el paso 08 con salida 125 porque la limpieza externa borró su imagen; la compatibilidad sigue pendiente. Los resultados de las corridas de desarrollo no son evidencia.
 3. Con `RESULTS.md` del spike, decidir la autenticación y proponer U2.1. Implementación de U2 pendiente de aprobación. Luego U3 cliente → jornada → actividades persistidas.
 
