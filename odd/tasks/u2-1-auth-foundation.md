@@ -78,7 +78,7 @@ The owner chose maintained auth (Better Auth) over custom sessions, with only tw
 
 - 2026-09-29: branch created; document created.
 - 2026-09-29: A1 done (delegated writer), commit ef46081.
-- 2026-09-29: A2 done (delegated writer); commit hash recorded in the next docs commit.
+- 2026-09-29: A2 done (delegated writer); commit 4f556c1.
 
 ## Next step
 
