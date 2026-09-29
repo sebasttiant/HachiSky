@@ -61,9 +61,10 @@ The owner chose maintained auth (Better Auth) over custom sessions, with only tw
   - Evidence: RED `node --test tests/auth/bootstrap-admin.test.ts` failed with `ERR_MODULE_NOT_FOUND bootstrap-admin.ts`; GREEN 17/17 (incl. 10 real processes: one `0`, nine `2`; fault A/B/C and C2 interleaving). Mutation: removing the advisory lock query makes the 10-process test fail. Compose test profile `pnpm typecheck && pnpm lint && pnpm test`: typecheck clean, lint 0 errors (4 pre-existing warnings), 117/117 pass. Ops service happy path against a throwaway compose project (`hachisky-opscheck`, own volume, separate image tag, all removed afterwards): first run `created` exit 0, second `already_bootstrapped` exit 2, DB shows one admin with job title, one credential account, one record.
   - Decisions: `createUser` runs on pool connections, outside the lock transaction (documented in code). Lock client has its own 60 s statement limit (the pool's 4 s would abort waiting runs). Better Auth logging is disabled in the CLI so errors cannot echo SQL parameters. Compose uses `${BETTER_AUTH_SECRET:-}` (not `:?`) because compose validates all services and a required variable would break `up db web` and the test profile; an empty secret makes the CLI exit 1. `.env.example` could not be updated (path denied to the writer); it still needs a `BETTER_AUTH_SECRET=` line.
   - Checks: happy path; 10-process concurrency (1×`0`, 9×`2`); existing record → `2`; admin without record → `4`; fault tests (user without credential; complete admin without record; lock connection terminated) with documented persisted state.
-- [ ] **A4** Docs: bootstrap operation, exit codes, fault/persistence table, manual recovery procedure, cookie matrix; tracking update.
+- [x] **A4** Docs: bootstrap operation, exit codes, fault/persistence table, manual recovery procedure, cookie matrix; tracking update.
   - Route: delegated writer (together with A3 if natural).
   - Checks: structural readback.
+  - Evidence: structural readback of `apps/web/README.md` after the edit: sections "Admin bootstrap" (run via `ops` profile, exit codes, algorithm and non-guarantees, fault persistence table, manual recovery procedure documented only, `--recover` not implemented) and "Auth cookies" (production HTTPS vs development HTTP matrix) are present. Route: delegated writer.
 
 ## Acceptance criteria
 
@@ -84,4 +85,4 @@ The owner chose maintained auth (Better Auth) over custom sessions, with only tw
 
 ## Next step
 
-A4.
+Owner review of A1-A4. Known follow-up: add `BETTER_AUTH_SECRET=` to `apps/web/.env.example`.
