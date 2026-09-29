@@ -11,9 +11,11 @@ export interface CreateAuthOptions {
   env: AuthEnv;
   // Injectable so unit tests can run without a database.
   database: Parameters<typeof betterAuth>[0]["database"];
+  // The bootstrap CLI disables logging so no error path can echo request data.
+  logger?: NonNullable<Parameters<typeof betterAuth>[0]["logger"]>;
 }
 
-export function createAuth({ env, database }: CreateAuthOptions) {
+export function createAuth({ env, database, logger }: CreateAuthOptions) {
   return betterAuth({
     appName: "HachiSky",
     baseURL: env.BETTER_AUTH_URL,
@@ -21,6 +23,7 @@ export function createAuth({ env, database }: CreateAuthOptions) {
     trustedOrigins: [env.BETTER_AUTH_URL],
     database,
     telemetry: { enabled: false },
+    ...(logger ? { logger } : {}),
     emailAndPassword: {
       enabled: true,
       // Accounts are created only by an administrator (or the bootstrap CLI).
