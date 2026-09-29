@@ -82,6 +82,7 @@ The owner chose maintained auth (Better Auth) over custom sessions, with only tw
 - 2026-09-29: branch created; document created.
 - 2026-09-29: A1 done (delegated writer), commit ef46081.
 - 2026-09-29: A2 done (delegated writer); commit 4f556c1.
+- 2026-09-29: A3 done (delegated writer), commit 1a432f4. A4 done (delegated writer), commit 4af1bba. Verification in the compose test profile: 117/117 tests, typecheck clean, lint 0 errors.
 
 ## Next step
 
