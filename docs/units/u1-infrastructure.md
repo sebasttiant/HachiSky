@@ -143,8 +143,13 @@ reducido de `globals.css`.
 
 ## Próximos pasos
 
-1. Respaldo en GitHub de U1 (commit/push en `feat/u1-infrastructure`,
-   autorizado el 2026-09-27; merge a `main` y PR pendientes de decisión).
+1. Respaldo en GitHub de U1: commits y push realizados el 2026-09-27 en
+   `feat/u1-infrastructure` tras escaneos con Gitleaks v8.28.0 (archivos, dos
+   veces; contenido preparado por commit; historial `21e6268..HEAD` de 6
+   commits), todos «no leaks found» con informes JSON vacíos. Evidencia local no
+   publicada en `.verification/publish-scan/20260927T145805/`; limitación: los
+   códigos de salida numéricos no se guardaron en archivo. PR #2 hacia `main`
+   abierto, merge pendiente de decisión.
    GitHub respalda código y documentación, no la base de datos, `.env` ni
    otros archivos locales excluidos; su respaldo es una tarea separada.
 2. Unidad 2: planificación de autenticación y permisos (Better Auth 1.7.6
