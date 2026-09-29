@@ -104,4 +104,9 @@ The owner chose maintained auth (Better Auth) over custom sessions, with only tw
 
 ## Next step
 
-Owner review of U2.1. No push/PR/merge until owner approval.
+Delivered 2026-09-29 (owner-authorized push + stacked PRs, `size:exception` each):
+1. #2 `feat/u1-infrastructure → main` (supersedes #1; owner closes #1 after #2 merges)
+2. #3 `feat/visible-shell → feat/u1-infrastructure`
+3. #4 `feat/u2-1-auth-foundation → feat/visible-shell` (last adjustment f320414; coordinator suite re-run 127/127)
+
+Merge in that order, retargeting each child to `main` after its parent merges. No merge without owner approval. Next unit: U2.2.
