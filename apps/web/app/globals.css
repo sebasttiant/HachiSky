@@ -1,0 +1,63 @@
+:root {
+  --color-nav: #022e47;
+  --color-primary: #044366;
+  --color-link: #006bb8;
+  --color-accent: #0098ff;
+  --color-accent-on-dark: #46baf9;
+  --color-info-surface: #eaf4fc;
+  --color-text: #102733;
+  --color-text-muted: #4b626e;
+  --color-surface: #ffffff;
+  --color-surface-alt: #f3f6f8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family:
+    system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+}
+
+/* --color-accent (#0098FF) is reserved for accents/interactive affordances
+   on dark surfaces; it does not meet contrast requirements as normal body
+   text on white. Regular links use --color-link instead. */
+a {
+  color: var(--color-link);
+}
+
+a:hover {
+  color: var(--color-primary);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+main {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
