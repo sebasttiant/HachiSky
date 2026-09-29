@@ -235,15 +235,20 @@ what you are about to change (there is no backup tooling yet).
      `scripts/record-bootstrap-admin.sql`. It runs in one transaction, takes
      the same advisory lock key as the CLI, and inserts the
      `admin_bootstrap` row only when the given user id has the `admin` role,
-     is the only admin, has exactly one `credential` account and no record
-     exists. If the insert does not affect exactly one row it raises an error
+     is not banned, is the only admin, has exactly one `credential` account and
+     no record exists. If the insert does not affect exactly one row it raises an error
      and nothing is written.
 
      ```bash
-     docker compose -p hachisky --project-directory apps/web -f apps/web/compose.yaml exec -T db        psql -U hachisky -d hachisky -v ON_ERROR_STOP=1 -v admin_id='<user id>' -f -        < apps/web/scripts/record-bootstrap-admin.sql
+     docker compose -p hachisky --project-directory apps/web \
+       -f apps/web/compose.yaml exec -T db \
+       psql -U hachisky -d hachisky -v ON_ERROR_STOP=1 -v admin_id='<user id>' -f - \
+       < apps/web/scripts/record-bootstrap-admin.sql
      ```
 
-     Afterwards the CLI exits `2`.
+     Afterwards the CLI exits `2`. Running it a second time fails (a record
+     already exists) and changes nothing. A banned sole admin is refused too:
+     decide with the owner whether to unban it by hand first.
    - **Two admins, or an admin that is not legitimate:** the owner decides
      which one is legitimate and must demote or remove the other **by hand,
      only with owner approval**. Demoting keeps the row and its history:

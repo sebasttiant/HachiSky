@@ -18,6 +18,7 @@ import {
   type BootstrapHooks,
   type BootstrapInput,
   createBootstrapDeps,
+  EXIT_USAGE,
   runBootstrap,
 } from "../../src/auth/bootstrap-admin.ts";
 import { closeDb, getDb, getPool } from "../../src/db/client.ts";
@@ -450,6 +451,37 @@ describe("entry point never exits 0 without running main", () => {
   });
 });
 
+describe("entry file structure", () => {
+  const source = readFileSync(CLI, "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/.*$/gm, "");
+
+  it("contains no main-module check that could skip main()", () => {
+    for (const forbidden of [
+      /import\.meta\.url/,
+      /import\.meta\.filename/,
+      /import\.meta\.main/,
+      /process\.argv\s*\[\s*1\s*\]/,
+      /require\.main/,
+      /fileURLToPath/,
+      /pathToFileURL/,
+      /isMainModule/,
+    ]) {
+      assert.doesNotMatch(source, forbidden);
+    }
+  });
+
+  it("sets a non-zero exit code at top level, right before an unconditional await main()", () => {
+    assert.notEqual(EXIT_USAGE, 0);
+    // Anchored at column 0: statements inside main() or inside an `if` are
+    // indented, so they cannot satisfy this.
+    assert.match(
+      source,
+      /^process\.exitCode = EXIT_USAGE;\s*\nawait main\(\);/m,
+    );
+  });
+});
+
 // The documented recovery statement lives in one file that the README
 // references; the tests execute that exact text.
 const RECORD_SQL = readFileSync(
@@ -484,9 +516,15 @@ async function runRecordSql(adminId: string): Promise<{ ok: boolean }> {
 }
 
 describe("documented recovery SQL (record-bootstrap-admin.sql)", () => {
-  it("takes the same advisory lock key as the CLI", () => {
-    assert.ok(RECORD_SQL.includes(BOOTSTRAP_LOCK_KEY));
-    assert.ok(RECORD_SQL.includes("pg_advisory_xact_lock"));
+  it("takes the same advisory lock key as the CLI, as an exact statement", () => {
+    const executable = RECORD_SQL.split("\n")
+      .filter((line) => !line.trim().startsWith("--"))
+      .join("\n");
+    const lock = new RegExp(
+      `^\\s*SELECT\\s+pg_advisory_xact_lock\\(\\s*${BOOTSTRAP_LOCK_KEY}\\s*\\)\\s*;`,
+      "im",
+    );
+    assert.match(executable, lock);
   });
 
   it("records a complete single admin (fault B state) and the next CLI run exits 2", async () => {
@@ -550,5 +588,46 @@ describe("documented recovery SQL (record-bootstrap-admin.sql)", () => {
     assert.equal((await runRecordSql(admin.id)).ok, false, "no credential");
     assert.equal((await runRecordSql(staff.id)).ok, false, "not an admin");
     assert.equal((await state()).records.length, 0);
+  });
+
+  it("inserts nothing when the sole admin is banned", async () => {
+    await clean();
+    const deps = createBootstrapDeps({ authEnv: loadAuthEnv(AUTH_ENV) });
+    await deps.auth.api.createUser({
+      body: {
+        email: "banned@example.test",
+        password: PASSWORD,
+        name: "Banned Admin",
+        role: "admin",
+      },
+    });
+    await deps.client.end().catch(() => {});
+    await getPool().query('update "user" set banned = true');
+    const [admin] = (await state()).users;
+    assert.ok(admin);
+    assert.equal((await runRecordSql(admin.id)).ok, false);
+    assert.equal((await state()).records.length, 0);
+  });
+
+  it("succeeds once and fails when run a second time", async () => {
+    await clean();
+    const interrupted = await runInProcess(input(), {
+      beforeRecord: async () => {
+        throw new Error("injected interruption before the record");
+      },
+    });
+    assert.equal(interrupted.exitCode, 4);
+    const [admin] = (await state()).users;
+    assert.ok(admin);
+    assert.equal((await runRecordSql(admin.id)).ok, true);
+    assert.equal((await runRecordSql(admin.id)).ok, false);
+    const after = await state();
+    assert.equal(after.records.length, 1);
+    assert.equal(after.users.filter((u) => u.role === "admin").length, 1);
+    assert.equal(
+      after.accounts.filter((a) => a.providerId === "credential").length,
+      1,
+    );
+    assert.equal((await runCli(cliArgs(), PASSWORD)).code, 2);
   });
 });

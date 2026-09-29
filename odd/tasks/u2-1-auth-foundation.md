@@ -87,16 +87,14 @@ The owner chose maintained auth (Better Auth) over custom sessions, with only tw
 - 2026-09-29: Coordinator checks: diff reviewed (correction touches none of migration 0001, the env example, .gitignore); full suite re-run in the compose test profile: 123/123 pass, 0 fail. Independent delta verification (0ea1063..c472e9a): fit with follow-ups, no CRITICAL.
 - RDD: range 128dd49..HEAD assessed high (auth hot path, review due); native review unavailable because of Gentle AI #4890 (intended-untracked selection). Recorded as unavailable; no approval claimed.
 - Owner decisions: `jobTitle` required at the CLI; ON DELETE RESTRICT kept and documented; `.gitignore` (.atl/) stays out of U2.1 commits.
+- 2026-09-29: Final bounded correction (delegated writer, one `fix(auth)` commit; hash recorded by the coordinator): entry-file structure test (no main-module check, non-zero default exit code before `await main()`), exact-statement lock-key test with comments stripped, recovery SQL refuses a banned admin, run-twice test (second run fails, 1 record, 1 admin, 1 credential, CLI then exits 2), README recovery command line breaks fixed. RED observed: banned-admin test failed before the SQL guard; both entry tests failed with the old `import.meta.url` guard reintroduced (reverted, not committed); the lock-key test failed with the key altered in the SQL (reverted). Resolved pending items removed.
 
-## Pending follow-ups
+## Follow-ups (out of U2.1)
 
-- Entry test pins only that `main()` is reached; no test fails if a main-module guard is reintroduced (add a static or "main removed" test).
-- Lock-key test is a substring check; tighten to an exact `pg_advisory_xact_lock(<key>)` match.
-- Recovery SQL can record a sole banned admin; add a not-banned guard or document it. No test for running the script twice.
-- `src/db/migrate.ts` uses the same fragile `file://${argv[1]}` entry check.
-- Optional DB CHECK on `user.role` (admin/staff); README cosmetic line breaks in the recovery command.
-- Add `BETTER_AUTH_SECRET=` to `apps/web/.env.example` (agents cannot edit it).
-- Throwaway `ops` service check not re-run after c472e9a.
+- `src/db/migrate.ts` uses the same fragile `file://${argv[1]}` entry check (skips the migrator silently with spaces or symlinks in the path).
+- Optional DB CHECK on `user.role` (admin/staff); not added to migration 0001.
+- Owner-owned: add `BETTER_AUTH_SECRET=` to `apps/web/.env.example` (agents cannot edit it).
+- Coordinator to re-run the throwaway `ops` service check after this correction.
 
 ## Next step
 

@@ -32,6 +32,7 @@ BEGIN
   FROM "user" u
   WHERE u.id = current_setting('bootstrap.admin_id')
     AND 'admin' = ANY (string_to_array(u.role, ','))
+    AND coalesce(u.banned, false) = false
     AND (
       SELECT count(*) FROM "user" a
       WHERE 'admin' = ANY (string_to_array(a.role, ','))
