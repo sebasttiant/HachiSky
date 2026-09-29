@@ -87,14 +87,21 @@ The owner chose maintained auth (Better Auth) over custom sessions, with only tw
 - 2026-09-29: Coordinator checks: diff reviewed (correction touches none of migration 0001, the env example, .gitignore); full suite re-run in the compose test profile: 123/123 pass, 0 fail. Independent delta verification (0ea1063..c472e9a): fit with follow-ups, no CRITICAL.
 - RDD: range 128dd49..HEAD assessed high (auth hot path, review due); native review unavailable because of Gentle AI #4890 (intended-untracked selection). Recorded as unavailable; no approval claimed.
 - Owner decisions: `jobTitle` required at the CLI; ON DELETE RESTRICT kept and documented; `.gitignore` (.atl/) stays out of U2.1 commits.
-- 2026-09-29: Final bounded correction (delegated writer, one `fix(auth)` commit; hash recorded by the coordinator): entry-file structure test (no main-module check, non-zero default exit code before `await main()`), exact-statement lock-key test with comments stripped, recovery SQL refuses a banned admin, run-twice test (second run fails, 1 record, 1 admin, 1 credential, CLI then exits 2), README recovery command line breaks fixed. RED observed: banned-admin test failed before the SQL guard; both entry tests failed with the old `import.meta.url` guard reintroduced (reverted, not committed); the lock-key test failed with the key altered in the SQL (reverted). Resolved pending items removed.
+- 2026-09-29: Final bounded correction (delegated writer, one `fix(auth)` commit; hash recorded by the coordinator): entry-file structure test (no main-module check, non-zero default exit code before `await main()`), exact-statement lock-key test with comments stripped, recovery SQL refuses a banned admin, run-twice test (second run fails, 1 record, 1 admin, 1 credential, CLI then exits 2), README recovery command line breaks fixed. RED observed: banned-admin test failed before the SQL guard; both entry tests failed with the old `import.meta.url` guard reintroduced (reverted, not committed); the lock-key test failed with the key altered in the SQL (reverted). Resolved pending items removed. Commit a5a86b3.
+- 2026-09-29: Coordinator checks for a5a86b3: full suite in the compose test profile 127/127 pass, 0 fail (writer also reported typecheck clean, lint 0 errors). Throwaway `ops` check (separate compose project and image tag, removed afterwards; real stack and `hachisky_pgdata` untouched): run 1 `created` exit 0, run 2 `already_bootstrapped` exit 2; state 1 admin, 1 credential account, 1 bootstrap record. Independent delta verification (722d2c2..a5a86b3): fit with follow-ups, no CRITICAL.
+
+## Open review findings (not fixed; owner to decide)
+
+- Entry-guard test misses variants: `process.argv.at(1)`, argv destructuring, `import.meta.dirname`, an early `process.exit(0)` guard, or a guard inside `main()`.
+- `runRecordSql` maps every error to `ok: false`, so the negative recovery tests could pass on a broken script; assert the `guard failed` message.
+- Recovery SQL header comment does not list the "not banned" guard (README and SQL body do).
+- Minor: naive comment stripping in the entry test; banned test lacks explicit preconditions; run-twice test could assert the recorded admin id.
 
 ## Follow-ups (out of U2.1)
 
 - `src/db/migrate.ts` uses the same fragile `file://${argv[1]}` entry check (skips the migrator silently with spaces or symlinks in the path).
 - Optional DB CHECK on `user.role` (admin/staff); not added to migration 0001.
 - Owner-owned: add `BETTER_AUTH_SECRET=` to `apps/web/.env.example` (agents cannot edit it).
-- Coordinator to re-run the throwaway `ops` service check after this correction.
 
 ## Next step
 
