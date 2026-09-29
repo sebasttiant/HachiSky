@@ -28,6 +28,26 @@ export function buildPoolConfig(env: AppEnv): PoolConfig {
   };
 }
 
+// Migrations get their own limits: connect fails fast, but there is NO
+// query_timeout/statement_timeout, because a legitimate migration (index
+// build, table rewrite) can run far longer than a request. One connection
+// is enough: the migrator runs statements sequentially.
+export const MIGRATION_POOL_LIMITS = {
+  max: 1,
+  connectionTimeoutMillis: POOL_LIMITS.connectionTimeoutMillis,
+} as const;
+
+export function buildMigrationPoolConfig(env: AppEnv): PoolConfig {
+  return {
+    host: env.PGHOST,
+    port: env.PGPORT,
+    database: env.PGDATABASE,
+    user: env.PGUSER,
+    password: env.PGPASSWORD,
+    ...MIGRATION_POOL_LIMITS,
+  };
+}
+
 // Lazily created singleton pool.
 export function getPool(): Pool {
   if (!pool) {
