@@ -74,3 +74,25 @@ Hallazgos originales (resueltos en la revisión posterior de U1.4; ubicaciones h
 Revisión posterior de U1.4: fuente confirma 503 ante fallo/cero migraciones, SQLSTATE validado en el logger real y puerto consultado a Compose. Logs `.verification/u1-fix/20260927T141358/` respaldan 22 pruebas, checks y puertos 3100/3101; `port-envfile-case.log` respalda 3102 y restauración 3100. GET vivo de salud aprobado. No se reejecutó toda la suite en la revisión independiente.
 
 TDD estricto de U1 original no demostrado. Claude reporta RED de módulo/export faltante y GREEN en correcciones; RED no localizado independientemente, ni prueba por sí solo cobertura conductual. Runtime con dependencias de desarrollo, backups/restauración y hardening pendientes antes de producción.
+
+
+## Follow-ups de la revisión del PR #2 (2026-09-29)
+
+Ubicaciones a `c1f7e98`. Severidad: W = advertencia, S = sugerencia. Ninguno bloquea el merge; los marcados «antes de datos reales» deben resolverse antes de guardar datos reales.
+
+Resuelto en el PR #2 (commit `fix(infra)`): los healthchecks `pg_isready` de `db` y `db-test` sondean TCP con `-h 127.0.0.1`, con prueba automática en `apps/web/tests/infra/compose.test.ts`. La advertencia sobre el listener de errores del pool, el timeout y el reinicio de `web` ya está resuelta en #3 (`128dd49`, `2def050`).
+
+- [ ] W `apps/web/compose.yaml:17-19,43,62-64`: la app y `migrate` se conectan como superusuario de Postgres. Separar un rol propietario de migraciones y un rol de aplicación de mínimo privilegio antes de datos reales.
+- [ ] S `apps/web/src/db/migrate.ts:71-73`: comprobación de punto de entrada frágil (`file://${argv[1]}`).
+- [ ] S `apps/web/src/shared/config/env.ts:8`: `PGPORT` acepta `""`, negativos y valores mayores de 65535.
+- [ ] S `apps/web/src/db/test-guard.ts:58`: el guard de pruebas es opt-in por archivo; faltan pruebas negativas de `assertTestDatabase`.
+- [ ] S Prueba de migración base: no comprueba el rechazo de una segunda fila en `app_instance`.
+- [ ] S `apps/web/src/db/migrate.ts:17-20`: `countAppliedMigrations` traga errores; la ruta de health mapea `EnvValidationError` a `database_unavailable`.
+- [ ] S `apps/web/src/db/migrate.ts:29`: sin advisory lock de migración.
+- [ ] S Endurecimiento de contenedores: `no-new-privileges`, `cap_drop`, `read_only`, límites de recursos; pnpm como PID 1; corepack como root; falta `NEXT_TELEMETRY_DISABLED`.
+- [ ] S Añadir `import "server-only"` al cliente de base de datos y a la configuración de entorno.
+- [ ] S `APP_ENV=development` con `NODE_ENV=production` resulta confuso; clarificar o unificar.
+- [ ] S El comando de arranque difiere entre `docs/local-operation.md:35` y `apps/web/README.md:28`.
+- [ ] S `spikes/ts7-compat/scripts/render-pdf.ts:221`: Chromium sin sandbox; requisito duro para cualquier worker de PDF futuro.
+- [ ] S Pruebas casi vacías: `apps/web/src/db/health.test.ts:77-92` y `apps/web/src/shared/config/env.test.ts:48-56`.
+- [ ] S `spikes/ts7-compat/scripts/render-pdf.ts:101-108`: el propietario debe confirmar que el nombre de muestra «Sebastián Roa» es ficticio (no se modifica).
