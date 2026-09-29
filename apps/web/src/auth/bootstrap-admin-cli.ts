@@ -24,11 +24,11 @@ const argsSchema = z.object({
 
 const passwordSchema = z.string().min(8).max(128);
 
-export type CliParse =
+type CliParse =
   | { ok: true; email: string; name: string; jobTitle: string }
   | { ok: false };
 
-export function parseCliArgs(argv: string[]): CliParse {
+function parseCliArgs(argv: string[]): CliParse {
   try {
     const { values } = parseArgs({
       args: argv,
@@ -62,7 +62,7 @@ async function readStdin(): Promise<string> {
 
 // Removes exactly one trailing line ending, so `echo` and `printf` both work
 // without altering passwords that legitimately contain spaces.
-export function stripTrailingNewline(value: string): string {
+function stripTrailingNewline(value: string): string {
   return value.replace(/\r?\n$/, "");
 }
 
@@ -106,9 +106,10 @@ async function main(): Promise<void> {
   }
 }
 
-const isMainModule =
-  process.argv[1] !== undefined &&
-  import.meta.url === `file://${process.argv[1]}`;
-if (isMainModule) {
-  await main();
-}
+// Dedicated entry file: main() ALWAYS runs when this module is loaded. There is
+// deliberately no "is this the main module" comparison, because a mismatch
+// (spaces or encoded characters in the path, symlinks) would skip main() and
+// exit 0 without doing anything. The default exit code is non-zero, so even a
+// crash before main() reports failure; main() sets the real code on every path.
+process.exitCode = EXIT_USAGE;
+await main();

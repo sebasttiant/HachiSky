@@ -94,6 +94,8 @@ services:
     entrypoint: ["node", "src/auth/bootstrap-admin-cli.ts"]
     stdin_open: true
     environment:
+      # `development` because this stack serves plain http on 127.0.0.1 (see
+      # BETTER_AUTH_URL). A production APP_ENV would require an https URL.
       APP_ENV: development
       PGHOST: db
       PGPORT: "5432"

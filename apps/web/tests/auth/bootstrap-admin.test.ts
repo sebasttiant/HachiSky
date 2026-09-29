@@ -1,9 +1,20 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import {
+  cpSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { after, before, describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
-import { sql } from "drizzle-orm";
+import { Client } from "pg";
 import {
+  BOOTSTRAP_LOCK_KEY,
   type BootstrapHooks,
   type BootstrapInput,
   createBootstrapDeps,
@@ -51,9 +62,10 @@ function runCli(
   args: string[],
   stdin: string | null,
   env: Record<string, string | undefined> = {},
+  entry: string = CLI,
 ): Promise<CliResult> {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [CLI, ...args], {
+    const child = spawn(process.execPath, [entry, ...args], {
       env: { ...process.env, ...AUTH_ENV, ...env },
       stdio: ["pipe", "pipe", "pipe"],
     });
@@ -308,6 +320,11 @@ describe("faults: what persists", () => {
       },
     });
     assert.equal(result.exitCode, 4);
+    assert.equal(
+      result.exitCode === 4 && result.reason,
+      "interrupted",
+      "an unexpected failure after the first write is reported as interrupted",
+    );
     const persisted = await state();
     assert.equal(persisted.users.length, 1);
     assert.equal(persisted.users[0]?.role, "admin");
@@ -324,7 +341,9 @@ describe("faults: what persists", () => {
     await clean();
     const result = await runInProcess(input(), {
       beforeRecord: async ({ lockPid }) => {
-        await getPool().query("select pg_terminate_backend($1)", [lockPid]);
+        await getPool().query("select pg_terminate_backend($1, 5000)", [
+          lockPid,
+        ]);
       },
     });
     assert.equal(result.exitCode, 4);
@@ -345,7 +364,9 @@ describe("faults: what persists", () => {
       beforeCreateUser: async ({ lockPid }) => {
         // Lock lost right after the first run checked it and before it
         // creates anything: the next run can take the lock and finish.
-        await getPool().query("select pg_terminate_backend($1)", [lockPid]);
+        await getPool().query("select pg_terminate_backend($1, 5000)", [
+          lockPid,
+        ]);
         secondResult = await runInProcess(input(2));
       },
     });
@@ -368,12 +389,166 @@ describe("faults: what persists", () => {
   });
 });
 
-describe("lock", () => {
-  it("leaves no advisory lock behind", async () => {
-    await clean();
-    const rows = await getDb().execute(
-      sql`select count(*)::int as n from pg_locks where locktype = 'advisory'`,
+describe("entry point never exits 0 without running main", () => {
+  // Missing arguments make a working entry report a usage error (exit 1). A
+  // skipped main() would exit 0 silently.
+  async function expectReachesMain(entry: string) {
+    const result = await runCli([], PASSWORD, {}, entry);
+    assert.equal(
+      result.code,
+      1,
+      `stdout=${result.stdout} stderr=${result.stderr}`,
     );
-    assert.equal(rows.rows[0]?.n, 0, "no advisory lock is left behind");
+    assert.match(result.stdout, /usage_error/);
+  }
+
+  it("reaches main() from a path containing spaces", async () => {
+    const base = mkdtempSync(path.join(tmpdir(), "bootstrap cli "));
+    try {
+      const app = path.join(base, "app copy");
+      mkdirSync(app);
+      cpSync(
+        fileURLToPath(new URL("../../src", import.meta.url)),
+        path.join(app, "src"),
+        {
+          recursive: true,
+        },
+      );
+      symlinkSync(
+        fileURLToPath(new URL("../../node_modules", import.meta.url)),
+        path.join(app, "node_modules"),
+      );
+      await expectReachesMain(
+        path.join(app, "src", "auth", "bootstrap-admin-cli.ts"),
+      );
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
+  });
+
+  it("reaches main() through a symlink to the entry file", async () => {
+    const base = mkdtempSync(path.join(tmpdir(), "bootstrap-cli-link-"));
+    try {
+      const link = path.join(base, "cli.ts");
+      symlinkSync(CLI, link);
+      await expectReachesMain(link);
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
+  });
+
+  it("reaches main() from a symlink whose path also contains spaces", async () => {
+    const base = mkdtempSync(path.join(tmpdir(), "bootstrap cli "));
+    try {
+      mkdirSync(path.join(base, "nested dir"));
+      const link = path.join(base, "nested dir", "cli link.ts");
+      symlinkSync(CLI, link);
+      await expectReachesMain(link);
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
+  });
+});
+
+// The documented recovery statement lives in one file that the README
+// references; the tests execute that exact text.
+const RECORD_SQL = readFileSync(
+  new URL("../../scripts/record-bootstrap-admin.sql", import.meta.url),
+  "utf8",
+);
+
+async function runRecordSql(adminId: string): Promise<{ ok: boolean }> {
+  const client = new Client({
+    host: process.env.PGHOST,
+    port: Number(process.env.PGPORT ?? 5432),
+    database: process.env.PGDATABASE,
+    user: process.env.PGUSER,
+    password: process.env.PGPASSWORD,
+  });
+  await client.connect();
+  try {
+    // psql substitutes :'admin_id'; here the same token is replaced textually.
+    await client.query(
+      RECORD_SQL.replaceAll(
+        ":'admin_id'",
+        `'${adminId.replaceAll("'", "''")}'`,
+      ),
+    );
+    return { ok: true };
+  } catch {
+    await client.query("ROLLBACK").catch(() => undefined);
+    return { ok: false };
+  } finally {
+    await client.end().catch(() => undefined);
+  }
+}
+
+describe("documented recovery SQL (record-bootstrap-admin.sql)", () => {
+  it("takes the same advisory lock key as the CLI", () => {
+    assert.ok(RECORD_SQL.includes(BOOTSTRAP_LOCK_KEY));
+    assert.ok(RECORD_SQL.includes("pg_advisory_xact_lock"));
+  });
+
+  it("records a complete single admin (fault B state) and the next CLI run exits 2", async () => {
+    await clean();
+    const interrupted = await runInProcess(input(), {
+      beforeRecord: async () => {
+        throw new Error("injected interruption before the record");
+      },
+    });
+    assert.equal(interrupted.exitCode, 4);
+    const [admin] = (await state()).users;
+    assert.ok(admin);
+    const outcome = await runRecordSql(admin.id);
+    assert.equal(outcome.ok, true);
+    const { records } = await state();
+    assert.equal(records.length, 1);
+    assert.equal(records[0]?.adminUserId, admin.id);
+    assert.equal((await runCli(cliArgs(), PASSWORD)).code, 2);
+  });
+
+  it("inserts nothing when two admins exist", async () => {
+    await clean();
+    const deps = createBootstrapDeps({ authEnv: loadAuthEnv(AUTH_ENV) });
+    for (const n of [1, 2]) {
+      await deps.auth.api.createUser({
+        body: {
+          email: `admin${n}@example.test`,
+          password: PASSWORD,
+          name: `Admin ${n}`,
+          role: "admin",
+        },
+      });
+    }
+    await deps.client.end().catch(() => {});
+    const [first] = (await state()).users;
+    assert.ok(first);
+    assert.equal((await runRecordSql(first.id)).ok, false);
+    assert.equal((await state()).records.length, 0);
+  });
+
+  it("inserts nothing when the admin has no credential account, or the id is not an admin", async () => {
+    await clean();
+    const deps = createBootstrapDeps({ authEnv: loadAuthEnv(AUTH_ENV) });
+    await deps.auth.api.createUser({
+      body: {
+        email: "nocred@example.test",
+        name: "No Credential",
+        role: "admin",
+      },
+    });
+    const { user: staff } = await deps.auth.api.createUser({
+      body: {
+        email: "staff@example.test",
+        password: PASSWORD,
+        name: "Staff",
+      },
+    });
+    await deps.client.end().catch(() => {});
+    const [admin] = (await state()).users.filter((u) => u.role === "admin");
+    assert.ok(admin);
+    assert.equal((await runRecordSql(admin.id)).ok, false, "no credential");
+    assert.equal((await runRecordSql(staff.id)).ok, false, "not an admin");
+    assert.equal((await state()).records.length, 0);
   });
 });

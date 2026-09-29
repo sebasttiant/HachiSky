@@ -193,8 +193,9 @@ one admin, the created one, with exactly one credential account; (6) insert the
   credential account in two writes.
 - **No exclusion after lock loss.** The lock is held by the connection. If that
   connection dies, the lock is released and another run can proceed. The
-  postcondition then sees two admins and exits `4`, but the second admin
-  persists (covered by a test).
+  interrupted run then exits `4` either way: the lock-loss check fires first
+  when the loss was noticed, otherwise the postcondition sees two admins. Any
+  admin the other run already created persists (covered by a test).
 - Nothing is ever deleted or repaired automatically. `--recover` is **not
   implemented**.
 
@@ -225,28 +226,63 @@ what you are about to change (there is no backup tooling yet).
      "select * from admin_bootstrap;"
    ```
 
-3. Decide with the owner which case applies:
-   - Complete admin (one `credential` account) and no record: the owner may
-     accept it and insert the `admin_bootstrap` row by hand for that user id
-     in a reviewed transaction. The CLI never does this itself.
-   - Admin without a credential account, or two admins: decide which account
-     is legitimate. Prefer **deactivating** the others (ban them through
-     Better Auth) over deleting them.
-   - Never hard-delete the bootstrap admin: `admin_bootstrap.admin_user_id` is
-     `ON DELETE RESTRICT`, so the delete is refused while the record exists.
-     Deactivate instead.
-4. Only after the state is consistent (one legitimate admin, one credential
-   account, one record) is there nothing left to recover. If you instead want
-   to bootstrap from scratch, that needs an explicit owner-approved cleanup of
-   the partial rows, done by hand.
+3. Decide with the owner which case applies. A partial admin (no credential
+   account), a banned admin, or a second admin **still blocks the CLI** (exit
+   `4`, "admin without record"), because the CLI counts every user with the
+   `admin` role. Nothing here is automatic and no tool changes these rows.
+   - **Complete single admin, no record** (for example after an interruption
+     before the record): the owner may record it with
+     `scripts/record-bootstrap-admin.sql`. It runs in one transaction, takes
+     the same advisory lock key as the CLI, and inserts the
+     `admin_bootstrap` row only when the given user id has the `admin` role,
+     is the only admin, has exactly one `credential` account and no record
+     exists. If the insert does not affect exactly one row it raises an error
+     and nothing is written.
+
+     ```bash
+     docker compose -p hachisky --project-directory apps/web -f apps/web/compose.yaml exec -T db        psql -U hachisky -d hachisky -v ON_ERROR_STOP=1 -v admin_id='<user id>' -f -        < apps/web/scripts/record-bootstrap-admin.sql
+     ```
+
+     Afterwards the CLI exits `2`.
+   - **Two admins, or an admin that is not legitimate:** the owner decides
+     which one is legitimate and must demote or remove the other **by hand,
+     only with owner approval**. Demoting keeps the row and its history:
+
+     ```sql
+     -- run in a transaction; check that exactly 1 row is updated, else ROLLBACK
+     BEGIN;
+     UPDATE "user" SET role = 'staff' WHERE id = '<user id>' AND role = 'admin';
+     -- expect: UPDATE 1
+     COMMIT;
+     ```
+
+     Removing a partial user is a hand-written `DELETE` reviewed by the owner
+     first (copy the rows out beforehand; there is no backup tooling).
+   - **Admin without a credential account:** there is no tool to add one.
+     Either the owner approves removing the partial user (see above) and
+     bootstraps again, or demotes it as above.
+4. **Delete protection.** `admin_bootstrap.admin_user_id` is
+   `ON DELETE RESTRICT`. While the record exists, deleting the bootstrap admin
+   fails with SQLSTATE `23001` (`update or delete on table "user" violates
+   RESTRICT setting of foreign key constraint
+   "admin_bootstrap_admin_user_id_user_id_fk" on table "admin_bootstrap"`).
+   That is intended: demote the account (`role = 'staff'`) or ban it
+   instead of deleting it. Removing the record itself is a separate,
+   owner-approved manual step.
+5. The state is consistent when there is one legitimate admin, one credential
+   account and one record. Bootstrapping from scratch needs an explicit
+   owner-approved manual cleanup of the partial rows first.
+
+`--recover` is **not implemented**; this procedure is documentation only.
 
 ## Auth cookies
 
-Cookie behavior is derived from `BETTER_AUTH_URL` and `APP_ENV` and set
-explicitly (never left to library defaults). `loadAuthEnv` rejects production
-with an `http` URL. `/api/auth` is not mounted yet.
+Cookie behavior is derived from the protocol of `BETTER_AUTH_URL` (`https`
+means secure cookies, `http` means not) and set explicitly, never left to
+library defaults. `APP_ENV` only adds a guard: `loadAuthEnv` rejects
+`production` with an `http` URL. `/api/auth` is not mounted yet.
 
-| Attribute | Production (HTTPS) | Development / test (HTTP) |
+| Attribute | HTTPS URL (production) | HTTP URL (development / test) |
 | --- | --- | --- |
 | Session cookie name | `__Secure-better-auth.session_token` | `better-auth.session_token` |
 | `useSecureCookies` | `true` | `false` |

@@ -6,7 +6,9 @@ import * as schema from "../db/schema/index.ts";
 import { type AuthEnv, loadAuthEnv, loadEnv } from "../shared/config/env.ts";
 import { type Auth, createAuth } from "./auth.ts";
 
-// Arbitrary fixed 64-bit key reserved for the admin bootstrap.
+// Arbitrary fixed 64-bit key reserved for the admin bootstrap. The manual
+// recovery script scripts/record-bootstrap-admin.sql takes the same key, and a
+// test fails if the two differ.
 export const BOOTSTRAP_LOCK_KEY = "7433201190041985002";
 
 export const EXIT_CREATED = 0;
@@ -33,7 +35,8 @@ export type BootstrapResult =
         | "create_failed"
         | "postcondition_failed"
         | "lock_lost"
-        | "record_failed";
+        | "record_failed"
+        | "interrupted";
     }
   | { exitCode: 1; outcome: "error" };
 
@@ -224,7 +227,7 @@ export async function runBootstrap(
       return {
         exitCode: 4,
         outcome: "inconsistent",
-        reason: lost ? "lock_lost" : "postcondition_failed",
+        reason: lost ? "lock_lost" : "interrupted",
       };
     }
     return { exitCode: 1, outcome: "error" };

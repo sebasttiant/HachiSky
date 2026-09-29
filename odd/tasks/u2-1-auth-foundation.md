@@ -83,6 +83,7 @@ The owner chose maintained auth (Better Auth) over custom sessions, with only tw
 - 2026-09-29: A1 done (delegated writer), commit ef46081.
 - 2026-09-29: A2 done (delegated writer); commit 4f556c1.
 - 2026-09-29: A3 done (delegated writer), commit 1a432f4. A4 done (delegated writer), commit 4af1bba. Verification in the compose test profile: 117/117 tests, typecheck clean, lint 0 errors.
+- 2026-09-29: Bounded correction after independent verification (delegated writer, one `fix(auth)` commit; hash recorded by the coordinator): CLI entry is now a dedicated file that always runs `main()` (default exit code 1), with tests for a path with spaces and for symlinks; recovery SQL moved to `apps/web/scripts/record-bootstrap-admin.sql` (same advisory lock key, guarded insert, tested for success, two admins, non-admin target, no credential account; README documents it, the guarded demote, and `ON DELETE RESTRICT` / SQLSTATE 23001); fault B reason is `interrupted`; fault C uses `pg_terminate_backend(pid, 5000)`; `adminUpdateUser` with role `user` is rejected (guard test); README wording and cookie-derivation fixes; vacuous lock test removed. RED: symlink+space entry test and fault B reason failed before the fix; the new SQL, adminUpdateUser and terminate-timeout tests are guards that passed on first run. Full suite in the compose test profile: 123/123, typecheck clean, lint 0 errors.
 
 ## Next step
 

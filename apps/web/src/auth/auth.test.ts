@@ -128,6 +128,13 @@ describe("roles", () => {
       }),
       400,
     );
+    await expectApiError(
+      auth.api.adminUpdateUser({
+        body: { userId: target.id, data: { role: "user" } },
+        headers,
+      }),
+      400,
+    );
     const ok = await auth.api.setRole({
       body: { userId: target.id, role: "admin" },
       headers,
