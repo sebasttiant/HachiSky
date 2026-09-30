@@ -1,17 +1,37 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
-import { closeDb, getDb, getPool } from "./client.ts";
+import { Pool } from "pg";
+import { loadEnv } from "../shared/config/env.ts";
+import { buildMigrationPoolConfig, closeDb } from "./client.ts";
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 // Resolved relative to this file (not process.cwd()) so `db:migrate` behaves
 // the same no matter which directory it is invoked from.
 const migrationsFolder = path.resolve(currentDir, "..", "..", "drizzle");
 
-async function countAppliedMigrations(): Promise<number> {
+// Same defaults as drizzle-orm's pg migrator.
+const DEFAULT_MIGRATIONS_SCHEMA = "drizzle";
+const DEFAULT_MIGRATIONS_TABLE = "__drizzle_migrations";
+
+function quoteIdentifier(name: string): string {
+  return `"${name.replaceAll('"', '""')}"`;
+}
+
+async function countAppliedMigrations(
+  pool: Pool,
+  options: RunMigrationsOptions,
+): Promise<number> {
+  const schema = quoteIdentifier(
+    options.migrationsSchema ?? DEFAULT_MIGRATIONS_SCHEMA,
+  );
+  const table = quoteIdentifier(
+    options.migrationsTable ?? DEFAULT_MIGRATIONS_TABLE,
+  );
   try {
-    const result = await getPool().query<{ count: string }>(
-      "select count(*)::text as count from drizzle.__drizzle_migrations",
+    const result = await pool.query<{ count: string }>(
+      `select count(*)::text as count from ${schema}.${table}`,
     );
     return Number(result.rows[0]?.count ?? 0);
   } catch {
@@ -20,15 +40,35 @@ async function countAppliedMigrations(): Promise<number> {
   }
 }
 
-export async function runMigrations(): Promise<{
+export interface RunMigrationsOptions {
+  migrationsFolder?: string;
+  migrationsSchema?: string;
+  migrationsTable?: string;
+}
+
+// Runs on a dedicated pool without the request pool's statement/query
+// timeouts, and always closes it (success or failure).
+export async function runMigrations(
+  options: RunMigrationsOptions = {},
+): Promise<{
   before: number;
   after: number;
 }> {
-  const before = await countAppliedMigrations();
-  const db = getDb();
-  await migrate(db, { migrationsFolder });
-  const after = await countAppliedMigrations();
-  return { before, after };
+  const pool = new Pool(buildMigrationPoolConfig(loadEnv()));
+  pool.on("error", () => {
+    console.error("Database pool error");
+  });
+  try {
+    const before = await countAppliedMigrations(pool, options);
+    await migrate(drizzle(pool), {
+      migrationsFolder,
+      ...options,
+    });
+    const after = await countAppliedMigrations(pool, options);
+    return { before, after };
+  } finally {
+    await pool.end();
+  }
 }
 
 const SQLSTATE_PATTERN = /^[0-9A-Z]{5}$/;

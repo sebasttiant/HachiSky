@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import net from "node:net";
 import { describe, it } from "node:test";
 import { Pool } from "pg";
-import { buildPoolConfig } from "./client.ts";
+import { buildMigrationPoolConfig, buildPoolConfig } from "./client.ts";
 import { checkDatabaseHealth } from "./health.ts";
 
 const env = {
@@ -13,6 +13,17 @@ const env = {
   PGUSER: "user",
   PGPASSWORD: "secret-value",
 };
+
+describe("buildMigrationPoolConfig", () => {
+  it("keeps a connect timeout but sets no query or statement timeout", () => {
+    const config = buildMigrationPoolConfig(env);
+    assert.equal(config.connectionTimeoutMillis, 2000);
+    assert.equal(config.query_timeout, undefined);
+    assert.equal(config.statement_timeout, undefined);
+    assert.equal(config.host, "localhost");
+    assert.equal(config.password, "secret-value");
+  });
+});
 
 describe("buildPoolConfig", () => {
   it("sets explicit connection, query, statement and idle limits", () => {

@@ -123,7 +123,10 @@ Migrations are generated with Drizzle Kit and applied by
 `src/db/schema/`, run `pnpm db:generate` inside a container that has
 dependencies installed (never on the host). Migrations are applied
 automatically by the `migrate` service on stack startup, or manually with
-`pnpm db:migrate`.
+`pnpm db:migrate`. The migrator uses its own single-connection pool
+without the request pool's 4 s `query_timeout`/`statement_timeout` (only the
+2 s connect timeout is kept), so slow migrations such as index builds are
+not cancelled.
 
 On success, the migrator logs only `migrations before=N after=M`. On
 failure, it logs `Migration failed (code=<SQLSTATE>)` (or `code=unknown`
