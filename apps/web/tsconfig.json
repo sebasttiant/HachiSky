@@ -32,6 +32,7 @@
     "tests/**/*.ts",
     "scripts/**/*.ts",
     "drizzle.config.ts",
+    "proxy.ts",
     ".next/dev/types/**/*.ts",
     ".next/types/**/*.ts"
   ],
