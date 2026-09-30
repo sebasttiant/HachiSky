@@ -1,0 +1,47 @@
+.area {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-inline-start: auto;
+}
+
+.identity {
+  display: grid;
+  margin: 0;
+  text-align: end;
+  line-height: 1.2;
+}
+
+.name {
+  font-weight: 600;
+}
+
+.jobTitle {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.logout {
+  font: inherit;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid currentColor;
+  border-radius: 0.5rem;
+  background: transparent;
+  cursor: pointer;
+}
+
+.logout:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.logout:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 3px;
+}
+
+.error {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--color-error-text);
+}

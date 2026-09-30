@@ -1,0 +1,27 @@
+.main {
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  padding: var(--space-5);
+  background: var(--color-surface-alt);
+}
+
+.card {
+  display: grid;
+  gap: var(--space-3);
+  width: min(100%, 26rem);
+  padding: var(--space-6);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+}
+
+.card h1 {
+  font-size: var(--text-2xl);
+  margin: 0;
+}
+
+.card p {
+  margin: 0;
+  color: var(--color-text-muted);
+}

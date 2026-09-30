@@ -1,0 +1,26 @@
+.form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.form input,
+.form button {
+  font: inherit;
+  padding: 0.75rem;
+  border: 1px solid currentColor;
+  border-radius: 0.5rem;
+}
+
+.form button {
+  cursor: pointer;
+}
+
+.form :disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.form :focus-visible {
+  outline: 3px solid #287c91;
+  outline-offset: 3px;
+}
