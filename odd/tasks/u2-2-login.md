@@ -51,8 +51,14 @@ Creating/editing staff users in the UI, per-module role permissions, revoking ot
   - GREEN: auth + HTTP suites 31/31; preflight + compose 6/6; full compose test profile: typecheck clean, lint 0 errors (4 pre-existing `globals.css` warnings), `pnpm test` 159/159.
   - Decisions: HTTP allowlist in `src/auth/http.ts` (exact method + pathname: `POST sign-in/email`, `POST sign-out`, `GET get-session`; everything else 404, tested against every `auth.api` endpoint path) instead of `disabledPaths`; session 7 d / `updateAge` 1 d; `disableOriginCheck: false` explicit; rate limit enabled explicitly, memory storage, sign-in 10 per 300 s per IP, global 100 per 60 s; IP from `X-Forwarded-For` (spoofable without a proxy: documented limitation). Missing secret: compose keeps `${BETTER_AUTH_SECRET:-}`; the `web` command runs a preflight (`src/auth/check-auth-env-cli.ts`) that exits 1 naming keys only, then `exec pnpm start`.
   - Pending: real-HTTP 429 against a running `web` container (L4 demo).
-- [ ] **L2** Server-side guard: session + banned check used by `proxy.ts` (optimistic redirect) and by every protected page/data access (authoritative), safe `next` handling, banned user with a pre-existing session denied.
-- [ ] **L3** UI: `/login` page and form outside the app shell navigation, generic error, header user area with name, job title and logout; logout removes the DB session.
+- [x] **L2** Server-side guard: session + banned check used by `proxy.ts` (optimistic redirect) and by every protected page/data access (authoritative), safe `next` handling, banned user with a pre-existing session denied. Commit e4cd4ee.
+  - RED: written by the previous session before this document recorded it; not re-observed here. The `next build` failure below was observed (RED) before its fix.
+  - GREEN: the committed tree alone (exported with `git archive`, isolated compose project): typecheck clean, lint 0 errors, `pnpm test` 188/188.
+  - Decisions: pages moved into an `(app)` route group (URLs unchanged) so `/login` renders without the shell; `tests/auth/route-guards.test.ts` requires `await requireSession("<route>")` in every non-public page, and a guard in every route handler and Server Function module. `getCurrentSession` awaits `headers()` before `getAuth()`: in the reverse order `next build` prerendered `/clients` and failed on the missing auth environment.
+- [x] **L3** UI: `/login` page and form outside the app shell navigation, generic error, header user area with name, job title and logout; logout removes the DB session. Commit 4dd2089.
+  - RED: `tests/auth/login-ui.test.ts` failed 4/6 (`LogoutButton.tsx` and `UserArea.tsx` missing; layout not reading the session). `tests/infra/css-modules.test.ts` failed with `app/login/page.tsx -> app/login/page.module.css` (found first by `next build`: unit tests stub CSS modules).
+  - GREEN: typecheck clean, lint 0 errors (4 pre-existing `globals.css` warnings), `pnpm test` 199/199; `next build` succeeds with every app page dynamic and the proxy active.
+  - Decisions: logout is a `type="button"` that POSTs sign-out, then `window.location.replace("/login")`; a failed sign-out shows an error and stays. The `(app)` layout reads `getCurrentSession()` (shared with the page guard through React `cache`) only to display the user; it does not authorize.
 - [ ] **L4** Local demo: run the stack, sign in with the admin, walk the full flow (owner acceptance steps 1–7), record evidence without credentials.
 
 ## Acceptance criteria (owner test steps)
@@ -80,7 +86,8 @@ Creating/editing staff users in the UI, per-module role permissions, revoking ot
 
 - 2026-09-30: branch and worktree created from 8f7cdd3; document created.
 - Engram mirror `odd/u2-2-login/tasks`: pending (Engram save failing with multiple active sessions).
+- 2026-09-30: L2 and L3 committed locally (e4cd4ee, 4dd2089); not pushed. Checks run in an isolated compose project (`hachisky-u22-test`, image tags `:u22`) so the running `hachisky` stack and `hachisky-web:local` stay untouched.
 
 ## Next step
 
-L1–L3 via one delegated writer (security-sensitive auth hot path; writer trigger: 2+ non-trivial files).
+L4 local demo in an isolated project on another port (3100 is used by the running stack); the owner provides `apps/web/.env` and bootstraps the admin. Then a dual adversarial review (judgment-day) before opening the PR.
