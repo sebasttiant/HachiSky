@@ -82,6 +82,40 @@ services:
     networks:
       - app-net
 
+  # One-shot operational task, only under the `ops` profile. Reads the admin
+  # password from stdin (never argv or env). See README "Admin bootstrap".
+  bootstrap-admin:
+    profiles: ["ops"]
+    image: hachisky-web:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    entrypoint: ["node", "src/auth/bootstrap-admin-cli.ts"]
+    stdin_open: true
+    environment:
+      # `development` because this stack serves plain http on 127.0.0.1 (see
+      # BETTER_AUTH_URL). A production APP_ENV would require an https URL.
+      APP_ENV: development
+      PGHOST: db
+      PGPORT: "5432"
+      PGDATABASE: hachisky
+      PGUSER: hachisky
+      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      BETTER_AUTH_URL: http://127.0.0.1:${HACHISKY_WEB_PORT:-3100}
+      # Not `:?` — compose validates every service, so a required variable
+      # here would break `up db web` and the test profile. An empty value makes
+      # the CLI exit 1 (configuration error).
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-}
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+    networks:
+      - app-net
+
   db-test:
     profiles: ["test"]
     image: postgres:18.6-trixie@sha256:5a5a84b19854a9ffaa54082c166ff4ec27473a361e496e5ea167f298f2da9722
