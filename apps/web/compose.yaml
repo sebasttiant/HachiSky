@@ -62,6 +62,15 @@ services:
       PGDATABASE: hachisky
       PGUSER: hachisky
       PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      # The origin the browser uses. Better Auth trusts only this origin for
+      # cookie-bearing POSTs, so open the app at 127.0.0.1, not localhost.
+      BETTER_AUTH_URL: http://127.0.0.1:${HACHISKY_WEB_PORT:-3100}
+      # Not `:?` — compose interpolates every service, so a required variable
+      # would break the test profile and `up db`. Instead the web preflight
+      # below exits 1 naming the missing key (never its value).
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-}
+    # Validate the auth environment, then replace the shell with the server.
+    command: ["sh", "-c", "node src/auth/check-auth-env-cli.ts && exec pnpm start"]
     ports:
       - "127.0.0.1:${HACHISKY_WEB_PORT:-3100}:3000"
     depends_on:

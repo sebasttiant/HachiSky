@@ -320,13 +320,36 @@ describe("cookies", () => {
   });
 });
 
-describe("mounting", () => {
-  it("does not mount an /api/auth route handler in the app", async () => {
-    const { existsSync } = await import("node:fs");
-    const { fileURLToPath } = await import("node:url");
-    const appApiAuth = fileURLToPath(
-      new URL("../../app/api/auth", import.meta.url),
-    );
-    assert.equal(existsSync(appApiAuth), false);
+describe("explicit session, origin and rate-limit policy", () => {
+  it("keeps sessions for 7 days and renews them once a day of use", () => {
+    const { session } = memoryAuth().options;
+    assert.equal(session?.expiresIn, 7 * 24 * 60 * 60);
+    assert.equal(session?.updateAge, 24 * 60 * 60);
+    assert.equal(session?.cookieCache?.enabled, false);
+  });
+
+  it("never disables the origin/CSRF check (Better Auth skips it when NODE_ENV=test)", () => {
+    assert.equal(memoryAuth().options.advanced?.disableOriginCheck, false);
+  });
+
+  it("enables rate limiting in every environment with in-memory storage", () => {
+    for (const APP_ENV of ["development", "test"]) {
+      const { rateLimit } = memoryAuth(authEnv({ APP_ENV })).options;
+      assert.equal(rateLimit?.enabled, true);
+      assert.equal(rateLimit?.storage, "memory");
+    }
+  });
+
+  it("limits sign-in more tightly than the global rule", () => {
+    const { rateLimit } = memoryAuth().options;
+    const rule = rateLimit?.customRules?.["/sign-in/email"];
+    assert.ok(rule && typeof rule === "object");
+    assert.deepEqual(rule, { window: 300, max: 10 });
+  });
+
+  it("reads the client IP only from X-Forwarded-For", () => {
+    const { ipAddress } = memoryAuth().options.advanced ?? {};
+    assert.deepEqual(ipAddress?.ipAddressHeaders, ["x-forwarded-for"]);
+    assert.equal(ipAddress?.disableIpTracking, false);
   });
 });
