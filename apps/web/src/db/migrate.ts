@@ -11,10 +11,27 @@ const currentDir = path.dirname(fileURLToPath(import.meta.url));
 // the same no matter which directory it is invoked from.
 const migrationsFolder = path.resolve(currentDir, "..", "..", "drizzle");
 
-async function countAppliedMigrations(pool: Pool): Promise<number> {
+// Same defaults as drizzle-orm's pg migrator.
+const DEFAULT_MIGRATIONS_SCHEMA = "drizzle";
+const DEFAULT_MIGRATIONS_TABLE = "__drizzle_migrations";
+
+function quoteIdentifier(name: string): string {
+  return `"${name.replaceAll('"', '""')}"`;
+}
+
+async function countAppliedMigrations(
+  pool: Pool,
+  options: RunMigrationsOptions,
+): Promise<number> {
+  const schema = quoteIdentifier(
+    options.migrationsSchema ?? DEFAULT_MIGRATIONS_SCHEMA,
+  );
+  const table = quoteIdentifier(
+    options.migrationsTable ?? DEFAULT_MIGRATIONS_TABLE,
+  );
   try {
     const result = await pool.query<{ count: string }>(
-      "select count(*)::text as count from drizzle.__drizzle_migrations",
+      `select count(*)::text as count from ${schema}.${table}`,
     );
     return Number(result.rows[0]?.count ?? 0);
   } catch {
@@ -42,12 +59,12 @@ export async function runMigrations(
     console.error("Database pool error");
   });
   try {
-    const before = await countAppliedMigrations(pool);
+    const before = await countAppliedMigrations(pool, options);
     await migrate(drizzle(pool), {
       migrationsFolder,
       ...options,
     });
-    const after = await countAppliedMigrations(pool);
+    const after = await countAppliedMigrations(pool, options);
     return { before, after };
   } finally {
     await pool.end();
