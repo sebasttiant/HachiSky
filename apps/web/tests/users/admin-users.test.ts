@@ -70,7 +70,7 @@ async function sessionCount(userId: string) {
 
 async function auditActions(targetId: string) {
   const { rows } = await pool.query<{ action: string }>(
-    "select action from audit_log where target_user_id = $1 order by id",
+    "select action from audit_log where target_user_id = $1 and action not like '%.requested' order by id",
     [targetId],
   );
   return rows.map((row) => row.action);
@@ -187,7 +187,9 @@ describe("createUser", () => {
     assert.equal(rows[0].actor_user_id, admin.id);
     assert.equal(rows[0].action, "user.create");
     assert.equal(rows[0].ip_address, "203.0.113.7");
-    assert.deepEqual(rows[0].details, {
+    const { requestId, ...details } = rows[0].details;
+    assert.match(requestId, /^[0-9a-f-]{36}$/);
+    assert.deepEqual(details, {
       email: "luis@example.test",
       name: "Luis Gómez",
       jobTitle: "Asesor comercial",
@@ -322,7 +324,8 @@ describe("updateUser", () => {
       "select details from audit_log where target_user_id = $1 and action = 'user.update'",
       [target.id],
     );
-    assert.deepEqual(rows[0]?.details, {
+    const { requestId: _, ...details } = rows[0]?.details ?? {};
+    assert.deepEqual(details, {
       before: { name: "Eva", jobTitle: "Auxiliar", role: "staff" },
       after: { name: "Eva Ríos", jobTitle: "Coordinadora", role: "admin" },
     });
@@ -563,6 +566,129 @@ describe("changeOwnPassword", () => {
 
   it("reports no pending change for users without a security row", async () => {
     assert.equal(await getMustChangePassword(deps, admin.id), false);
+  });
+});
+
+describe("audit trail when the audit write after a change fails", () => {
+  // Better Auth commits each change on its own connections, outside the
+  // transaction that writes the audit row. The change may persist; the
+  // caller must get an error and the trail must still show the request.
+  async function unresolvedRequests() {
+    const { items } = await listAudit(deps, { page: 1 });
+    return items
+      .filter((e) => e.action.endsWith(".requested"))
+      .map((e) => [e.action, e.targetUserId]);
+  }
+
+  function failingAudit(action: string, run: () => Promise<unknown>) {
+    return assert.rejects(
+      withInsertFault("audit_log", `new.action = '${action}'`, run),
+    );
+  }
+
+  it("deactivation persists, the caller gets an error and the request stays in the trail", async () => {
+    const target = await createTestUser(auth, "sara@example.test");
+    await failingAudit("user.deactivate", () =>
+      setActive(deps, admin, target.id, false),
+    );
+    assert.equal((await getUser(deps, target.id))?.active, false);
+    assert.deepEqual(await unresolvedRequests(), [
+      ["user.deactivate.requested", target.id],
+    ]);
+  });
+
+  it("reactivation persists, the caller gets an error and the request stays in the trail", async () => {
+    const target = await createTestUser(auth, "sara@example.test");
+    await setActive(deps, admin, target.id, false);
+    await failingAudit("user.activate", () =>
+      setActive(deps, admin, target.id, true),
+    );
+    assert.equal((await getUser(deps, target.id))?.active, true);
+    assert.deepEqual(await unresolvedRequests(), [
+      ["user.activate.requested", target.id],
+    ]);
+  });
+
+  it("an edit persists, the caller gets an error and the request stays in the trail", async () => {
+    const target = await createTestUser(auth, "eva@example.test");
+    await failingAudit("user.update", () =>
+      updateUser(deps, admin, target.id, {
+        name: "Eva Ríos",
+        jobTitle: null,
+        role: "admin",
+      }),
+    );
+    assert.equal((await getUser(deps, target.id))?.role, "admin");
+    assert.deepEqual(await unresolvedRequests(), [
+      ["user.update.requested", target.id],
+    ]);
+  });
+
+  it("a password reset persists, the caller gets an error and the request stays in the trail", async () => {
+    const target = await createTestUser(auth, "tom@example.test");
+    await failingAudit("user.password_reset", () =>
+      resetPassword(deps, admin, target.id, TEMP),
+    );
+    assert.equal(await appAccess("tom@example.test", TEMP), "forced_change");
+    assert.deepEqual(await unresolvedRequests(), [
+      ["user.password_reset.requested", target.id],
+    ]);
+  });
+
+  it("closing sessions persists, the caller gets an error and the request stays in the trail", async () => {
+    const target = await createTestUser(auth, "uma@example.test");
+    await signIn("uma@example.test");
+    await failingAudit("user.sessions_revoke", () =>
+      revokeSessions(deps, admin, target.id),
+    );
+    assert.equal(await sessionCount(target.id), 0);
+    assert.deepEqual(await unresolvedRequests(), [
+      ["user.sessions_revoke.requested", target.id],
+    ]);
+  });
+
+  it("a creation whose audit fails leaves the request in the trail", async () => {
+    await failingAudit("user.create", () =>
+      createUser(deps, admin, {
+        name: "Luis Gómez",
+        email: "luis@example.test",
+        jobTitle: null,
+        role: "staff",
+        temporaryPassword: TEMP,
+      }),
+    );
+    assert.notEqual(await appAccess("luis@example.test", TEMP), "full");
+    const requests = await unresolvedRequests();
+    assert.deepEqual(
+      requests.map(([action]) => action),
+      ["user.create.requested"],
+    );
+  });
+
+  it("pairs every completed change with its request and hides resolved requests from the activity views", async () => {
+    const target = await createTestUser(auth, "ivan@example.test");
+    await revokeSessions(deps, admin, target.id);
+    await setActive(deps, admin, target.id, false);
+    const { rows } = await pool.query<{ action: string; request: string }>(
+      "select action, details->>'requestId' as request from audit_log order by id",
+    );
+    assert.deepEqual(
+      rows.map((r) => r.action),
+      [
+        "user.sessions_revoke.requested",
+        "user.sessions_revoke",
+        "user.deactivate.requested",
+        "user.deactivate",
+      ],
+    );
+    assert.equal(rows[0]?.request, rows[1]?.request);
+    assert.equal(rows[2]?.request, rows[3]?.request);
+    assert.notEqual(rows[0]?.request, rows[2]?.request);
+    assert.deepEqual(await unresolvedRequests(), []);
+    assert.deepEqual(
+      (await listAuditForUser(deps, target.id)).map((e) => e.action),
+      ["user.deactivate", "user.sessions_revoke"],
+    );
   });
 });
 

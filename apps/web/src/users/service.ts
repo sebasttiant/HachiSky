@@ -180,7 +180,7 @@ export async function listAuditForUser(
     })
     .from(auditLog)
     .leftJoin(user, eq(user.id, auditLog.actorUserId))
-    .where(eq(auditLog.targetUserId, targetUserId))
+    .where(and(eq(auditLog.targetUserId, targetUserId), notResolvedRequest))
     .orderBy(desc(auditLog.id))
     .limit(limit);
 }
@@ -212,7 +212,12 @@ export async function listAudit(
     .from(auditLog)
     .leftJoin(actor, eq(actor.id, auditLog.actorUserId))
     .leftJoin(target, eq(target.id, auditLog.targetUserId))
-    .where(filters.action ? eq(auditLog.action, filters.action) : undefined)
+    .where(
+      and(
+        filters.action ? eq(auditLog.action, filters.action) : undefined,
+        notResolvedRequest,
+      ),
+    )
     .orderBy(desc(auditLog.id))
     .limit(AUDIT_PAGE_SIZE + 1)
     .offset((page - 1) * AUDIT_PAGE_SIZE);
@@ -222,11 +227,49 @@ export async function listAudit(
   };
 }
 
+// Audit protocol for changes Better Auth commits on its own pool connections,
+// outside any transaction of ours (so no audit row can be atomic with them):
+//
+// 1. `<action>.requested` is committed on its own (autocommit) after the rule
+//    checks and before the first Better Auth call, with a fresh `requestId`.
+// 2. `<action>` with the same `requestId` is written after every step
+//    succeeded.
+//
+// A request without its completion means "outcome not recorded": the change
+// may have been applied fully, partly or not at all (a failing Better Auth
+// call does not prove nothing was written). The caller always gets the error;
+// an admin reconciles by comparing the request with the user's current state.
+// Both rows are append-only, so the evidence cannot be rewritten afterwards.
+export const REQUESTED_SUFFIX = ".requested";
+
+async function auditRequest(
+  db: Db,
+  actor: AdminActor,
+  action: string,
+  targetUserId: string | null,
+  details: Record<string, unknown>,
+) {
+  const requestId = crypto.randomUUID();
+  await audit(db, actor, `${action}${REQUESTED_SUFFIX}`, targetUserId, {
+    ...details,
+    requestId,
+  });
+  return (executor: Executor, target = targetUserId) =>
+    audit(executor, actor, action, target, { ...details, requestId });
+}
+
+// Activity views show completed changes and requests still waiting for their
+// completion row; a request with its completion is redundant there.
+const notResolvedRequest = sql`not (${auditLog.action} like ${`%${REQUESTED_SUFFIX}`} and exists (
+  select 1 from audit_log done
+  where done.details->>'requestId' = ${auditLog.details}->>'requestId'
+    and done.action || ${REQUESTED_SUFFIX} = ${auditLog.action}))`;
+
 async function audit(
   executor: Executor,
   actor: AdminActor,
   action: string,
-  targetUserId: string,
+  targetUserId: string | null,
   details: Record<string, unknown>,
 ) {
   await executor.insert(auditLog).values({
@@ -294,7 +337,7 @@ export interface CreateUserInput {
 // panel as an inactive user.
 export const PENDING_CREATION_BAN_REASON = "Alta incompleta";
 
-// Fail-closed creation. The account is born banned, so if anything after
+// Fail-closed creation (audited with the request protocol above). The account is born banned, so if anything after
 // `auth.api.createUser` fails (the forced change, the audit, the activation)
 // it stays blocked instead of keeping a password the admin knows without a
 // forced change. Nothing is compensated or swallowed: the first error reaches
@@ -305,6 +348,19 @@ export async function createUser(
   actor: AdminActor,
   input: CreateUserInput,
 ): Promise<{ id: string }> {
+  const details = {
+    email: input.email,
+    name: input.name,
+    jobTitle: input.jobTitle,
+    role: input.role,
+  };
+  const complete = await auditRequest(
+    deps.db,
+    actor,
+    "user.create",
+    null,
+    details,
+  );
   let created: { id: string; email: string };
   try {
     const result = await deps.auth.api.createUser({
@@ -327,21 +383,14 @@ export async function createUser(
     throw error;
   }
 
-  await deps.db.transaction(async (tx) => {
-    await tx
-      .insert(userSecurity)
-      .values({ userId: created.id, mustChangePassword: true });
-    await audit(tx, actor, "user.create", created.id, {
-      email: created.email,
-      name: input.name,
-      jobTitle: input.jobTitle,
-      role: input.role,
-    });
-  });
+  await deps.db
+    .insert(userSecurity)
+    .values({ userId: created.id, mustChangePassword: true });
   await deps.auth.api.unbanUser({
     body: { userId: created.id },
     headers: actor.headers,
   });
+  await complete(deps.db, created.id);
   return { id: created.id };
 }
 
@@ -364,6 +413,14 @@ export function updateUser(
       await assertNotLastActiveAdmin(tx, target);
     }
     await deps.hooks?.afterRuleCheck?.();
+    const complete = await auditRequest(deps.db, actor, "user.update", id, {
+      before: {
+        name: target.name,
+        jobTitle: target.jobTitle,
+        role: target.role,
+      },
+      after: { name: input.name, jobTitle: input.jobTitle, role: input.role },
+    });
     await deps.auth.api.adminUpdateUser({
       body: {
         userId: id,
@@ -377,14 +434,7 @@ export function updateUser(
         headers: actor.headers,
       });
     }
-    await audit(tx, actor, "user.update", id, {
-      before: {
-        name: target.name,
-        jobTitle: target.jobTitle,
-        role: target.role,
-      },
-      after: { name: input.name, jobTitle: input.jobTitle, role: input.role },
-    });
+    await complete(tx);
   });
 }
 
@@ -416,29 +466,27 @@ export function setActive(
 ): Promise<void> {
   return withAdminLock(deps.db, async (tx) => {
     const target = await requireTarget(tx, id);
+    const action = active ? "user.activate" : "user.deactivate";
     if (active) {
+      const complete = await auditRequest(deps.db, actor, action, id, {});
       await ensureForcedChangeRecorded(deps.db, id);
       await deps.auth.api.unbanUser({
         body: { userId: id },
         headers: actor.headers,
       });
+      await complete(tx);
     } else {
       if (id === actor.id) throw new UserRuleError("self_deactivation");
       await assertNotLastActiveAdmin(tx, target);
       await deps.hooks?.afterRuleCheck?.();
+      const complete = await auditRequest(deps.db, actor, action, id, {});
       // banUser also deletes every session of the user.
       await deps.auth.api.banUser({
         body: { userId: id, banReason: "Desactivado desde Configuración" },
         headers: actor.headers,
       });
+      await complete(tx);
     }
-    await audit(
-      tx,
-      actor,
-      active ? "user.activate" : "user.deactivate",
-      id,
-      {},
-    );
   });
 }
 
@@ -450,6 +498,13 @@ export async function resetPassword(
 ): Promise<void> {
   if (id === actor.id) throw new UserRuleError("self_password_reset");
   await requireTarget(deps.db, id);
+  const complete = await auditRequest(
+    deps.db,
+    actor,
+    "user.password_reset",
+    id,
+    {},
+  );
   // Forced change first: if a later step fails, the user still cannot keep
   // using a password the admin knows.
   await deps.db
@@ -467,7 +522,7 @@ export async function resetPassword(
     body: { userId: id },
     headers: actor.headers,
   });
-  await audit(deps.db, actor, "user.password_reset", id, {});
+  await complete(deps.db);
 }
 
 export async function getMustChangePassword(
@@ -531,9 +586,16 @@ export async function revokeSessions(
 ): Promise<void> {
   if (id === actor.id) throw new UserRuleError("self_sessions");
   await requireTarget(deps.db, id);
+  const complete = await auditRequest(
+    deps.db,
+    actor,
+    "user.sessions_revoke",
+    id,
+    {},
+  );
   await deps.auth.api.revokeUserSessions({
     body: { userId: id },
     headers: actor.headers,
   });
-  await audit(deps.db, actor, "user.sessions_revoke", id, {});
+  await complete(deps.db);
 }

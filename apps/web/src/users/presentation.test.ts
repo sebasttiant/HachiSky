@@ -17,6 +17,10 @@ describe("labels", () => {
   it("describes known audit actions and falls back for unknown ones", () => {
     assert.equal(actionLabel("user.deactivate"), "Desactivó la cuenta");
     assert.equal(actionLabel("user.future_thing"), "user.future_thing");
+    assert.equal(
+      actionLabel("user.deactivate.requested"),
+      "Desactivó la cuenta (sin confirmar)",
+    );
   });
 });
 

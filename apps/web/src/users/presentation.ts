@@ -19,7 +19,15 @@ export const ACTION_LABEL: Record<string, string> = {
   "user.password_change": "Cambió su contraseña",
 };
 
+// A `<action>.requested` row without its completion: the change was asked
+// for but its outcome was not recorded (see the audit protocol in service.ts).
+const REQUESTED = ".requested";
+
 export function actionLabel(action: string): string {
+  if (action.endsWith(REQUESTED)) {
+    const base = ACTION_LABEL[action.slice(0, -REQUESTED.length)];
+    if (base) return `${base} (sin confirmar)`;
+  }
   return ACTION_LABEL[action] ?? action;
 }
 
