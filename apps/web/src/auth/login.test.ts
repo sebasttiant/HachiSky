@@ -16,35 +16,49 @@ it("posts credentials through the HTTP endpoint and sanitizes the destination", 
     });
     return new Response("{}", { status: 200 });
   };
-  assert.equal(
+  assert.deepEqual(
     await signIn("user@example.test", "test-password", "/work", request),
-    "/work",
+    { ok: true, destination: "/work" },
   );
   assert.equal(called, true);
-  assert.equal(
+  assert.deepEqual(
     await signIn("e", "p", "/a/..//evil.test", requestWithoutInspection),
-    "/",
+    { ok: true, destination: "/" },
   );
 });
 const requestWithoutInspection: typeof fetch = async () => new Response("{}");
 
-it("does not expose authentication or network errors", async () => {
-  for (const status of [400, 401, 403, 429, 500]) {
-    assert.equal(
-      await signIn(
-        "e",
-        "p",
-        "/work",
-        async () => new Response("private detail", { status }),
-      ),
-      null,
-    );
+const respond =
+  (status: number): typeof fetch =>
+  async () =>
+    new Response("private detail", { status });
+
+it("reports rejected credentials without saying which field was wrong", async () => {
+  for (const status of [400, 401, 403]) {
+    assert.deepEqual(await signIn("e", "p", "/work", respond(status)), {
+      ok: false,
+      reason: "invalid",
+    });
   }
-  assert.equal(
+});
+
+it("reports rate limiting separately so the user knows to wait", async () => {
+  assert.deepEqual(await signIn("e", "p", "/work", respond(429)), {
+    ok: false,
+    reason: "rate_limited",
+  });
+});
+
+it("reports server and network failures as unavailable", async () => {
+  assert.deepEqual(await signIn("e", "p", "/work", respond(500)), {
+    ok: false,
+    reason: "unavailable",
+  });
+  assert.deepEqual(
     await signIn("e", "p", "/work", async () => {
       throw new Error("private detail");
     }),
-    null,
+    { ok: false, reason: "unavailable" },
   );
 });
 
