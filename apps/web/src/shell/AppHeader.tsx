@@ -1,9 +1,14 @@
 import Link from "next/link";
 import styles from "./AppHeader.module.css";
 import { MainNav } from "./MainNav.tsx";
+import { UserArea } from "./UserArea.tsx";
 import { Wordmark } from "./Wordmark.tsx";
 
-export function AppHeader() {
+export function AppHeader({
+  user,
+}: {
+  user?: { name: string; jobTitle: string | null };
+}) {
   return (
     <header className={styles.header}>
       <div className={`container ${styles.bar}`}>
@@ -24,6 +29,7 @@ export function AppHeader() {
           <Wordmark />
         </Link>
         <MainNav />
+        {user ? <UserArea name={user.name} jobTitle={user.jobTitle} /> : null}
       </div>
     </header>
   );

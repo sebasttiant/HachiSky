@@ -79,7 +79,7 @@ describe("shell navigation", () => {
       const segment = m.href === "/" ? "" : m.href.slice(1);
       const page = resolve(
         import.meta.dirname,
-        "../../app",
+        "../../app/(app)",
         segment,
         "page.tsx",
       );

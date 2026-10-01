@@ -14,8 +14,17 @@ Drizzle ORM + PostgreSQL 18, fully Docker-first.
 Create `apps/web/.env` (git-ignored) before starting the stack:
 
 ```bash
-(umask 077; printf 'POSTGRES_PASSWORD=%s\n' "$(openssl rand -hex 24)" > apps/web/.env)
+(umask 077; printf 'POSTGRES_PASSWORD=%s\nBETTER_AUTH_SECRET=%s\n' \
+  "$(openssl rand -hex 24)" "$(openssl rand -base64 32)" > apps/web/.env)
 ```
+
+`BETTER_AUTH_SECRET` (at least 32 characters) signs the session cookies. The
+`web` service refuses to start without it: a preflight
+(`src/auth/check-auth-env-cli.ts`) exits `1` and logs
+`web: auth configuration error: ... missing or invalid keys: BETTER_AUTH_SECRET`
+(key names only, never values), so `up --wait` fails instead of serving a
+broken app. The test profile and `up db` do not need it. Changing the secret
+invalidates every existing session.
 
 Never commit this file and never print its contents. `.env.example` documents
 the shape without a real value.
@@ -137,13 +146,15 @@ values.
 ## Admin bootstrap
 
 HachiSky has no public sign-up. The first administrator is created once by a
-one-shot CLI that runs Better Auth's own `createUser` server-side (no
-`/api/auth` route is mounted yet). Roles are only `admin` and `staff`.
+one-shot CLI that runs Better Auth's own `createUser` server-side (the HTTP
+admin endpoints are not exposed, see "Signing in"). Roles are only `admin`
+and `staff`.
 
 ### Running it
 
-1. Add a Better Auth secret to `apps/web/.env` (git-ignored; never print it).
-   It is only needed by this CLI for now; without it the CLI exits `1`:
+1. Make sure `apps/web/.env` has a `BETTER_AUTH_SECRET` (see "Local
+   secret"; never print it). Without it the CLI exits `1`. If your `.env`
+   predates it, append one:
 
    ```bash
    (umask 077; printf 'BETTER_AUTH_SECRET=%s\n' "$(openssl rand -base64 32)" >> apps/web/.env)
@@ -288,7 +299,7 @@ what you are about to change (there is no backup tooling yet).
 Cookie behavior is derived from the protocol of `BETTER_AUTH_URL` (`https`
 means secure cookies, `http` means not) and set explicitly, never left to
 library defaults. `APP_ENV` only adds a guard: `loadAuthEnv` rejects
-`production` with an `http` URL. `/api/auth` is not mounted yet.
+`production` with an `http` URL.
 
 | Attribute | HTTPS URL (production) | HTTP URL (development / test) |
 | --- | --- | --- |
@@ -305,7 +316,79 @@ library defaults. `APP_ENV` only adds a guard: `loadAuthEnv` rejects
 
 `BETTER_AUTH_URL` must be an origin (no path, query or credentials) and
 `BETTER_AUTH_SECRET` at least 32 characters. Both are read only by the
-auth-aware processes (`bootstrap-admin`, and later the web app).
+auth-aware processes (`web` and `bootstrap-admin`).
+
+## Signing in
+
+### Local flow
+
+1. Create `apps/web/.env` with `POSTGRES_PASSWORD` and `BETTER_AUTH_SECRET`
+   (see "Local secret").
+2. Start the stack (see "Starting the stack"). The `web` service receives
+   `BETTER_AUTH_URL=http://127.0.0.1:${HACHISKY_WEB_PORT:-3100}`.
+3. Bootstrap the administrator once (see "Admin bootstrap").
+4. Open **`http://127.0.0.1:3100`** (not `localhost`). Better Auth trusts
+   only the `BETTER_AUTH_URL` origin for cookie-bearing requests; from
+   `http://localhost:3100` the browser sends `Origin: http://localhost:3100`
+   and sign-out (and any POST that carries the session cookie) is rejected
+   with `403`.
+
+### Exposed auth endpoints
+
+`app/api/auth/[...all]/route.ts` mounts Better Auth behind an allowlist
+(`src/auth/http.ts`). Only these exact method + path pairs reach it:
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `POST` | `/api/auth/sign-in/email` | Sign in with email and password |
+| `POST` | `/api/auth/sign-out` | Delete the session row and clear the cookie |
+| `GET` | `/api/auth/get-session` | Read the current session |
+
+Everything else, including `sign-up/email`, password reset, account linking
+and every `/admin/*` endpoint, answers `404` before Better Auth sees the
+request (public sign-up is also disabled in the config). Server code keeps
+using `auth.api.*` directly (the bootstrap CLI does). An allowlist is used
+instead of Better Auth's `disabledPaths` so an endpoint added by an upgrade
+or a plugin stays unreachable until it is listed on purpose.
+
+### Sessions
+
+- Lifetime 7 days (`session.expiresIn`), sliding: once a session is more than
+  one day old (`session.updateAge`), the next authenticated request moves its
+  expiry back to 7 days and re-sends the cookie (`Max-Age=604800`).
+- The session cookie cache stays disabled, so a sign-out, a revoked session
+  or a ban takes effect on the next request.
+- Sign-out deletes the session row in the database and clears the cookie.
+
+### Rate limiting
+
+Better Auth's limiter runs inside the HTTP handler (not for server-side
+`auth.api.*` calls). It is enabled explicitly (its default depends on
+`NODE_ENV`), with in-memory storage:
+
+| Rule | Window | Max requests per client IP |
+| --- | --- | --- |
+| `POST /api/auth/sign-in/email` (every attempt, successful or not) | 300 s | 10 |
+| Any other auth endpoint | 60 s | 100 |
+
+Over the limit the handler answers `429` with an `X-Retry-After` header (in
+seconds).
+
+- **Storage:** memory, per process. Correct for the single `web` container;
+  counters reset when the container restarts and would not be shared if the
+  app were scaled to several instances (then use Better Auth's `database` or
+  secondary storage).
+- **Client IP:** read from `X-Forwarded-For` only. With no reverse proxy in
+  front, `next start` sets that header from the TCP peer address only when
+  the client did not send one. From the host, every browser reaches the
+  container through the Docker bridge gateway, so all local clients share
+  one bucket.
+- **Known limitation (no trusted proxy yet):** a client can send its own
+  `X-Forwarded-For` value and get a fresh bucket per value, bypassing the
+  per-IP limit. A header with several addresses is not trusted; Better Auth
+  then uses one shared bucket for all such requests. Fix when a reverse proxy
+  is added: have it overwrite `X-Forwarded-For` and configure
+  `advanced.ipAddress.trustedProxies`.
 
 ## Limitations
 

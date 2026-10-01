@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
-import { ComingSoon } from "../../src/shell/ComingSoon.tsx";
+import { requireSession } from "../../../src/auth/guard.ts";
+import { ComingSoon } from "../../../src/shell/ComingSoon.tsx";
 
 export const metadata: Metadata = { title: "Clientes" };
 
-export default function ClientsPage() {
+export default async function ClientsPage() {
+  await requireSession("/clients");
   return (
     <ComingSoon
       moduleId="clients"

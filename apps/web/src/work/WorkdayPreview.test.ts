@@ -43,7 +43,7 @@ export async function load(url, context, nextLoad) {
 register(`data:text/javascript,${encodeURIComponent(LOADER)}`);
 
 const { WorkdayPreview } = await import("./WorkdayPreview.tsx");
-const { default: WorkError } = await import("../../app/work/error.tsx");
+const { default: WorkError } = await import("../../app/(app)/work/error.tsx");
 
 describe("WorkdayPreview (rendered component)", () => {
   const html = renderToStaticMarkup(createElement(WorkdayPreview));

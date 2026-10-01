@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
-import { ReportSheet } from "../../src/reports/ReportSheet.tsx";
-import { PageHeader } from "../../src/shell/PageHeader.tsx";
+import { requireSession } from "../../../src/auth/guard.ts";
+import { ReportSheet } from "../../../src/reports/ReportSheet.tsx";
+import { PageHeader } from "../../../src/shell/PageHeader.tsx";
 import styles from "./page.module.css";
 
 export const metadata: Metadata = { title: "Informes" };
 
-export default function ReportsPage() {
+export default async function ReportsPage() {
+  await requireSession("/reports");
   return (
     <div className="container">
       <PageHeader

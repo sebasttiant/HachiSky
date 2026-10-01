@@ -1,18 +1,20 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { AvailabilityBadge } from "../src/shell/AvailabilityBadge.tsx";
-import { ModuleIcon } from "../src/shell/icons.tsx";
-import { MODULES } from "../src/shell/navigation.ts";
+import { requireSession } from "../../src/auth/guard.ts";
+import { AvailabilityBadge } from "../../src/shell/AvailabilityBadge.tsx";
+import { ModuleIcon } from "../../src/shell/icons.tsx";
+import { MODULES } from "../../src/shell/navigation.ts";
 import {
   SystemStatus,
   SystemStatusFallback,
-} from "../src/system/SystemStatus.tsx";
+} from "../../src/system/SystemStatus.tsx";
 import styles from "./page.module.css";
 
 // The system status must reflect the database at request time, not at build.
 export const dynamic = "force-dynamic";
 
-export default function HomePage() {
+export default async function HomePage() {
+  await requireSession("/");
   const tiles = MODULES.filter((m) => m.id !== "home");
   return (
     <div className="container">

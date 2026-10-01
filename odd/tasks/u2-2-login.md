@@ -1,0 +1,103 @@
+# U2.2 Login, Logout and Route Protection
+
+## Objective
+
+Let the bootstrapped administrator (and any future user) sign in with email and password, sign out, and reach app pages only with a valid session, enforced on the server.
+
+## Problem
+
+U2.1 delivered Better Auth 1.7.6, the auth schema and a bootstrapped admin, but `/api/auth` is not mounted, the web service has no auth environment, there is no login page, every page is public, and the shell does not show who is signed in.
+
+## Why
+
+The owner wants usable functionality: a real sign-in flow they can test locally before building features on top of it.
+
+## Authorized scope (owner, 2026-09-30)
+
+- Branch `feat/u2-2-login` from `main` at 8f7cdd3; worktree `HachiSky-worktrees/u2-2-login`.
+- One delivery and one PR (`size:exception` accepted for this scope; do not split artificially). No deployment, no automatic merge.
+- Mount `/api/auth` with only what sign-in needs; public sign-up stays disabled.
+- `/login` page (Spanish UI copy, no app navigation), generic error message that does not reveal whether the email exists.
+- Server-side protection of pages and data: every page requires a session except `/login`; `/api/health` stays public; auth endpoints needed for sign-in stay reachable without a session.
+- After sign-in, return to the requested page; the return target accepts internal paths only (no open redirect).
+- Header user area: name, job title (`jobTitle`), "Cerrar sesión".
+- Logout deletes the session in the database, not only the cookie.
+- Sessions last 7 days and are renewed with use (owner accepted).
+- A banned user cannot access the app, including with a session created before the ban.
+- Rate limiting on sign-in verified as actually active in the environment used (observed HTTP 429), not assumed.
+- Compose `web` receives the auth environment; README documents the local test flow.
+
+## Out of scope (U2.3 or later)
+
+Creating/editing staff users in the UI, per-module role permissions, revoking other users' sessions, password recovery, deployment and real HTTPS.
+
+## Constraints
+
+- Owner conditions from U2.1 remain binding: only roles `admin`/`staff`, `jobTitle` separate from role, explicit cookies per environment, no direct inserts into auth tables.
+- No credentials in chat, commits or logs.
+- UI copy in Spanish (existing app language); code, comments and docs in English.
+
+## TDD
+
+- Mode: strict TDD **on** (source: user global config `Strict TDD Mode: enabled`).
+- Runner: `node --test` via `pnpm test` inside the compose `test` profile (`apps/web/compose.yaml`, services `db-test` + `test`).
+- RED observed before GREEN for every behavior.
+
+## Tasks
+
+- [ ] **L1** Auth wiring: mount `/api/auth` (sign-in, sign-out, get-session only; sign-up disabled), session 7 days with update on use, rate limit enabled and verified with real HTTP requests, web service auth env in compose, `.env.example` and README updates.
+  - Route: delegated writer (writer trigger: 2+ non-trivial files).
+  - RED: `node --test tests/auth/auth-http.test.ts` failed `ERR_MODULE_NOT_FOUND src/auth/http.ts`; `tests/auth/check-auth-env.test.ts` 3/3 failed (`Cannot find module src/auth/check-auth-env-cli.ts`); `tests/infra/compose.test.ts` 2 new tests failed (no `BETTER_AUTH_URL`/secret/preflight in `web`). After adding the handler only: the two rate-limit tests failed (limiter disabled because `NODE_ENV` is unset in the test container). New policy unit tests in `src/auth/auth.test.ts` failed 5/5 (session policy, `disableOriginCheck`, rate limit, sign-in rule, IP header). Session-lifetime/renewal/sign-out HTTP tests passed on first run against Better Auth defaults (guards for the now explicit config).
+  - GREEN: auth + HTTP suites 31/31; preflight + compose 6/6; full compose test profile: typecheck clean, lint 0 errors (4 pre-existing `globals.css` warnings), `pnpm test` 159/159.
+  - Decisions: HTTP allowlist in `src/auth/http.ts` (exact method + pathname: `POST sign-in/email`, `POST sign-out`, `GET get-session`; everything else 404, tested against every `auth.api` endpoint path) instead of `disabledPaths`; session 7 d / `updateAge` 1 d; `disableOriginCheck: false` explicit; rate limit enabled explicitly, memory storage, sign-in 10 per 300 s per IP, global 100 per 60 s; IP from `X-Forwarded-For` (spoofable without a proxy: documented limitation). Missing secret: compose keeps `${BETTER_AUTH_SECRET:-}`; the `web` command runs a preflight (`src/auth/check-auth-env-cli.ts`) that exits 1 naming keys only, then `exec pnpm start`.
+  - Pending: real-HTTP 429 against a running `web` container (L4 demo).
+- [x] **L2** Server-side guard: session + banned check used by `proxy.ts` (optimistic redirect) and by every protected page/data access (authoritative), safe `next` handling, banned user with a pre-existing session denied. Commit e4cd4ee.
+  - RED: written by the previous session before this document recorded it; not re-observed here. The `next build` failure below was observed (RED) before its fix.
+  - GREEN: the committed tree alone (exported with `git archive`, isolated compose project): typecheck clean, lint 0 errors, `pnpm test` 188/188.
+  - Decisions: pages moved into an `(app)` route group (URLs unchanged) so `/login` renders without the shell; `tests/auth/route-guards.test.ts` requires `await requireSession("<route>")` in every non-public page, and a guard in every route handler and Server Function module. `getCurrentSession` awaits `headers()` before `getAuth()`: in the reverse order `next build` prerendered `/clients` and failed on the missing auth environment.
+- [x] **L3** UI: `/login` page and form outside the app shell navigation, generic error, header user area with name, job title and logout; logout removes the DB session. Commit 4dd2089.
+  - RED: `tests/auth/login-ui.test.ts` failed 4/6 (`LogoutButton.tsx` and `UserArea.tsx` missing; layout not reading the session). `tests/infra/css-modules.test.ts` failed with `app/login/page.tsx -> app/login/page.module.css` (found first by `next build`: unit tests stub CSS modules).
+  - GREEN: typecheck clean, lint 0 errors (4 pre-existing `globals.css` warnings), `pnpm test` 199/199; `next build` succeeds with every app page dynamic and the proxy active.
+  - Decisions: logout is a `type="button"` that POSTs sign-out, then `window.location.replace("/login")`; a failed sign-out shows an error and stays. The `(app)` layout reads `getCurrentSession()` (shared with the page guard through React `cache`) only to display the user; it does not authorize.
+- [x] **L4** Local demo: run the stack, sign in with the admin, walk the full flow (owner acceptance steps 1–7), record evidence without credentials.
+  - Environment: isolated compose project `hachisky-u22-demo` on `127.0.0.1:3101` (own database volume, image `hachisky-web:u22`), demo admin bootstrapped through the CLI. Evidence: `.verification/l4-http.log` (status codes and cookie attributes only).
+  - HTTP results: (1) `/work` without a session → 307 `/login?next=%2Fwork`; (2) wrong password → 401; (3) correct → 200, cookie `HttpOnly; SameSite=Lax; Path=/; Max-Age=604800`, no `Secure` over http; header shows name, job title and logout; (4) `/reports` and `get-session` → 200; (5) `GET sign-out` → 404 and the session stays valid; `POST sign-out` → 200 with cookies expired; replaying the old cookie → 307 (session deleted in the database); (6) `next=https://evil.example` and `next=//evil.example` → the form receives `/`; (7) `/api/health` → 200; (9) failed sign-ins → 429 from the 8th attempt (the limit counts every sign-in in the window, including the earlier ones in the run). Also: sign-up 404, admin endpoints 404, foreign `Origin` → 403.
+  - Owner, in the browser: signed in, saw the header and confirmed the flow works.
+  - Not run live: (8) banned user, to avoid banning the only demo admin; covered by `tests/auth/session-guard.test.ts`.
+  - First run of step 6 reported a false positive: Next echoes the requested URL in its route state; the check now reads the `next` prop the form receives.
+- [x] **L5** Login and header polish (owner request after L4): login page aligned with the app shell (brand bar, card surface, footer), failure reasons (`invalid`, `rate_limited`, `unavailable`; no account enumeration), tú form instead of voseo, avatar with initials, logout sized like the navigation controls, header no longer overlaps at 1024–1920 px. Commit 80c1a10.
+  - RED: `login.test.ts` and `login-ui.test.ts` failed 8 (failure reasons, show-password toggle, voseo) and then 2 (initials, labeled logout).
+  - GREEN: typecheck clean, lint 0 errors, `pnpm test` 206/206, `next build` OK; header measured at 1024/1280/1440/1920 px with no overlap or horizontal overflow.
+
+## Acceptance criteria (owner test steps)
+
+1. `http://127.0.0.1:3100/work` without a session redirects to `/login`.
+2. Wrong password shows the generic error and stays on `/login`.
+3. Correct credentials return to `/work`; the header shows name and job title.
+4. Reload or new tab keeps the session.
+5. "Cerrar sesión" returns to `/login`; Back or opening `/work` asks for sign-in again.
+6. `/login?next=https://evil.example` then sign-in lands on `/`, not the external site.
+7. `/api/health` answers without a session.
+8. A banned user is denied, including with an existing session.
+9. Repeated failed sign-ins receive HTTP 429 in the local environment.
+
+## Checks
+
+`pnpm typecheck`, `pnpm lint`, full `pnpm test` in the compose test profile; HTTP-level checks against the running `web` container.
+
+## Delivery
+
+- Strategy: `single-pr` (owner, 2026-09-30). Forecast ~500–800 authored lines.
+- RDD: on (global). Assess work-unit commits with `--committed-only`; record the outcome honestly.
+
+## Progress
+
+- 2026-09-30: branch and worktree created from 8f7cdd3; document created.
+- Engram mirror `odd/u2-2-login/tasks`: pending (Engram save failing with multiple active sessions).
+- 2026-09-30: L2 and L3 committed locally (e4cd4ee, 4dd2089); not pushed. Checks run in an isolated compose project (`hachisky-u22-test`, image tags `:u22`) so the running `hachisky` stack and `hachisky-web:local` stay untouched.
+
+- 2026-09-30: L4 demo done and L5 polish committed (80c1a10). Judgment Day over `8f7cdd3..80c1a10` (diff sha256 `96d68842…7c1c5a`): two blind judges, no CRITICAL/HIGH/MEDIUM, one WARNING shared by both (denied path with `refresh=false` has no test for the clearing cookie; sessions are deleted either way). Verdict APPROVED in round 1; ledger in `.verification/jd-ledger.md`. A judgment authorizes no delivery by itself.
+
+## Next step
+
+Owner authorization to push `feat/u2-2-login` and open the PR to `main`. Follow-ups noted for U2.3: a test for the clearing cookie on the page-guard denied path, and narrowing the proxy's public `/api/auth/*` prefix to the allowlist.
