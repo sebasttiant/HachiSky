@@ -41,9 +41,42 @@ The owner wants the team (staff) using HachiSky, with billing and configuration 
 ## Tasks
 
 - [x] **P1** Module permissions: a role → module matrix used by `requireSession` (or a `requireModule` guard) on every page and Server Function; navigation shows only allowed modules; a direct URL to a forbidden module is refused on the server. Test enforces that every module page declares its module.
-- [ ] **P2** Forced password change: `mustChangePassword` user field (migration `0002`); set for users created by an admin; while set, every protected page redirects to a change-password page; cleared only by a successful change.
-- [ ] **P3** Own password change: page reachable from the user menu; current password required; other sessions revoked on change; rate limited through the HTTP handler (allowlist extended on purpose).
-- [ ] **P4** User administration (Configuración → Usuarios, admin only): list users; create staff/admin with name, email, job title, role and temporary password; edit name, job title and role; deactivate and reactivate (ban/unban, sessions revoked); "close all sessions". Last-admin and self-protection rules.
+- [ ] **P2** Forced password change: app-owned `user_security` table (migration `0002`, one row per user, `must_change_password`, `password_changed_at`) so the auth tables stay Better Auth's; set for users created or reset by an admin; while set, every protected page redirects to a change-password page; cleared only by a successful change.
+- [ ] **P3** Own password change: page reachable from the user menu; current password required; other sessions revoked on change. Done through a Server Function calling `auth.api.changePassword` with the user's own headers, so the HTTP allowlist does not grow.
+- [ ] **P4** Administration panel (Configuración, admin only), see "Admin panel design" below.
+
+## Admin panel design (owner request 2026-09-30)
+
+Reference: the owner's `swdrogueriaespecifica` admin module (read-only review). HachiSky takes its good patterns and fixes its weak spots; it does not copy its code (different stack: Prisma/Tailwind there, Better Auth/Drizzle/CSS Modules here).
+
+Taken from the reference:
+
+- The panel is a tool, not a dashboard: search comes first; "Crear usuario" sits behind a native `<details>` so it never pushes the list off a phone screen.
+- One filter contract (`q`, `role`, `status`) parsed, normalized and serialized in one module; anything invalid in the URL falls back to the default and never breaks the page; changing a filter drops pagination.
+- Thin Server Functions: Zod → server-side admin check → service → audit → `revalidatePath`. Business rules live in the service and fail with typed rule codes mapped to Spanish messages (self-deactivation, self-demotion, last active admin, not found, duplicate email).
+- The last-admin check is serialized with a transaction-scoped advisory lock so two concurrent demotions cannot leave the system without an admin.
+- Destructive actions use a two-step inline confirmation naming the person.
+- Cards on small screens, a compact table on wide ones; 44 px touch targets; role and status badges; empty states that say the true reason (no users vs. no matches).
+- Emails trimmed and lower-cased before validation; the edit page answers 404 for unknown ids.
+- Audit trail: who, when, what, on which user, before/after (never a password), IP and user agent; a read-only "Actividad" view with filters.
+
+Improved here:
+
+- Deactivating is a Better Auth ban and revokes every session at once; the session guard already refuses banned users on the next request.
+- An admin reset sets a new temporary password, forces the change at next sign-in and revokes the user's sessions; the admin never learns the final password.
+- "Cerrar sesiones" per user.
+- No archive/hard delete (owner decision): deactivated users stay listed under "Inactivos" with their history.
+- Mutations go through `auth.api.*` with the acting admin's headers (no direct writes to auth tables); app state (`user_security`, `audit_log`) lives in app-owned tables.
+- Audit writes for rule-checked mutations happen while the advisory lock is held, so the trail matches the order of changes.
+
+Screens:
+
+- `/settings`: Configuración hub (Usuarios, Actividad).
+- `/settings/users`: search and filters, create panel, list with Editar, Desactivar/Reactivar.
+- `/settings/users/[id]`: datos (nombre, cargo), rol, restablecer contraseña, cerrar sesiones, estado, and that user's recent activity.
+- `/settings/activity`: audit log, newest first, filter by action, person and date.
+
+Delivery: expected well over the 400-line review budget; split into chained PRs (permissions + passwords, users panel, activity view) before publishing.
 - [ ] **P5** Judgment Day follow-ups from U2.2: test the clearing cookie on the page-guard denied path; restrict the proxy's public `/api/auth/*` prefix to the allowlist.
 - [ ] **P6** Local demo and evidence; Judgment Day before the PR.
 

@@ -15,6 +15,13 @@
       "when": 1790704859914,
       "tag": "0001_auth_foundation",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790817018332,
+      "tag": "0002_admin_security_audit",
+      "breakpoints": true
     }
   ]
 }
