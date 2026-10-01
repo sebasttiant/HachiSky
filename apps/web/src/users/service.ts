@@ -19,9 +19,18 @@ type Executor = Db | Parameters<Parameters<Db["transaction"]>[0]>[0];
 export interface UsersDeps {
   auth: Auth;
   db: Db;
-  // Test seam between the rule checks and the change they guard, so a test
-  // can line up concurrent requests deterministically. Never set by the app.
-  hooks?: { afterRuleCheck?: () => Promise<void> };
+  // Test seams so a test can line up concurrent requests deterministically.
+  // Never set by the app.
+  hooks?: {
+    // Between the rule checks and the change they guard.
+    afterRuleCheck?: () => Promise<void>;
+    // resetPassword: after the forced change is recorded, before the new
+    // temporary password is set.
+    afterResetFlag?: () => Promise<void>;
+    // changeOwnPassword: after Better Auth changed the password, before the
+    // forced change is cleared.
+    afterPasswordChange?: () => Promise<void>;
+  };
 }
 
 export interface AdminActor {
@@ -282,6 +291,32 @@ async function audit(
   });
 }
 
+// Two-int advisory lock space for per-user password operations. PostgreSQL
+// keeps the one-bigint and two-int key spaces apart, so it never collides
+// with ADMIN_LOCK_KEY or the bootstrap key; the second key is
+// hashtext(user id), and a hash collision only serializes two users.
+export const PASSWORD_LOCK_SPACE = 74332012;
+
+// Serializes resetPassword and changeOwnPassword for one user. The lock is
+// held from before the Better Auth call until the forced-change flag is
+// written, so "password set" and "flag set/cleared" of one operation are
+// never interleaved with the other's: the operation that commits last also
+// decides the flag. Each holder uses two pool connections at most (this
+// transaction plus the one Better Auth or an autocommit write borrows), and a
+// waiter gives up at the pool's statement_timeout instead of hanging.
+function withPasswordLock<T>(
+  db: Db,
+  userId: string,
+  run: (tx: Executor) => Promise<T>,
+) {
+  return db.transaction(async (tx) => {
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(${PASSWORD_LOCK_SPACE}::int, hashtext(${userId}))`,
+    );
+    return run(tx);
+  });
+}
+
 function withAdminLock<T>(db: Db, run: (tx: Executor) => Promise<T>) {
   return db.transaction(async (tx) => {
     await tx.execute(
@@ -498,31 +533,34 @@ export async function resetPassword(
 ): Promise<void> {
   if (id === actor.id) throw new UserRuleError("self_password_reset");
   await requireTarget(deps.db, id);
-  const complete = await auditRequest(
-    deps.db,
-    actor,
-    "user.password_reset",
-    id,
-    {},
-  );
-  // Forced change first: if a later step fails, the user still cannot keep
-  // using a password the admin knows.
-  await deps.db
-    .insert(userSecurity)
-    .values({ userId: id, mustChangePassword: true })
-    .onConflictDoUpdate({
-      target: userSecurity.userId,
-      set: { mustChangePassword: true },
+  await withPasswordLock(deps.db, id, async (tx) => {
+    const complete = await auditRequest(
+      deps.db,
+      actor,
+      "user.password_reset",
+      id,
+      {},
+    );
+    // Forced change first, committed on its own: if a later step fails, the
+    // user still cannot keep using a password the admin knows.
+    await deps.db
+      .insert(userSecurity)
+      .values({ userId: id, mustChangePassword: true })
+      .onConflictDoUpdate({
+        target: userSecurity.userId,
+        set: { mustChangePassword: true },
+      });
+    await deps.hooks?.afterResetFlag?.();
+    await deps.auth.api.setUserPassword({
+      body: { userId: id, newPassword: temporaryPassword },
+      headers: actor.headers,
     });
-  await deps.auth.api.setUserPassword({
-    body: { userId: id, newPassword: temporaryPassword },
-    headers: actor.headers,
+    await deps.auth.api.revokeUserSessions({
+      body: { userId: id },
+      headers: actor.headers,
+    });
+    await complete(tx);
   });
-  await deps.auth.api.revokeUserSessions({
-    body: { userId: id },
-    headers: actor.headers,
-  });
-  await complete(deps.db);
 }
 
 export async function getMustChangePassword(
@@ -548,20 +586,23 @@ export async function changeOwnPassword(
   if (input.newPassword === input.currentPassword) {
     throw new UserRuleError("same_password");
   }
-  let responseHeaders: Headers;
-  try {
-    ({ headers: responseHeaders } = await deps.auth.api.changePassword({
-      body: { ...input, revokeOtherSessions: true },
-      headers: self.headers,
-      returnHeaders: true,
-    }));
-  } catch (error) {
-    if (apiErrorCode(error) === "INVALID_PASSWORD") {
-      throw new UserRuleError("wrong_current_password");
+  // If the transaction fails after Better Auth changed the password, the
+  // flag stays as it was (still forced when pending): fail-safe.
+  return withPasswordLock(deps.db, self.id, async (tx) => {
+    let responseHeaders: Headers;
+    try {
+      ({ headers: responseHeaders } = await deps.auth.api.changePassword({
+        body: { ...input, revokeOtherSessions: true },
+        headers: self.headers,
+        returnHeaders: true,
+      }));
+    } catch (error) {
+      if (apiErrorCode(error) === "INVALID_PASSWORD") {
+        throw new UserRuleError("wrong_current_password");
+      }
+      throw error;
     }
-    throw error;
-  }
-  await deps.db.transaction(async (tx) => {
+    await deps.hooks?.afterPasswordChange?.();
     const now = new Date();
     await tx
       .insert(userSecurity)
@@ -575,8 +616,8 @@ export async function changeOwnPassword(
         set: { mustChangePassword: false, passwordChangedAt: now },
       });
     await audit(tx, self, "user.password_change", self.id, {});
+    return { setCookies: responseHeaders.getSetCookie() };
   });
-  return { setCookies: responseHeaders.getSetCookie() };
 }
 
 export async function revokeSessions(

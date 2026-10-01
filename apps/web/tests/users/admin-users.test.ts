@@ -564,6 +564,98 @@ describe("changeOwnPassword", () => {
     );
   });
 
+  // Admin reset racing the user's own change. Barriers pause one operation
+  // at its seam; the other then runs until it either finishes or waits on a
+  // database lock held by the paused one (checked in pg_locks, no sleeps).
+  const TEMP2 = "otra-temporal-2026";
+
+  function barrier() {
+    let release!: () => void;
+    let arrived!: () => void;
+    const released = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const reached = new Promise<void>((resolve) => {
+      arrived = resolve;
+    });
+    return {
+      reached,
+      release,
+      hook: async () => {
+        arrived();
+        await released;
+      },
+    };
+  }
+
+  async function finishedOrBlocked(operation: Promise<unknown>) {
+    let done = false;
+    operation.then(
+      () => {
+        done = true;
+      },
+      () => {
+        done = true;
+      },
+    );
+    const deadline = Date.now() + 3000;
+    while (!done && Date.now() < deadline) {
+      const { rows } = await pool.query<{ n: number }>(
+        "select count(*)::int as n from pg_locks where locktype = 'advisory' and not granted",
+      );
+      if ((rows[0]?.n ?? 0) > 0) return "blocked";
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+    assert.ok(done, "the second operation neither finished nor blocked");
+    return "finished";
+  }
+
+  it("a reset that lands while the user's own change is finishing still forces the change", async () => {
+    const id = await createdByAdmin("luis@example.test");
+    const self = await selfFor("luis@example.test", TEMP);
+    const pause = barrier();
+    const change = changeOwnPassword(
+      { ...deps, hooks: { afterPasswordChange: pause.hook } },
+      self,
+      { currentPassword: TEMP, newPassword: NEW },
+    );
+    await pause.reached;
+    const reset = resetPassword(deps, admin, id, TEMP2);
+    // Serialized: the reset waits for the user's change to commit.
+    assert.equal(await finishedOrBlocked(reset), "blocked");
+    pause.release();
+    await Promise.allSettled([change, reset]);
+    await reset;
+
+    assert.equal(await appAccess("luis@example.test", TEMP2), "forced_change");
+  });
+
+  it("a user's own change that lands while a reset is in progress cannot clear the reset's forced change", async () => {
+    const id = await createdByAdmin("luis@example.test");
+    const self = await selfFor("luis@example.test", TEMP);
+    const pause = barrier();
+    const reset = resetPassword(
+      { ...deps, hooks: { afterResetFlag: pause.hook } },
+      admin,
+      id,
+      TEMP2,
+    );
+    await pause.reached;
+    const change = changeOwnPassword(deps, self, {
+      currentPassword: TEMP,
+      newPassword: NEW,
+    });
+    // Serialized: the change waits until the reset has finished.
+    assert.equal(await finishedOrBlocked(change), "blocked");
+    pause.release();
+    await reset;
+    // The reset revoked the session and replaced the password the change
+    // relied on, so the late change is refused.
+    await assert.rejects(change);
+
+    assert.equal(await appAccess("luis@example.test", TEMP2), "forced_change");
+  });
+
   it("reports no pending change for users without a security row", async () => {
     assert.equal(await getMustChangePassword(deps, admin.id), false);
   });
