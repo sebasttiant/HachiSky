@@ -130,3 +130,12 @@ Owner authorizes an isolated demo for the browser walk-through (K3), then Judgme
 
 - 2026-10-01: `review assess --base-ref a338135 --committed-only` → risk high (auth hot path `tests/auth/route-guards.test.ts`), review due. Owner granted consent. Four lenses (risk, resilience, readability, reliability) over target `sha256:28af626f…`; lineage `review-0649ba63fb763246` **approved**, acknowledged, authority burned. No correction opened.
 - Advisory findings (non-blocking, separate later work): WARNING `R4-unexpected-error-log-drops-pg-code` (`submit.ts:60-64`, log the SQLSTATE with the error name); WARNING `R2-id-type-list-drift` (DB CHECK literal vs `IDENTIFICATION_TYPES`); WARNING `R3-empty-page-misreports` (`ClientList.tsx:62`, empty page > 1 says "Todavía no hay clientes" without a pager back); WARNING `R3-activity-details-unwired`: checked by the coordinator and **not confirmed**: `listAudit` selects `audit_log.details` (`src/users/service.ts:188`, `:217`) and the activity page passes the items unchanged to `ActivityList`; still unproven in a browser. Plus 9 SUGGESTIONs (incl. `R1-001`: audit IP taken from `X-Forwarded-For`, already a recorded deployment condition).
+
+## Status and limits (owner, 2026-10-01)
+
+B1 is **implemented, not fully validated end to end**. Implementation and native review accepted by the owner; no further review rounds now.
+
+- TDD: K1 had RED before GREEN. **K2 did not have RED before implementation**; the later mutation checks (staff check, guard call, nav status) are supporting evidence and do not replace that TDD step.
+- Checks observed: `pnpm test` 358/358, `pnpm typecheck` exit 0, `pnpm build` exit 0. **Lint ran on source paths** (`biome check` over `src app tests` and config files: 0 errors, 4 known warnings), **not the full `pnpm lint` command** (in the borrowed runner image it also scans an old `.next`).
+- Pending: browser walk-through of acceptance criteria 1–8; a forged staff request over real HTTP against the Server Function.
+- Non-blocking review warnings stay recorded above (not fixed by owner decision).
