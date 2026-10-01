@@ -59,7 +59,15 @@ Creating/editing staff users in the UI, per-module role permissions, revoking ot
   - RED: `tests/auth/login-ui.test.ts` failed 4/6 (`LogoutButton.tsx` and `UserArea.tsx` missing; layout not reading the session). `tests/infra/css-modules.test.ts` failed with `app/login/page.tsx -> app/login/page.module.css` (found first by `next build`: unit tests stub CSS modules).
   - GREEN: typecheck clean, lint 0 errors (4 pre-existing `globals.css` warnings), `pnpm test` 199/199; `next build` succeeds with every app page dynamic and the proxy active.
   - Decisions: logout is a `type="button"` that POSTs sign-out, then `window.location.replace("/login")`; a failed sign-out shows an error and stays. The `(app)` layout reads `getCurrentSession()` (shared with the page guard through React `cache`) only to display the user; it does not authorize.
-- [ ] **L4** Local demo: run the stack, sign in with the admin, walk the full flow (owner acceptance steps 1–7), record evidence without credentials.
+- [x] **L4** Local demo: run the stack, sign in with the admin, walk the full flow (owner acceptance steps 1–7), record evidence without credentials.
+  - Environment: isolated compose project `hachisky-u22-demo` on `127.0.0.1:3101` (own database volume, image `hachisky-web:u22`), demo admin bootstrapped through the CLI. Evidence: `.verification/l4-http.log` (status codes and cookie attributes only).
+  - HTTP results: (1) `/work` without a session → 307 `/login?next=%2Fwork`; (2) wrong password → 401; (3) correct → 200, cookie `HttpOnly; SameSite=Lax; Path=/; Max-Age=604800`, no `Secure` over http; header shows name, job title and logout; (4) `/reports` and `get-session` → 200; (5) `GET sign-out` → 404 and the session stays valid; `POST sign-out` → 200 with cookies expired; replaying the old cookie → 307 (session deleted in the database); (6) `next=https://evil.example` and `next=//evil.example` → the form receives `/`; (7) `/api/health` → 200; (9) failed sign-ins → 429 from the 8th attempt (the limit counts every sign-in in the window, including the earlier ones in the run). Also: sign-up 404, admin endpoints 404, foreign `Origin` → 403.
+  - Owner, in the browser: signed in, saw the header and confirmed the flow works.
+  - Not run live: (8) banned user, to avoid banning the only demo admin; covered by `tests/auth/session-guard.test.ts`.
+  - First run of step 6 reported a false positive: Next echoes the requested URL in its route state; the check now reads the `next` prop the form receives.
+- [x] **L5** Login and header polish (owner request after L4): login page aligned with the app shell (brand bar, card surface, footer), failure reasons (`invalid`, `rate_limited`, `unavailable`; no account enumeration), tú form instead of voseo, avatar with initials, logout sized like the navigation controls, header no longer overlaps at 1024–1920 px. Commit 80c1a10.
+  - RED: `login.test.ts` and `login-ui.test.ts` failed 8 (failure reasons, show-password toggle, voseo) and then 2 (initials, labeled logout).
+  - GREEN: typecheck clean, lint 0 errors, `pnpm test` 206/206, `next build` OK; header measured at 1024/1280/1440/1920 px with no overlap or horizontal overflow.
 
 ## Acceptance criteria (owner test steps)
 
@@ -88,6 +96,8 @@ Creating/editing staff users in the UI, per-module role permissions, revoking ot
 - Engram mirror `odd/u2-2-login/tasks`: pending (Engram save failing with multiple active sessions).
 - 2026-09-30: L2 and L3 committed locally (e4cd4ee, 4dd2089); not pushed. Checks run in an isolated compose project (`hachisky-u22-test`, image tags `:u22`) so the running `hachisky` stack and `hachisky-web:local` stay untouched.
 
+- 2026-09-30: L4 demo done and L5 polish committed (80c1a10). Judgment Day over `8f7cdd3..80c1a10` (diff sha256 `96d68842…7c1c5a`): two blind judges, no CRITICAL/HIGH/MEDIUM, one WARNING shared by both (denied path with `refresh=false` has no test for the clearing cookie; sessions are deleted either way). Verdict APPROVED in round 1; ledger in `.verification/jd-ledger.md`. A judgment authorizes no delivery by itself.
+
 ## Next step
 
-L4 local demo in an isolated project on another port (3100 is used by the running stack); the owner provides `apps/web/.env` and bootstraps the admin. Then a dual adversarial review (judgment-day) before opening the PR.
+Owner authorization to push `feat/u2-2-login` and open the PR to `main`. Follow-ups noted for U2.3: a test for the clearing cookie on the page-guard denied path, and narrowing the proxy's public `/api/auth/*` prefix to the allowlist.
