@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { after, before, beforeEach, describe, it } from "node:test";
 import { drizzle } from "drizzle-orm/node-postgres";
+import type { Auth } from "../../src/auth/auth.ts";
 import { createAuthRouteHandlers } from "../../src/auth/http.ts";
+import { resolveSession } from "../../src/auth/session.ts";
 import { closeDb, getPool } from "../../src/db/client.ts";
 import { runMigrations } from "../../src/db/migrate.ts";
 import * as schema from "../../src/db/schema/index.ts";
@@ -84,6 +86,60 @@ async function ruleCode(promise: Promise<unknown>) {
   return "no-error";
 }
 
+// What the session guard grants after signing in with `password`: "full"
+// only for an authenticated session (not banned, valid role) with no pending
+// forced password change.
+async function appAccess(email: string, password: string) {
+  const response = await signIn(email, password);
+  if (response.status !== 200) return "sign_in_refused";
+  const session = await resolveSession(
+    auth,
+    new Headers({ cookie: cookieHeader(response) }),
+  );
+  if (session.status !== "authenticated") return `session_${session.status}`;
+  if (await getMustChangePassword(deps, session.user.id)) {
+    return "forced_change";
+  }
+  return "full";
+}
+
+async function userIdByEmail(email: string) {
+  const { rows } = await pool.query<{ id: string }>(
+    'select id from "user" where email = $1',
+    [email],
+  );
+  return rows[0]?.id;
+}
+
+// Fault injection at the database: every INSERT into `table` matching
+// `condition` (SQL over NEW) fails while `run` executes.
+async function withInsertFault<T>(
+  table: "user_security" | "audit_log",
+  condition: string,
+  run: () => Promise<T>,
+): Promise<T> {
+  await pool.query(`create or replace function test_insert_fault() returns trigger
+    language plpgsql as $$ begin
+      if ${condition} then raise exception 'injected fault'; end if;
+      return new;
+    end $$`);
+  await pool.query(
+    `create trigger test_insert_fault before insert on ${table} for each row execute function test_insert_fault()`,
+  );
+  try {
+    return await run();
+  } finally {
+    await pool.query(`drop trigger if exists test_insert_fault on ${table}`);
+  }
+}
+
+const injected = () => Promise.reject(new Error("injected auth failure"));
+
+// The real auth instance with some admin endpoints replaced.
+function authWith(overrides: Partial<Record<keyof Auth["api"], unknown>>) {
+  return { ...auth, api: { ...auth.api, ...overrides } } as Auth;
+}
+
 let admin: AdminActor;
 
 before(async () => {
@@ -138,6 +194,78 @@ describe("createUser", () => {
       role: "staff",
     });
     assert.doesNotMatch(JSON.stringify(rows), new RegExp(TEMP));
+  });
+
+  const luis = {
+    name: "Luis Gómez",
+    email: "luis@example.test",
+    jobTitle: null,
+    role: "staff" as const,
+    temporaryPassword: TEMP,
+  };
+
+  it("never gives app access when the forced change cannot be recorded and blocking the account fails too", async () => {
+    const failing = {
+      ...deps,
+      auth: authWith({ banUser: injected, unbanUser: injected }),
+    };
+    await assert.rejects(
+      withInsertFault("user_security", "true", () =>
+        createUser(failing, admin, luis),
+      ),
+    );
+    const id = await userIdByEmail(luis.email);
+    assert.ok(id, "the account was created");
+    assert.equal(await appAccess(luis.email, TEMP), "sign_in_refused");
+    assert.equal((await getUser(deps, id))?.active, false);
+  });
+
+  it("never gives app access when the creation audit fails and blocking the account fails too", async () => {
+    const failing = {
+      ...deps,
+      auth: authWith({ banUser: injected, unbanUser: injected }),
+    };
+    await assert.rejects(
+      withInsertFault("audit_log", "new.action = 'user.create'", () =>
+        createUser(failing, admin, luis),
+      ),
+    );
+    assert.notEqual(await appAccess(luis.email, TEMP), "full");
+  });
+
+  it("keeps the account blocked, with the forced change recorded, when the final activation fails", async () => {
+    const failing = { ...deps, auth: authWith({ unbanUser: injected }) };
+    await assert.rejects(createUser(failing, admin, luis));
+    const id = await userIdByEmail(luis.email);
+    assert.ok(id);
+    assert.equal(await appAccess(luis.email, TEMP), "sign_in_refused");
+    assert.equal(await getMustChangePassword(deps, id), true);
+  });
+
+  it("still forces the change when an incomplete account is reactivated from the panel", async () => {
+    await assert.rejects(
+      withInsertFault("user_security", "true", () =>
+        createUser(deps, admin, luis),
+      ),
+    );
+    const id = await userIdByEmail(luis.email);
+    assert.ok(id);
+    await setActive(deps, admin, id, true);
+    assert.equal(await appAccess(luis.email, TEMP), "forced_change");
+  });
+
+  it("does not force a change on the recorded bootstrap admin when reactivated", async () => {
+    const owner = await createTestUser(auth, "owner@example.test", {
+      name: "Olga Owner",
+      role: "admin",
+    });
+    await pool.query(
+      "insert into admin_bootstrap (id, admin_user_id) values (1, $1)",
+      [owner.id],
+    );
+    await setActive(deps, admin, owner.id, false);
+    await setActive(deps, admin, owner.id, true);
+    assert.equal(await appAccess("owner@example.test", PASSWORD), "full");
   });
 
   it("refuses an email that is already registered", async () => {

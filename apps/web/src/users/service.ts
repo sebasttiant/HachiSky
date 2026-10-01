@@ -6,7 +6,7 @@ import type { Auth } from "../auth/auth.ts";
 import type { RoleName } from "../auth/session.ts";
 import * as schema from "../db/schema/index.ts";
 
-const { auditLog, session, user, userSecurity } = schema;
+const { adminBootstrap, auditLog, session, user, userSecurity } = schema;
 
 // Business rules for user administration. Every mutation goes through
 // Better Auth's admin API with the acting admin's own headers, so Better Auth
@@ -290,6 +290,16 @@ export interface CreateUserInput {
   temporaryPassword: string;
 }
 
+// Ban reason of an account whose creation has not finished. Visible in the
+// panel as an inactive user.
+export const PENDING_CREATION_BAN_REASON = "Alta incompleta";
+
+// Fail-closed creation. The account is born banned, so if anything after
+// `auth.api.createUser` fails (the forced change, the audit, the activation)
+// it stays blocked instead of keeping a password the admin knows without a
+// forced change. Nothing is compensated or swallowed: the first error reaches
+// the caller and the account is listed as inactive until an admin reactivates
+// it, which records the forced change first (see setActive).
 export async function createUser(
   deps: UsersDeps,
   actor: AdminActor,
@@ -303,7 +313,11 @@ export async function createUser(
         password: input.temporaryPassword,
         name: input.name,
         role: input.role,
-        ...(input.jobTitle ? { data: { jobTitle: input.jobTitle } } : {}),
+        data: {
+          ...(input.jobTitle ? { jobTitle: input.jobTitle } : {}),
+          banned: true,
+          banReason: PENDING_CREATION_BAN_REASON,
+        },
       },
       headers: actor.headers,
     });
@@ -313,29 +327,21 @@ export async function createUser(
     throw error;
   }
 
-  try {
-    await deps.db.transaction(async (tx) => {
-      await tx
-        .insert(userSecurity)
-        .values({ userId: created.id, mustChangePassword: true });
-      await audit(tx, actor, "user.create", created.id, {
-        email: created.email,
-        name: input.name,
-        jobTitle: input.jobTitle,
-        role: input.role,
-      });
+  await deps.db.transaction(async (tx) => {
+    await tx
+      .insert(userSecurity)
+      .values({ userId: created.id, mustChangePassword: true });
+    await audit(tx, actor, "user.create", created.id, {
+      email: created.email,
+      name: input.name,
+      jobTitle: input.jobTitle,
+      role: input.role,
     });
-  } catch (error) {
-    // Without the forced change the account would keep a password the admin
-    // knows; disable it until an admin retries.
-    await deps.auth.api
-      .banUser({
-        body: { userId: created.id, banReason: "Alta incompleta" },
-        headers: actor.headers,
-      })
-      .catch(() => undefined);
-    throw error;
-  }
+  });
+  await deps.auth.api.unbanUser({
+    body: { userId: created.id },
+    headers: actor.headers,
+  });
   return { id: created.id };
 }
 
@@ -382,6 +388,26 @@ export function updateUser(
   });
 }
 
+// A user without a `user_security` row has nothing pending. Panel-created
+// users always get one before they are activated, so a missing row on
+// reactivation means an incomplete creation: record the forced change before
+// the unban. The recorded bootstrap admin chose their own password and keeps
+// the original meaning of a missing row. Written outside the caller's
+// transaction (autocommit) so it is durable before Better Auth unbans on its
+// own connection.
+async function ensureForcedChangeRecorded(db: Db, id: string) {
+  const bootstrap = await db
+    .select({ id: adminBootstrap.adminUserId })
+    .from(adminBootstrap)
+    .where(eq(adminBootstrap.adminUserId, id))
+    .limit(1);
+  if (bootstrap.length > 0) return;
+  await db
+    .insert(userSecurity)
+    .values({ userId: id, mustChangePassword: true })
+    .onConflictDoNothing({ target: userSecurity.userId });
+}
+
 export function setActive(
   deps: UsersDeps,
   actor: AdminActor,
@@ -391,6 +417,7 @@ export function setActive(
   return withAdminLock(deps.db, async (tx) => {
     const target = await requireTarget(tx, id);
     if (active) {
+      await ensureForcedChangeRecorded(deps.db, id);
       await deps.auth.api.unbanUser({
         body: { userId: id },
         headers: actor.headers,
