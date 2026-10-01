@@ -21,7 +21,7 @@ The owner wants the team (staff) using HachiSky, with billing and configuration 
 
 ## Authorized scope
 
-- Branch `feat/u2-3-permissions`, stacked on `feat/u2-2-login` (PR #6, not merged yet); worktree `HachiSky-worktrees/u2-3-permissions`. Retarget to `main` after #6 merges.
+- Branch `feat/u2-3-permissions`, stacked on `feat/u2-2-login` (PR #6, merged into `main` on 2026-09-30); worktree `HachiSky-worktrees/u2-3-permissions`.
 - Local work-unit commits. Push and PR only with owner authorization.
 
 ## Constraints
@@ -41,9 +41,9 @@ The owner wants the team (staff) using HachiSky, with billing and configuration 
 ## Tasks
 
 - [x] **P1** Module permissions: a role → module matrix used by `requireSession` (or a `requireModule` guard) on every page and Server Function; navigation shows only allowed modules; a direct URL to a forbidden module is refused on the server. Test enforces that every module page declares its module.
-- [ ] **P2** Forced password change: app-owned `user_security` table (migration `0002`, one row per user, `must_change_password`, `password_changed_at`) so the auth tables stay Better Auth's; set for users created or reset by an admin; while set, every protected page redirects to a change-password page; cleared only by a successful change.
-- [ ] **P3** Own password change: page reachable from the user menu; current password required; other sessions revoked on change. Done through a Server Function calling `auth.api.changePassword` with the user's own headers, so the HTTP allowlist does not grow.
-- [ ] **P4** Administration panel (Configuración, admin only), see "Admin panel design" below.
+- [x] **P2** Forced password change: app-owned `user_security` table (migration `0002`, one row per user, `must_change_password`, `password_changed_at`) so the auth tables stay Better Auth's; set for users created or reset by an admin; while set, every protected page redirects to a change-password page; cleared only by a successful change.
+- [x] **P3** Own password change: page reachable from the user menu; current password required; other sessions revoked on change. Done through a Server Function calling `auth.api.changePassword` with the user's own headers, so the HTTP allowlist does not grow.
+- [x] **P4** Administration panel (Configuración, admin only), see "Admin panel design" below. The activity view filters by action only; person and date filters are open.
 
 ## Admin panel design (owner request 2026-09-30)
 
@@ -98,6 +98,17 @@ Delivery: expected well over the 400-line review budget; split into chained PRs 
 - 2026-09-30: worktree created from `feat/u2-2-login` at cea20de; owner decisions recorded.
 - 2026-09-30: P1 done. `src/auth/permissions.ts` holds the role → module matrix (billing admin only; Configuración joins in P4). Every module page calls `requireModule(<module>, <href>)`, which answers a forbidden module with `forbidden()` (HTTP 403, `app/forbidden.tsx`, `experimental.authInterrupts`). The layout passes `visibleModules(role)` to the header and the home tiles use the same list. RED observed first (missing module, pages without `requireModule`, no 403 page). Isolated `hachisky-u23-test`: typecheck, lint, 215/215 tests and `next build` green (`.verification/u23-p1-*.log`).
 
+- 2026-09-30: migration `0002` (`user_security`, append-only `audit_log`) and the users service (caa0cd6, f81e53f). The last-admin rule holds under a transaction-scoped advisory lock; a barrier-hook race test fails when the lock is removed.
+- 2026-09-30: P4 done (2247bf7). Configuración hub, users list with search/filters and create panel, user profile (edit, temporary password, close sessions, deactivate/reactivate), activity log. The signed-in 403 renders inside the app shell (`app/(app)/forbidden.tsx`). Browser demo on the isolated `hachisky-u23-demo` stack (127.0.0.1:3102): create, per-field validation, edit, deactivate/reactivate, audit trail, staff refused on `/settings` and `/billing`.
+- 2026-09-30: P2 + P3 done (bbb205d). `requireSession` redirects to `/account/password?next=…` while `must_change_password` is set; the layout hides the modules meanwhile; a key button in the header opens the own change. `changeOwnPassword` calls `auth.api.changePassword` (revokeOtherSessions) with the user's headers, then clears the flag, sets `password_changed_at` and audits `user.password_change`. Found in the demo and fixed: the Server Action must copy Better Auth's new session cookie into `cookies()` and always redirect, because a re-render in the same request still reads the revoked cookie and lands on `/login` (structural test added). Isolated suite: typecheck, lint, 266/266 tests, `next build` green (`.verification/u23-f-*.log`).
+
+Acceptance criteria 1, 2, 3, 4, 5 and 6 were checked in the browser demo or by Postgres-backed tests.
+
+Open points:
+
+- No attempt limit on the own password change (server-side `auth.api` calls skip Better Auth's HTTP rate limit); needs a session to exploit. Decide in Judgment Day.
+- Demo credentials for `admin@hachisky.test` and `laura.martinez@il.test` appeared in chat; rotate or drop the demo stack before showing it.
+
 ## Next step
 
-P2 (forced password change) with strict TDD.
+P5 (U2.2 follow-ups), then P6: Judgment Day over the whole branch, then split into chained PRs for review (the branch is well over the 400-line budget).
