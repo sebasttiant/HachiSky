@@ -390,6 +390,19 @@ seconds).
   is added: have it overwrite `X-Forwarded-For` and configure
   `advanced.ipAddress.trustedProxies`.
 
+## Deployment conditions
+
+Recorded conditions, not implemented yet. Meet them before exposing the app
+publicly:
+
+1. **Trusted proxy boundary.** The sign-in rate limit keys on
+   `X-Forwarded-For` (see "Rate limiting"), which a client can set itself.
+   A reverse proxy that overwrites that header must sit in front of the app
+   before it is reachable from the internet.
+2. **Health check scope.** `GET /api/health` answers `200` for any positive
+   migration count (see "Health check"). It does not certify that the schema
+   is up to date; a deploy must check the migrator's own result.
+
 ## Limitations
 
 - No backup/restore tooling yet — `pgdata` is a plain Docker volume with no
