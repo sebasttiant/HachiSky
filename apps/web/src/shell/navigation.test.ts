@@ -13,7 +13,7 @@ import {
 const byId = (id: string) => MODULES.find((m) => m.id === id);
 
 describe("shell navigation", () => {
-  it("lists the five modules in order with Spanish labels and English routes", () => {
+  it("lists the six modules in order with Spanish labels and English routes", () => {
     assert.deepEqual(
       MODULES.map((m) => [m.label, m.href]),
       [
@@ -22,6 +22,7 @@ describe("shell navigation", () => {
         ["Trabajo", "/work"],
         ["Informes", "/reports"],
         ["Facturación", "/billing"],
+        ["Configuración", "/settings"],
       ],
     );
   });
@@ -49,11 +50,11 @@ describe("shell navigation", () => {
   it("never presents a non-implemented module as available", () => {
     const notAvailable = MODULES.filter((m) => m.availability !== "available");
     assert.ok(notAvailable.length >= 4);
-    // Only the home entry may be "available" in this delivery.
+    // Only Inicio and Configuración are implemented in this delivery.
     const available = MODULES.filter((m) => m.availability === "available");
     assert.deepEqual(
       available.map((m) => m.id),
-      ["home"],
+      ["home", "settings"],
     );
   });
 

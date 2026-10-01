@@ -44,6 +44,10 @@ const routeHandlers = appFiles.filter((file) =>
   /[/\\]route\.(ts|js)$/.test(file),
 );
 
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function stripComments(source: string) {
   return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
 }
@@ -51,24 +55,42 @@ function stripComments(source: string) {
 describe("page guards", () => {
   it("finds the app pages", () => {
     const routes = pages.map(routeOf).sort();
-    for (const expected of ["/", "/billing", "/clients", "/reports", "/work"]) {
+    for (const expected of [
+      "/",
+      "/billing",
+      "/clients",
+      "/reports",
+      "/work",
+      "/settings",
+      "/settings/users",
+      "/settings/users/[id]",
+      "/settings/activity",
+      "/account/password",
+    ]) {
       assert.ok(routes.includes(expected), `missing ${expected} in ${routes}`);
     }
   });
 
-  it("every non-public page awaits requireSession with its own route", () => {
+  it("every non-public page awaits requireSession or requireModule with its own route", () => {
     for (const file of pages) {
       const route = routeOf(file);
       if (PUBLIC_PAGES.has(route)) continue;
       const source = stripComments(readFileSync(file, "utf8"));
       assert.match(
         source,
-        /import \{[^}]*\brequireSession\b[^}]*\} from "[./]*src\/auth\/guard\.ts";/,
-        `${route}: must import requireSession from src/auth/guard.ts`,
+        /import \{[^}]*\b(requireSession|requireModule)\b[^}]*\} from "[./]*src\/auth\/guard\.ts";/,
+        `${route}: must import a guard from src/auth/guard.ts`,
       );
+      // A dynamic segment is passed as the real path: /a/[id] -> `/a/${id}`.
+      const r = /\[/.test(route)
+        ? `\`${route.replace(/\[(\w+)\]/g, "$${$1}")}\``
+        : JSON.stringify(route);
       assert.ok(
-        source.includes(`await requireSession(${JSON.stringify(route)})`),
-        `${route}: must call await requireSession(${JSON.stringify(route)})`,
+        source.includes(`await requireSession(${r})`) ||
+          new RegExp(
+            `await requireModule\\("[a-z]+", ${escapeRegExp(r)}\\)`,
+          ).test(source),
+        `${route}: must call await requireSession(${r}) or await requireModule(<module>, ${r})`,
       );
       assert.match(
         source,
@@ -76,6 +98,90 @@ describe("page guards", () => {
         `${route}: the page component must be async to await the guard`,
       );
     }
+  });
+});
+
+describe("forced password change", () => {
+  it("every guarded access goes through the password gate", () => {
+    const guard = stripComments(
+      readFileSync(join(ROOT, "src/auth/guard.ts"), "utf8"),
+    );
+    const body = guard.slice(
+      guard.indexOf("export async function requireSession"),
+    );
+    assert.match(
+      body.slice(0, body.indexOf("\n}\n")),
+      /passwordGateRedirect\(\s*await getMustChangePassword\(/,
+      "requireSession must redirect while a password change is pending",
+    );
+    assert.match(
+      guard,
+      /requireModule[\s\S]*await requireSession\(currentPath\)/,
+    );
+  });
+
+  it("the own password change hands over the new session cookie and always redirects", () => {
+    const source = stripComments(
+      readFileSync(join(ROOT, "src/account/actions.ts"), "utf8"),
+    );
+    assert.match(source, /await requireSession\(CHANGE_PASSWORD_PATH\)/);
+    assert.match(source, /cookieStore\.set\(/);
+    assert.doesNotMatch(
+      source,
+      /status: "success"/,
+      "re-rendering after the change reads the revoked cookie; redirect instead",
+    );
+    assert.match(source, /redirect\(\s*wasPending/);
+  });
+});
+
+describe("module guards", () => {
+  it("every module page checks its own module", async () => {
+    const { MODULES } = await import("../../src/shell/navigation.ts");
+    for (const module of MODULES) {
+      const file = pages.find((page) => routeOf(page) === module.href);
+      assert.ok(file, `no page for ${module.href}`);
+      const source = stripComments(readFileSync(file, "utf8"));
+      assert.ok(
+        source.includes(
+          `await requireModule(${JSON.stringify(module.id)}, ${JSON.stringify(module.href)})`,
+        ),
+        `${module.href}: must call await requireModule(${JSON.stringify(module.id)}, ${JSON.stringify(module.href)})`,
+      );
+    }
+  });
+
+  it("shows only the role's modules in the navigation", () => {
+    const layout = stripComments(
+      readFileSync(join(APP, "(app)/layout.tsx"), "utf8"),
+    );
+    assert.match(layout, /visibleModules\(user\.role\)/);
+    assert.match(layout, /<AppHeader user=\{user\} modules=\{modules\}/);
+    const home = stripComments(
+      readFileSync(join(APP, "(app)/page.tsx"), "utf8"),
+    );
+    assert.match(home, /visibleModules\(user\.role\)/);
+    assert.doesNotMatch(home, /\bMODULES\b/);
+  });
+
+  it("answers a forbidden module with a real 403 page", () => {
+    const config = readFileSync(join(ROOT, "next.config.ts"), "utf8");
+    assert.match(config, /authInterrupts:\s*true/);
+    const guard = stripComments(
+      readFileSync(join(ROOT, "src/auth/guard.ts"), "utf8"),
+    );
+    assert.match(guard, /forbidden\(\)/);
+    assert.ok(
+      appFiles.some((file) => relative(APP, file) === "forbidden.tsx"),
+      "app/forbidden.tsx must exist",
+    );
+  });
+
+  it("renders the signed-in 403 inside the app shell without repeating it", () => {
+    const file = join(APP, "(app)/forbidden.tsx");
+    assert.ok(appFiles.includes(file), "app/(app)/forbidden.tsx must exist");
+    const source = stripComments(readFileSync(file, "utf8"));
+    assert.doesNotMatch(source, /<main\b|<header\b|AppHeader|AppFooter/);
   });
 });
 
@@ -97,7 +203,7 @@ describe("data entry points", () => {
     }
   });
 
-  it("every Server Function module calls requireSession", () => {
+  it("every Server Function module calls requireSession or requireModule", () => {
     const sources = [...appFiles, ...walk(join(ROOT, "src"))].filter((file) =>
       /\.(tsx?|jsx?)$/.test(file),
     );
@@ -106,9 +212,29 @@ describe("data entry points", () => {
       if (!/^\s*["']use server["'];?/m.test(source)) continue;
       assert.match(
         source,
-        /requireSession\(/,
-        `${relative(ROOT, file)}: Server Functions must call requireSession`,
+        /require(Session|Module)\(/,
+        `${relative(ROOT, file)}: Server Functions must call requireSession or requireModule`,
       );
     }
+  });
+
+  it("every exported Server Function in the users module checks the settings module first", () => {
+    const source = stripComments(
+      readFileSync(join(ROOT, "src/users/actions.ts"), "utf8"),
+    );
+    assert.match(source, /^\s*["']use server["'];?/m);
+    const exported = [
+      ...source.matchAll(/export async function (\w+)\([^)]*\)[^{]*\{/g),
+    ];
+    assert.ok(exported.length >= 5, "expected the admin actions");
+    for (const match of exported) {
+      const body = source.slice((match.index ?? 0) + match[0].length);
+      assert.match(
+        body.trimStart(),
+        /^const (\w+|\{[^}]*\}) = await adminContext\(/,
+        `${match[1]}: must start with await adminContext(...)`,
+      );
+    }
+    assert.match(source, /await requireModule\("settings", /);
   });
 });

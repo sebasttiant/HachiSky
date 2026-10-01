@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { requireSession } from "../../src/auth/guard.ts";
+import { requireModule } from "../../src/auth/guard.ts";
+import { visibleModules } from "../../src/auth/permissions.ts";
 import { AvailabilityBadge } from "../../src/shell/AvailabilityBadge.tsx";
 import { ModuleIcon } from "../../src/shell/icons.tsx";
-import { MODULES } from "../../src/shell/navigation.ts";
 import {
   SystemStatus,
   SystemStatusFallback,
@@ -14,8 +14,8 @@ import styles from "./page.module.css";
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  await requireSession("/");
-  const tiles = MODULES.filter((m) => m.id !== "home");
+  const { user } = await requireModule("home", "/");
+  const tiles = visibleModules(user.role).filter((m) => m.id !== "home");
   return (
     <div className="container">
       <header className={styles.header}>

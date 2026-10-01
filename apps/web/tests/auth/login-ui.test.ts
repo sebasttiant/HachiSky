@@ -10,6 +10,10 @@ import { createRequire } from "node:module";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 const require = createRequire(process.cwd() + "/");
+export async function resolve(specifier, context, nextResolve) {
+  if (specifier === "next/link") return nextResolve("next/link.js", context);
+  return nextResolve(specifier, context);
+}
 export async function load(url, context, nextLoad) {
   if (url.endsWith(".module.css")) return { format: "module", shortCircuit: true, source: "export default new Proxy({}, { get: (_, k) => k });" };
   if (url.endsWith(".tsx")) {
@@ -120,6 +124,16 @@ it("labels the logout button even where its text is visually hidden", async () =
   );
   assert.match(html, /<button[^>]*type="button"[^>]*>[\s\S]*Cerrar sesión/);
   assert.match(html, />AP</);
+});
+
+it("links to the own password change with an accessible name", async () => {
+  const { UserArea } = await import("../../src/shell/UserArea.tsx");
+  const html = renderToStaticMarkup(
+    createElement(UserArea, { name: "Ana Pérez", jobTitle: null }),
+  );
+  const link = html.match(/<a\b[^>]*>/)?.[0] ?? "";
+  assert.match(link, /href="\/account\/password"/);
+  assert.match(link, /aria-label="Cambiar contraseña"/);
 });
 
 it("omits the job title when the user has none", async () => {

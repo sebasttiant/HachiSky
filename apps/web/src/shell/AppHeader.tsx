@@ -1,13 +1,16 @@
 import Link from "next/link";
 import styles from "./AppHeader.module.css";
 import { MainNav } from "./MainNav.tsx";
+import type { ModuleId } from "./navigation.ts";
 import { UserArea } from "./UserArea.tsx";
 import { Wordmark } from "./Wordmark.tsx";
 
 export function AppHeader({
   user,
+  modules = [],
 }: {
   user?: { name: string; jobTitle: string | null };
+  modules?: readonly ModuleId[];
 }) {
   return (
     <header className={styles.header}>
@@ -28,7 +31,7 @@ export function AppHeader({
           />
           <Wordmark />
         </Link>
-        <MainNav />
+        <MainNav allowed={modules} />
         {user ? <UserArea name={user.name} jobTitle={user.jobTitle} /> : null}
       </div>
     </header>
