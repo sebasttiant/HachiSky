@@ -87,6 +87,7 @@ describe("migration 0001 on a fresh database", () => {
           "admin_bootstrap",
           "app_instance",
           "audit_log",
+          "client",
           "session",
           "user",
           "user_security",
