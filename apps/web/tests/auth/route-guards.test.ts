@@ -44,6 +44,10 @@ const routeHandlers = appFiles.filter((file) =>
   /[/\\]route\.(ts|js)$/.test(file),
 );
 
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function stripComments(source: string) {
   return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
 }
@@ -56,19 +60,23 @@ describe("page guards", () => {
     }
   });
 
-  it("every non-public page awaits requireSession with its own route", () => {
+  it("every non-public page awaits requireSession or requireModule with its own route", () => {
     for (const file of pages) {
       const route = routeOf(file);
       if (PUBLIC_PAGES.has(route)) continue;
       const source = stripComments(readFileSync(file, "utf8"));
       assert.match(
         source,
-        /import \{[^}]*\brequireSession\b[^}]*\} from "[./]*src\/auth\/guard\.ts";/,
-        `${route}: must import requireSession from src/auth/guard.ts`,
+        /import \{[^}]*\b(requireSession|requireModule)\b[^}]*\} from "[./]*src\/auth\/guard\.ts";/,
+        `${route}: must import a guard from src/auth/guard.ts`,
       );
+      const r = JSON.stringify(route);
       assert.ok(
-        source.includes(`await requireSession(${JSON.stringify(route)})`),
-        `${route}: must call await requireSession(${JSON.stringify(route)})`,
+        source.includes(`await requireSession(${r})`) ||
+          new RegExp(
+            `await requireModule\\("[a-z]+", ${escapeRegExp(r)}\\)`,
+          ).test(source),
+        `${route}: must call await requireSession(${r}) or await requireModule(<module>, ${r})`,
       );
       assert.match(
         source,
@@ -76,6 +84,49 @@ describe("page guards", () => {
         `${route}: the page component must be async to await the guard`,
       );
     }
+  });
+});
+
+describe("module guards", () => {
+  it("every module page checks its own module", async () => {
+    const { MODULES } = await import("../../src/shell/navigation.ts");
+    for (const module of MODULES) {
+      const file = pages.find((page) => routeOf(page) === module.href);
+      assert.ok(file, `no page for ${module.href}`);
+      const source = stripComments(readFileSync(file, "utf8"));
+      assert.ok(
+        source.includes(
+          `await requireModule(${JSON.stringify(module.id)}, ${JSON.stringify(module.href)})`,
+        ),
+        `${module.href}: must call await requireModule(${JSON.stringify(module.id)}, ${JSON.stringify(module.href)})`,
+      );
+    }
+  });
+
+  it("shows only the role's modules in the navigation", () => {
+    const layout = stripComments(
+      readFileSync(join(APP, "(app)/layout.tsx"), "utf8"),
+    );
+    assert.match(layout, /visibleModules\(user\.role\)/);
+    assert.match(layout, /<AppHeader user=\{user\} modules=\{modules\}/);
+    const home = stripComments(
+      readFileSync(join(APP, "(app)/page.tsx"), "utf8"),
+    );
+    assert.match(home, /visibleModules\(user\.role\)/);
+    assert.doesNotMatch(home, /\bMODULES\b/);
+  });
+
+  it("answers a forbidden module with a real 403 page", () => {
+    const config = readFileSync(join(ROOT, "next.config.ts"), "utf8");
+    assert.match(config, /authInterrupts:\s*true/);
+    const guard = stripComments(
+      readFileSync(join(ROOT, "src/auth/guard.ts"), "utf8"),
+    );
+    assert.match(guard, /forbidden\(\)/);
+    assert.ok(
+      appFiles.some((file) => relative(APP, file) === "forbidden.tsx"),
+      "app/forbidden.tsx must exist",
+    );
   });
 });
 

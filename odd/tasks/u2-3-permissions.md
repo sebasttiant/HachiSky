@@ -40,7 +40,7 @@ The owner wants the team (staff) using HachiSky, with billing and configuration 
 
 ## Tasks
 
-- [ ] **P1** Module permissions: a role → module matrix used by `requireSession` (or a `requireModule` guard) on every page and Server Function; navigation shows only allowed modules; a direct URL to a forbidden module is refused on the server. Test enforces that every module page declares its module.
+- [x] **P1** Module permissions: a role → module matrix used by `requireSession` (or a `requireModule` guard) on every page and Server Function; navigation shows only allowed modules; a direct URL to a forbidden module is refused on the server. Test enforces that every module page declares its module.
 - [ ] **P2** Forced password change: `mustChangePassword` user field (migration `0002`); set for users created by an admin; while set, every protected page redirects to a change-password page; cleared only by a successful change.
 - [ ] **P3** Own password change: page reachable from the user menu; current password required; other sessions revoked on change; rate limited through the HTTP handler (allowlist extended on purpose).
 - [ ] **P4** User administration (Configuración → Usuarios, admin only): list users; create staff/admin with name, email, job title, role and temporary password; edit name, job title and role; deactivate and reactivate (ban/unban, sessions revoked); "close all sessions". Last-admin and self-protection rules.
@@ -63,7 +63,8 @@ The owner wants the team (staff) using HachiSky, with billing and configuration 
 ## Progress
 
 - 2026-09-30: worktree created from `feat/u2-2-login` at cea20de; owner decisions recorded.
+- 2026-09-30: P1 done. `src/auth/permissions.ts` holds the role → module matrix (billing admin only; Configuración joins in P4). Every module page calls `requireModule(<module>, <href>)`, which answers a forbidden module with `forbidden()` (HTTP 403, `app/forbidden.tsx`, `experimental.authInterrupts`). The layout passes `visibleModules(role)` to the header and the home tiles use the same list. RED observed first (missing module, pages without `requireModule`, no 403 page). Isolated `hachisky-u23-test`: typecheck, lint, 215/215 tests and `next build` green (`.verification/u23-p1-*.log`).
 
 ## Next step
 
-P1 (module permissions) with strict TDD.
+P2 (forced password change) with strict TDD.
