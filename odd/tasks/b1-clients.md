@@ -125,3 +125,8 @@ The owner wants business functionality after closing U2.3: clients first, then c
 ## Next step
 
 Owner authorizes an isolated demo for the browser walk-through (K3), then Judgment Day and the PR plan together with U2.3 (chained PRs; B1 forecast about 2,300 authored lines including tests, so it must be split: data+service, UI).
+
+## Native review (RDD)
+
+- 2026-10-01: `review assess --base-ref a338135 --committed-only` → risk high (auth hot path `tests/auth/route-guards.test.ts`), review due. Owner granted consent. Four lenses (risk, resilience, readability, reliability) over target `sha256:28af626f…`; lineage `review-0649ba63fb763246` **approved**, acknowledged, authority burned. No correction opened.
+- Advisory findings (non-blocking, separate later work): WARNING `R4-unexpected-error-log-drops-pg-code` (`submit.ts:60-64`, log the SQLSTATE with the error name); WARNING `R2-id-type-list-drift` (DB CHECK literal vs `IDENTIFICATION_TYPES`); WARNING `R3-empty-page-misreports` (`ClientList.tsx:62`, empty page > 1 says "Todavía no hay clientes" without a pager back); WARNING `R3-activity-details-unwired`: checked by the coordinator and **not confirmed**: `listAudit` selects `audit_log.details` (`src/users/service.ts:188`, `:217`) and the activity page passes the items unchanged to `ActivityList`; still unproven in a browser. Plus 9 SUGGESTIONs (incl. `R1-001`: audit IP taken from `X-Forwarded-For`, already a recorded deployment condition).
