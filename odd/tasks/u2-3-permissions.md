@@ -166,7 +166,8 @@ Pending:
 
 - Accounts left row-less and active by 35d7b10's createUser (demo stacks only) cannot be told apart from other row-less users; recreate demo data instead of reusing it.
 - Activity views hide resolved requests with a `NOT EXISTS` over `details->>'requestId'` (no index; fine at current volume, an expression index would need a migration).
-- `changeOwnPassword` keeps its single-transaction audit (see C2).
+- **Open (not resolved):** `changeOwnPassword` audit is not covered by the C2 request/completion scheme. Better Auth commits the new password first; the flag update and the `user.password_change` audit row share one later transaction. If that transaction fails, the password is changed, the forced-change flag stays as it was (safe side) and no audit row exists. Fixing it needs the same two-phase audit as C2; not done in this closure.
+- Owner decision (2026-10-01): a user without a `user_security` row must change the password on (re)activation, except the identified bootstrap admin.
 
 ## Next step
 
