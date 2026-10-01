@@ -12,7 +12,13 @@ export const AVAILABILITY_LABEL: Record<Availability, string> = {
   unavailable: "No disponible todavía",
 };
 
-export type ModuleId = "home" | "clients" | "work" | "reports" | "billing";
+export type ModuleId =
+  | "home"
+  | "clients"
+  | "work"
+  | "reports"
+  | "billing"
+  | "settings";
 
 export interface AppModule {
   id: ModuleId;
@@ -57,6 +63,13 @@ export const MODULES: readonly AppModule[] = [
     href: "/billing",
     availability: "unavailable",
     description: "Cuentas de cobro, pagos y saldos",
+  },
+  {
+    id: "settings",
+    label: "Configuración",
+    href: "/settings",
+    availability: "available",
+    description: "Usuarios del equipo, accesos y actividad de administración.",
   },
 ];
 

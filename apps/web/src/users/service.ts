@@ -1,6 +1,7 @@
 import { APIError } from "better-auth/api";
 import { and, asc, desc, eq, ilike, or, type SQL, sql } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import { alias } from "drizzle-orm/pg-core";
 import type { Auth } from "../auth/auth.ts";
 import type { RoleName } from "../auth/session.ts";
 import * as schema from "../db/schema/index.ts";
@@ -105,8 +106,22 @@ function escapeLike(value: string) {
   return value.replace(/[\\%_]/g, "\\$&");
 }
 
+export async function countUsers(
+  deps: Pick<UsersDeps, "db">,
+): Promise<{ active: number; inactive: number; mustChangePassword: number }> {
+  const rows = await deps.db
+    .select({
+      active: sql<number>`count(*) filter (where ${isActive})::int`,
+      inactive: sql<number>`count(*) filter (where not ${isActive})::int`,
+      mustChangePassword: sql<number>`count(*) filter (where ${isActive} and coalesce(${userSecurity.mustChangePassword}, false))::int`,
+    })
+    .from(user)
+    .leftJoin(userSecurity, eq(userSecurity.userId, user.id));
+  return rows[0] ?? { active: 0, inactive: 0, mustChangePassword: 0 };
+}
+
 export async function listUsers(
-  deps: UsersDeps,
+  deps: Pick<UsersDeps, "db">,
   filters: UserFilters,
 ): Promise<{ items: UserRow[]; hasMore: boolean }> {
   const conditions: SQL[] = [];
@@ -166,6 +181,43 @@ export async function listAuditForUser(
     .where(eq(auditLog.targetUserId, targetUserId))
     .orderBy(desc(auditLog.id))
     .limit(limit);
+}
+
+export const AUDIT_PAGE_SIZE = 50;
+
+export interface AuditListEntry extends AuditEntry {
+  targetUserId: string | null;
+  targetName: string | null;
+}
+
+export async function listAudit(
+  deps: Pick<UsersDeps, "db">,
+  filters: { action?: string; page: number },
+): Promise<{ items: AuditListEntry[]; hasMore: boolean }> {
+  const actor = alias(user, "actor");
+  const target = alias(user, "target");
+  const page = Math.max(1, filters.page);
+  const rows = await deps.db
+    .select({
+      id: auditLog.id,
+      occurredAt: auditLog.occurredAt,
+      action: auditLog.action,
+      actorName: actor.name,
+      details: auditLog.details,
+      targetUserId: auditLog.targetUserId,
+      targetName: target.name,
+    })
+    .from(auditLog)
+    .leftJoin(actor, eq(actor.id, auditLog.actorUserId))
+    .leftJoin(target, eq(target.id, auditLog.targetUserId))
+    .where(filters.action ? eq(auditLog.action, filters.action) : undefined)
+    .orderBy(desc(auditLog.id))
+    .limit(AUDIT_PAGE_SIZE + 1)
+    .offset((page - 1) * AUDIT_PAGE_SIZE);
+  return {
+    items: rows.slice(0, AUDIT_PAGE_SIZE),
+    hasMore: rows.length > AUDIT_PAGE_SIZE,
+  };
 }
 
 async function audit(

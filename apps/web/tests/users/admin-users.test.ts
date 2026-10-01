@@ -8,8 +8,10 @@ import * as schema from "../../src/db/schema/index.ts";
 import { assertTestDatabase } from "../../src/db/test-guard.ts";
 import {
   type AdminActor,
+  countUsers,
   createUser,
   getUser,
+  listAudit,
   listAuditForUser,
   listUsers,
   resetPassword,
@@ -355,6 +357,33 @@ describe("listUsers and listAuditForUser", () => {
       "María Paz",
     ]);
     assert.deepEqual(await names({ q: "%" }), []);
+    assert.deepEqual(await countUsers(deps), {
+      active: 2,
+      inactive: 1,
+      mustChangePassword: 0,
+    });
+  });
+
+  it("lists all activity with actor and target names, filterable by action, paged", async () => {
+    const target = await createTestUser(auth, "ivan@example.test", {
+      name: "Iván",
+    });
+    await revokeSessions(deps, admin, target.id);
+    await setActive(deps, admin, target.id, false);
+    const all = await listAudit(deps, { page: 1 });
+    assert.deepEqual(
+      all.items.map((e) => [e.action, e.actorName, e.targetName]),
+      [
+        ["user.deactivate", "Ana Admin", "Iván"],
+        ["user.sessions_revoke", "Ana Admin", "Iván"],
+      ],
+    );
+    assert.equal(all.hasMore, false);
+    const only = await listAudit(deps, { page: 1, action: "user.deactivate" });
+    assert.deepEqual(
+      only.items.map((e) => e.action),
+      ["user.deactivate"],
+    );
   });
 
   it("returns a user's recent activity newest first with the actor's name", async () => {

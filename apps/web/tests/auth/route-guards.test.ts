@@ -55,7 +55,17 @@ function stripComments(source: string) {
 describe("page guards", () => {
   it("finds the app pages", () => {
     const routes = pages.map(routeOf).sort();
-    for (const expected of ["/", "/billing", "/clients", "/reports", "/work"]) {
+    for (const expected of [
+      "/",
+      "/billing",
+      "/clients",
+      "/reports",
+      "/work",
+      "/settings",
+      "/settings/users",
+      "/settings/users/[id]",
+      "/settings/activity",
+    ]) {
       assert.ok(routes.includes(expected), `missing ${expected} in ${routes}`);
     }
   });
@@ -70,7 +80,10 @@ describe("page guards", () => {
         /import \{[^}]*\b(requireSession|requireModule)\b[^}]*\} from "[./]*src\/auth\/guard\.ts";/,
         `${route}: must import a guard from src/auth/guard.ts`,
       );
-      const r = JSON.stringify(route);
+      // A dynamic segment is passed as the real path: /a/[id] -> `/a/${id}`.
+      const r = /\[/.test(route)
+        ? `\`${route.replace(/\[(\w+)\]/g, "$${$1}")}\``
+        : JSON.stringify(route);
       assert.ok(
         source.includes(`await requireSession(${r})`) ||
           new RegExp(
@@ -128,6 +141,13 @@ describe("module guards", () => {
       "app/forbidden.tsx must exist",
     );
   });
+
+  it("renders the signed-in 403 inside the app shell without repeating it", () => {
+    const file = join(APP, "(app)/forbidden.tsx");
+    assert.ok(appFiles.includes(file), "app/(app)/forbidden.tsx must exist");
+    const source = stripComments(readFileSync(file, "utf8"));
+    assert.doesNotMatch(source, /<main\b|<header\b|AppHeader|AppFooter/);
+  });
 });
 
 describe("data entry points", () => {
@@ -148,7 +168,7 @@ describe("data entry points", () => {
     }
   });
 
-  it("every Server Function module calls requireSession", () => {
+  it("every Server Function module calls requireSession or requireModule", () => {
     const sources = [...appFiles, ...walk(join(ROOT, "src"))].filter((file) =>
       /\.(tsx?|jsx?)$/.test(file),
     );
@@ -157,9 +177,29 @@ describe("data entry points", () => {
       if (!/^\s*["']use server["'];?/m.test(source)) continue;
       assert.match(
         source,
-        /requireSession\(/,
-        `${relative(ROOT, file)}: Server Functions must call requireSession`,
+        /require(Session|Module)\(/,
+        `${relative(ROOT, file)}: Server Functions must call requireSession or requireModule`,
       );
     }
+  });
+
+  it("every exported Server Function in the users module checks the settings module first", () => {
+    const source = stripComments(
+      readFileSync(join(ROOT, "src/users/actions.ts"), "utf8"),
+    );
+    assert.match(source, /^\s*["']use server["'];?/m);
+    const exported = [
+      ...source.matchAll(/export async function (\w+)\([^)]*\)[^{]*\{/g),
+    ];
+    assert.ok(exported.length >= 5, "expected the admin actions");
+    for (const match of exported) {
+      const body = source.slice((match.index ?? 0) + match[0].length);
+      assert.match(
+        body.trimStart(),
+        /^const (\w+|\{[^}]*\}) = await adminContext\(/,
+        `${match[1]}: must start with await adminContext(...)`,
+      );
+    }
+    assert.match(source, /await requireModule\("settings", /);
   });
 });

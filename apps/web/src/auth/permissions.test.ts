@@ -26,17 +26,18 @@ describe("module permissions", () => {
     for (const m of MODULES) assert.equal(canAccessModule("admin", m.id), true);
   });
 
-  it("lets staff use Inicio, Clientes, Trabajo and Informes, not Facturación", () => {
+  it("lets staff use Inicio, Clientes, Trabajo and Informes, not Facturación or Configuración", () => {
     assert.deepEqual(
       MODULES.filter((m) => canAccessModule("staff", m.id)).map((m) => m.id),
       ["home", "clients", "work", "reports"],
     );
     assert.equal(canAccessModule("staff", "billing"), false);
+    assert.equal(canAccessModule("staff", "settings"), false);
   });
 
   it("denies roles and modules it does not know", () => {
     assert.equal(canAccessModule("user" as never, "home"), false);
-    assert.equal(canAccessModule("admin", "settings" as never), false);
+    assert.equal(canAccessModule("admin", "audit" as never), false);
   });
 
   it("lists the visible modules in navigation order", () => {

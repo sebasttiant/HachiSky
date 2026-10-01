@@ -9,6 +9,7 @@ export const MODULE_ROLES: Record<ModuleId, readonly RoleName[]> = {
   work: ["admin", "staff"],
   reports: ["admin", "staff"],
   billing: ["admin"],
+  settings: ["admin"],
 };
 
 export function canAccessModule(role: RoleName, module: ModuleId): boolean {
