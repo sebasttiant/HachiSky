@@ -11,10 +11,28 @@ export interface ActivityItem {
   actorName: string | null;
   targetUserId?: string | null;
   targetName?: string | null;
+  details?: Record<string, unknown>;
 }
 
-const DANGER = new Set(["user.deactivate", "user.sessions_revoke"]);
-const OK = new Set(["user.create", "user.activate"]);
+const DANGER = new Set([
+  "user.deactivate",
+  "user.sessions_revoke",
+  "client.deactivate",
+]);
+const OK = new Set([
+  "user.create",
+  "user.activate",
+  "client.create",
+  "client.activate",
+]);
+
+// Client actions have no target user; the audit details carry the client name.
+function clientName(item: ActivityItem): string | null {
+  const name = item.details?.name;
+  return item.action.startsWith("client.") && typeof name === "string"
+    ? name
+    : null;
+}
 
 export function ActivityList({
   items,
@@ -37,6 +55,7 @@ export function ActivityList({
           <div className={styles.eventText}>
             <strong>
               {actionLabel(item.action)}
+              {clientName(item) ? ` · ${clientName(item)}` : null}
               {showTarget && item.targetUserId ? (
                 <>
                   {" · "}

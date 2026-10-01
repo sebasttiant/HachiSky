@@ -39,3 +39,12 @@ describe("generateTemporaryPassword", () => {
     assert.equal(seen.size, 50);
   });
 });
+
+describe("client activity labels", () => {
+  it("labels every client action in Spanish", () => {
+    assert.equal(actionLabel("client.create"), "Creó un cliente");
+    assert.equal(actionLabel("client.update"), "Editó un cliente");
+    assert.equal(actionLabel("client.deactivate"), "Desactivó un cliente");
+    assert.equal(actionLabel("client.activate"), "Reactivó un cliente");
+  });
+});

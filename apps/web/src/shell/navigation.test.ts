@@ -40,8 +40,8 @@ describe("shell navigation", () => {
     }
   });
 
-  it("marks Clientes and Facturación unavailable, Trabajo and Informes preview", () => {
-    assert.equal(byId("clients")?.availability, "unavailable");
+  it("marks Clientes available, Facturación unavailable, Trabajo and Informes preview", () => {
+    assert.equal(byId("clients")?.availability, "available");
     assert.equal(byId("billing")?.availability, "unavailable");
     assert.equal(byId("work")?.availability, "preview");
     assert.equal(byId("reports")?.availability, "preview");
@@ -49,12 +49,12 @@ describe("shell navigation", () => {
 
   it("never presents a non-implemented module as available", () => {
     const notAvailable = MODULES.filter((m) => m.availability !== "available");
-    assert.ok(notAvailable.length >= 4);
-    // Only Inicio and Configuración are implemented in this delivery.
+    assert.ok(notAvailable.length >= 3);
+    // Only Inicio, Clientes and Configuración are implemented in this delivery.
     const available = MODULES.filter((m) => m.availability === "available");
     assert.deepEqual(
       available.map((m) => m.id),
-      ["home", "settings"],
+      ["home", "clients", "settings"],
     );
   });
 

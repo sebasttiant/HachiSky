@@ -40,7 +40,7 @@ export const MODULES: readonly AppModule[] = [
     id: "clients",
     label: "Clientes",
     href: "/clients",
-    availability: "unavailable",
+    availability: "available",
     description: "Fichas de clientes, contactos y condiciones de servicio.",
   },
   {

@@ -17,6 +17,10 @@ export const ACTION_LABEL: Record<string, string> = {
   "user.password_reset": "Asignó una contraseña temporal",
   "user.sessions_revoke": "Cerró todas las sesiones",
   "user.password_change": "Cambió su contraseña",
+  "client.create": "Creó un cliente",
+  "client.update": "Editó un cliente",
+  "client.deactivate": "Desactivó un cliente",
+  "client.activate": "Reactivó un cliente",
 };
 
 // A `<action>.requested` row without its completion: the change was asked

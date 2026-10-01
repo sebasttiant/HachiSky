@@ -59,6 +59,8 @@ describe("page guards", () => {
       "/",
       "/billing",
       "/clients",
+      "/clients/new",
+      "/clients/[id]",
       "/reports",
       "/work",
       "/settings",
@@ -236,5 +238,27 @@ describe("data entry points", () => {
       );
     }
     assert.match(source, /await requireModule\("settings", /);
+  });
+});
+
+describe("clients Server Functions", () => {
+  it("every exported Server Function checks the clients module first", () => {
+    const source = stripComments(
+      readFileSync(join(ROOT, "src/clients/actions.ts"), "utf8"),
+    );
+    assert.match(source, /^\s*["']use server["'];?/m);
+    const exported = [
+      ...source.matchAll(/export async function (\w+)\([^)]*\)[^{]*\{/g),
+    ];
+    assert.equal(exported.length, 3, "create, update and set-active actions");
+    for (const match of exported) {
+      const body = source.slice((match.index ?? 0) + match[0].length);
+      assert.match(
+        body.trimStart(),
+        /^const (\w+|\{[^}]*\}) = await clientContext\(/,
+        `${match[1]}: must start with await clientContext(...)`,
+      );
+    }
+    assert.match(source, /await requireModule\("clients", /);
   });
 });
