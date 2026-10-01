@@ -139,3 +139,13 @@ B1 is **implemented, not fully validated end to end**. Implementation and native
 - Checks observed: `pnpm test` 358/358, `pnpm typecheck` exit 0, `pnpm build` exit 0. **Lint ran on source paths** (`biome check` over `src app tests` and config files: 0 errors, 4 known warnings), **not the full `pnpm lint` command** (in the borrowed runner image it also scans an old `.next`).
 - Pending: browser walk-through of acceptance criteria 1–8; a forged staff request over real HTTP against the Server Function.
 - Non-blocking review warnings stay recorded above (not fixed by owner decision).
+
+## End-to-end validation (2026-10-01)
+
+Isolated stack `hachisky-b1-e2e` (existing images `hachisky-web:u23fix` and `postgres:18.6-trixie`, DB on tmpfs, port 127.0.0.1:3105, `pnpm build` and migrations run in the container, admin via bootstrap CLI), headless Chromium. Evidence: `.verification/b1-e2e/RESULTS.md` (gitignored).
+
+- Acceptance criteria 1-8: **PASS** (empty list, field errors with nothing saved, persisted create, duplicate rejected with a clear message, edit visible in Actividad with the client name, search by name and number, status filter, admin deactivate/reactivate, staff without controls, no delete option, no session redirects to login).
+- Forged staff request (replay of the admin's deactivate Server Action with the staff session): HTTP 200 RSC error "No tienes permiso para hacer esto."; client still active; no `client.deactivate` audit row added. Without session: HTTP 307 to `/login`; no state change.
+- Findings: `R3-activity-details-unwired` not reproduced (client name shown). `R3-empty-page-misreports` confirmed (page > 1 empty says "Todavía no hay clientes", no pager back); not fixed.
+- Cleanup verified: no containers, networks or volumes of the project remain; no build artifacts in the worktree.
+- Remains: phone-width layout and keyboard focus, pagination above 25 clients, K3 formal closure by the owner, Engram mirror, Judgment Day / PR plan (chained PRs with U2.3).
