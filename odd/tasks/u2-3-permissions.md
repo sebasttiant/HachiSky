@@ -77,6 +77,10 @@ Screens:
 - `/settings/activity`: audit log, newest first, filter by action, person and date.
 
 Delivery: expected well over the 400-line review budget; split into chained PRs (permissions + passwords, users panel, activity view) before publishing.
+- [ ] **C1** (closure finding F1) `createUser` fail-closed: an account whose forced change or audit could not be recorded must never give app access. Route: delegated writer (writer trigger).
+- [ ] **C2** (closure finding F2) Mutations vs audit: Better Auth commits on its own connections, outside the audit transaction. Make each mutation leave observable, recoverable evidence without promising atomicity and without schema changes. Route: delegated writer (writer trigger).
+- [ ] **C3** (closure finding F3, hypothesis) `changeOwnPassword` vs admin `resetPassword` race. Confirm only with a controlled barrier test; fix only if RED. Route: delegated writer (writer trigger).
+- [ ] **C4** Record deployment conditions (X-Forwarded-For trust, health check scope) in this document and the README. Documentation only.
 - [ ] **P5** Judgment Day follow-ups from U2.2: test the clearing cookie on the page-guard denied path; restrict the proxy's public `/api/auth/*` prefix to the allowlist.
 - [ ] **P6** Local demo and evidence; Judgment Day before the PR.
 
