@@ -65,6 +65,7 @@ describe("page guards", () => {
       "/settings/users",
       "/settings/users/[id]",
       "/settings/activity",
+      "/account/password",
     ]) {
       assert.ok(routes.includes(expected), `missing ${expected} in ${routes}`);
     }
@@ -97,6 +98,40 @@ describe("page guards", () => {
         `${route}: the page component must be async to await the guard`,
       );
     }
+  });
+});
+
+describe("forced password change", () => {
+  it("every guarded access goes through the password gate", () => {
+    const guard = stripComments(
+      readFileSync(join(ROOT, "src/auth/guard.ts"), "utf8"),
+    );
+    const body = guard.slice(
+      guard.indexOf("export async function requireSession"),
+    );
+    assert.match(
+      body.slice(0, body.indexOf("\n}\n")),
+      /passwordGateRedirect\(\s*await getMustChangePassword\(/,
+      "requireSession must redirect while a password change is pending",
+    );
+    assert.match(
+      guard,
+      /requireModule[\s\S]*await requireSession\(currentPath\)/,
+    );
+  });
+
+  it("the own password change hands over the new session cookie and always redirects", () => {
+    const source = stripComments(
+      readFileSync(join(ROOT, "src/account/actions.ts"), "utf8"),
+    );
+    assert.match(source, /await requireSession\(CHANGE_PASSWORD_PATH\)/);
+    assert.match(source, /cookieStore\.set\(/);
+    assert.doesNotMatch(
+      source,
+      /status: "success"/,
+      "re-rendering after the change reads the revoked cookie; redirect instead",
+    );
+    assert.match(source, /redirect\(\s*wasPending/);
   });
 });
 

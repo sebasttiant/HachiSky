@@ -24,6 +24,15 @@
   gap: var(--space-5);
 }
 
+.narrow {
+  width: min(100%, 34rem);
+  margin-inline: auto;
+}
+
+.lead {
+  margin-block: var(--space-3) var(--space-5);
+}
+
 .breadcrumb {
   display: inline-flex;
   align-items: center;

@@ -38,7 +38,9 @@ export type UserRuleCode =
   | "self_deactivation"
   | "self_password_reset"
   | "self_sessions"
-  | "last_admin";
+  | "last_admin"
+  | "wrong_current_password"
+  | "same_password";
 
 export class UserRuleError extends Error {
   readonly code: UserRuleCode;
@@ -267,9 +269,13 @@ async function assertNotLastActiveAdmin(executor: Executor, target: UserRow) {
   }
 }
 
+function apiErrorCode(error: unknown) {
+  if (!(error instanceof APIError)) return undefined;
+  return (error.body as { code?: unknown } | undefined)?.code;
+}
+
 function isEmailTaken(error: unknown) {
-  if (!(error instanceof APIError)) return false;
-  const code = (error.body as { code?: unknown } | undefined)?.code;
+  const code = apiErrorCode(error);
   return (
     code === "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL" ||
     code === "USER_ALREADY_EXISTS"
@@ -435,6 +441,60 @@ export async function resetPassword(
     headers: actor.headers,
   });
   await audit(deps.db, actor, "user.password_reset", id, {});
+}
+
+export async function getMustChangePassword(
+  deps: Pick<UsersDeps, "db">,
+  userId: string,
+): Promise<boolean> {
+  const rows = await deps.db
+    .select({ value: userSecurity.mustChangePassword })
+    .from(userSecurity)
+    .where(eq(userSecurity.userId, userId))
+    .limit(1);
+  return rows[0]?.value ?? false;
+}
+
+// `self` is the signed-in user changing their own password. Better Auth
+// verifies the current password, then replaces every session with a new one;
+// the caller must send `setCookies` back so this browser stays signed in.
+export async function changeOwnPassword(
+  deps: UsersDeps,
+  self: AdminActor,
+  input: { currentPassword: string; newPassword: string },
+): Promise<{ setCookies: string[] }> {
+  if (input.newPassword === input.currentPassword) {
+    throw new UserRuleError("same_password");
+  }
+  let responseHeaders: Headers;
+  try {
+    ({ headers: responseHeaders } = await deps.auth.api.changePassword({
+      body: { ...input, revokeOtherSessions: true },
+      headers: self.headers,
+      returnHeaders: true,
+    }));
+  } catch (error) {
+    if (apiErrorCode(error) === "INVALID_PASSWORD") {
+      throw new UserRuleError("wrong_current_password");
+    }
+    throw error;
+  }
+  await deps.db.transaction(async (tx) => {
+    const now = new Date();
+    await tx
+      .insert(userSecurity)
+      .values({
+        userId: self.id,
+        mustChangePassword: false,
+        passwordChangedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: userSecurity.userId,
+        set: { mustChangePassword: false, passwordChangedAt: now },
+      });
+    await audit(tx, self, "user.password_change", self.id, {});
+  });
+  return { setCookies: responseHeaders.getSetCookie() };
 }
 
 export async function revokeSessions(

@@ -49,11 +49,49 @@ const createSchema = z.object({
 const updateSchema = z.object({ name, jobTitle, role });
 const resetSchema = z.object({ temporaryPassword });
 
+const changeSchema = z
+  .object({
+    currentPassword: z
+      .string({ error: "Escribe tu contraseña actual." })
+      .min(1, { error: "Escribe tu contraseña actual." })
+      .max(128, { error: "La contraseña es demasiado larga." }),
+    newPassword: z
+      .string({ error: "Escribe la nueva contraseña." })
+      .min(TEMPORARY_PASSWORD_MIN, {
+        error: `La nueva contraseña debe tener al menos ${TEMPORARY_PASSWORD_MIN} caracteres.`,
+      })
+      .max(128, { error: "La contraseña es demasiado larga." }),
+    confirmPassword: z
+      .string({ error: "Repite la nueva contraseña." })
+      .min(1, { error: "Repite la nueva contraseña." }),
+  })
+  .superRefine((value, ctx) => {
+    if (value.confirmPassword !== value.newPassword) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["confirmPassword"],
+        message: "Las contraseñas no coinciden.",
+      });
+    }
+    if (value.newPassword === value.currentPassword) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["newPassword"],
+        message: "La nueva contraseña debe ser distinta de la actual.",
+      });
+    }
+  })
+  .transform(({ currentPassword, newPassword }) => ({
+    currentPassword,
+    newPassword,
+  }));
+
 export type FieldErrors<T> = Partial<Record<keyof T, string>>;
 
-export type ParseResult<T> =
+// `F` is the form's fields when they differ from the parsed data.
+export type ParseResult<T, F = T> =
   | { ok: true; data: T }
-  | { ok: false; fieldErrors: FieldErrors<T> };
+  | { ok: false; fieldErrors: FieldErrors<F> };
 
 function read(data: FormData, fields: readonly string[]) {
   const values: Record<string, unknown> = {};
@@ -65,8 +103,11 @@ function read(data: FormData, fields: readonly string[]) {
   return values;
 }
 
-function parse<T>(schema: z.ZodType, data: FormData): ParseResult<T> {
-  const fields = Object.keys((schema as z.ZodObject).shape);
+function parse<T, F = T>(
+  schema: z.ZodType,
+  data: FormData,
+  fields = Object.keys((schema as z.ZodObject).shape),
+): ParseResult<T, F> {
   const result = schema.safeParse(read(data, fields));
   if (result.success) return { ok: true, data: result.data as T };
   const fieldErrors: Record<string, string> = {};
@@ -74,7 +115,7 @@ function parse<T>(schema: z.ZodType, data: FormData): ParseResult<T> {
     const key = String(issue.path[0]);
     fieldErrors[key] ??= issue.message;
   }
-  return { ok: false, fieldErrors: fieldErrors as FieldErrors<T> };
+  return { ok: false, fieldErrors: fieldErrors as FieldErrors<F> };
 }
 
 export function parseCreateUser(data: FormData) {
@@ -87,4 +128,16 @@ export function parseUpdateUser(data: FormData) {
 
 export function parseResetPassword(data: FormData) {
   return parse<{ temporaryPassword: string }>(resetSchema, data);
+}
+
+export interface ChangePasswordInput {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export function parseChangePassword(data: FormData) {
+  return parse<
+    ChangePasswordInput,
+    ChangePasswordInput & { confirmPassword: string }
+  >(changeSchema, data, ["currentPassword", "newPassword", "confirmPassword"]);
 }

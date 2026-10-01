@@ -1,5 +1,8 @@
 import type { ReactNode } from "react";
-import { getCurrentSession } from "../../src/auth/guard.ts";
+import {
+  getCurrentSession,
+  getMustChangePassword,
+} from "../../src/auth/guard.ts";
 import { visibleModules } from "../../src/auth/permissions.ts";
 import { AppFooter } from "../../src/shell/AppFooter.tsx";
 import { AppHeader } from "../../src/shell/AppHeader.tsx";
@@ -11,7 +14,10 @@ import { PreviewNotice } from "../../src/shell/PreviewNotice.tsx";
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const session = await getCurrentSession();
   const user = session.status === "authenticated" ? session.user : undefined;
-  const modules = user ? visibleModules(user.role).map((m) => m.id) : [];
+  // While a password change is pending every module redirects to it.
+  const pending = user ? await getMustChangePassword(user.id) : false;
+  const modules =
+    user && !pending ? visibleModules(user.role).map((m) => m.id) : [];
   return (
     <>
       <AppHeader user={user} modules={modules} />

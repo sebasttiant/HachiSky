@@ -35,6 +35,8 @@ const RULE_MESSAGES: Record<UserRuleCode, string> = {
     "Para tu propia contraseña usa “Cambiar contraseña” en tu menú.",
   self_sessions: "Para cerrar tu propia sesión usa “Cerrar sesión”.",
   last_admin: "Debe quedar al menos un administrador activo.",
+  wrong_current_password: "La contraseña actual no es correcta.",
+  same_password: "La nueva contraseña debe ser distinta de la actual.",
 };
 
 const GENERIC_ERROR = "No se pudo completar la acción. Intenta de nuevo.";

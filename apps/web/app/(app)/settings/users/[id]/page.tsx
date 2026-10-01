@@ -93,8 +93,9 @@ export default async function UserDetailPage({
             </h2>
             {isSelf ? (
               <p className={`${styles.alert} ${styles.alertInfo}`}>
-                Esta es tu cuenta. Para cambiar tu contraseña o salir usa tu
-                menú; desde aquí no puedes desactivarte.
+                Esta es tu cuenta. Tu contraseña la cambias en{" "}
+                <Link href="/account/password">Cambiar contraseña</Link>; desde
+                aquí no puedes desactivarte.
               </p>
             ) : (
               <>

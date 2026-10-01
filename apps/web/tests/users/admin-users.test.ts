@@ -8,8 +8,10 @@ import * as schema from "../../src/db/schema/index.ts";
 import { assertTestDatabase } from "../../src/db/test-guard.ts";
 import {
   type AdminActor,
+  changeOwnPassword,
   countUsers,
   createUser,
+  getMustChangePassword,
   getUser,
   listAudit,
   listAuditForUser,
@@ -334,6 +336,105 @@ describe("resetPassword and revokeSessions", () => {
     await revokeSessions(deps, admin, target.id);
     assert.equal(await sessionCount(target.id), 0);
     assert.deepEqual(await auditActions(target.id), ["user.sessions_revoke"]);
+  });
+});
+
+describe("changeOwnPassword", () => {
+  const NEW = "mi-clave-nueva-2026";
+
+  async function createdByAdmin(email: string) {
+    const { id } = await createUser(deps, admin, {
+      name: "Luis Gómez",
+      email,
+      jobTitle: null,
+      role: "staff",
+      temporaryPassword: TEMP,
+    });
+    return id;
+  }
+
+  async function selfFor(email: string, password: string) {
+    const response = await signIn(email, password);
+    assert.equal(response.status, 200, `sign-in ${email}`);
+    const { user } = (await response.json()) as { user: { id: string } };
+    return {
+      id: user.id,
+      headers: new Headers({ cookie: cookieHeader(response) }),
+      ipAddress: "203.0.113.9",
+      userAgent: "node-test",
+    } satisfies AdminActor;
+  }
+
+  it("replaces the temporary password, clears the forced change, keeps only a new session and audits it", async () => {
+    const id = await createdByAdmin("luis@example.test");
+    assert.equal(await getMustChangePassword(deps, id), true);
+    await signIn("luis@example.test", TEMP);
+    const self = await selfFor("luis@example.test", TEMP);
+
+    const { setCookies } = await changeOwnPassword(deps, self, {
+      currentPassword: TEMP,
+      newPassword: NEW,
+    });
+
+    assert.equal(await getMustChangePassword(deps, id), false);
+    assert.equal((await getUser(deps, id))?.mustChangePassword, false);
+    const { rows } = await pool.query(
+      "select password_changed_at from user_security where user_id = $1",
+      [id],
+    );
+    assert.ok(rows[0].password_changed_at instanceof Date);
+    assert.equal(await sessionCount(id), 1);
+    assert.ok(setCookies.some((c) => /session_token=/.test(c)));
+    assert.notEqual((await signIn("luis@example.test", TEMP)).status, 200);
+    assert.equal((await signIn("luis@example.test", NEW)).status, 200);
+
+    assert.deepEqual(await auditActions(id), [
+      "user.create",
+      "user.password_change",
+    ]);
+    const audit = await pool.query(
+      "select actor_user_id, details from audit_log where action = 'user.password_change'",
+    );
+    assert.equal(audit.rows[0].actor_user_id, id);
+    assert.doesNotMatch(
+      JSON.stringify(audit.rows),
+      new RegExp(`${TEMP}|${NEW}`),
+    );
+  });
+
+  it("changes nothing when the current password is wrong", async () => {
+    const id = await createdByAdmin("luis@example.test");
+    const self = await selfFor("luis@example.test", TEMP);
+    assert.equal(
+      await ruleCode(
+        changeOwnPassword(deps, self, {
+          currentPassword: "no-es-la-clave-actual",
+          newPassword: NEW,
+        }),
+      ),
+      "wrong_current_password",
+    );
+    assert.equal(await getMustChangePassword(deps, id), true);
+    assert.equal((await signIn("luis@example.test", TEMP)).status, 200);
+    assert.deepEqual(await auditActions(id), ["user.create"]);
+  });
+
+  it("refuses a new password equal to the current one", async () => {
+    await createdByAdmin("luis@example.test");
+    const self = await selfFor("luis@example.test", TEMP);
+    assert.equal(
+      await ruleCode(
+        changeOwnPassword(deps, self, {
+          currentPassword: TEMP,
+          newPassword: TEMP,
+        }),
+      ),
+      "same_password",
+    );
+  });
+
+  it("reports no pending change for users without a security row", async () => {
+    assert.equal(await getMustChangePassword(deps, admin.id), false);
   });
 });
 

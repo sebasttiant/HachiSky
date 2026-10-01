@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { CHANGE_PASSWORD_PATH } from "../auth/password-gate.ts";
 import { LogoutButton } from "./LogoutButton.tsx";
 import styles from "./UserArea.module.css";
 
@@ -30,6 +32,30 @@ export function UserArea({
           ) : null}
         </p>
       </div>
+      <Link
+        href={CHANGE_PASSWORD_PATH}
+        className={styles.logout}
+        title="Cambiar contraseña"
+        aria-label="Cambiar contraseña"
+      >
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <circle
+            cx="8"
+            cy="15"
+            r="4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+          />
+          <path
+            d="M11 12l8-8 M16 7l2 2 M14 9l2 2"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+          />
+        </svg>
+      </Link>
       <LogoutButton />
     </div>
   );

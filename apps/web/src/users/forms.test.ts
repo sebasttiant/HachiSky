@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  parseChangePassword,
   parseCreateUser,
   parseResetPassword,
   parseUpdateUser,
@@ -72,6 +73,55 @@ describe("parseUpdateUser and parseResetPassword", () => {
     assert.deepEqual(
       parseUpdateUser(form({ name: "Eva", jobTitle: "", role: "admin" })),
       { ok: true, data: { name: "Eva", jobTitle: null, role: "admin" } },
+    );
+  });
+
+  it("checks the own password change: length, confirmation and a real change", () => {
+    const current = "temporal-segura-2026";
+    const next = "mi-clave-nueva-2026";
+    assert.deepEqual(
+      parseChangePassword(
+        form({
+          currentPassword: current,
+          newPassword: next,
+          confirmPassword: next,
+        }),
+      ),
+      {
+        ok: true,
+        data: { currentPassword: current, newPassword: next },
+      },
+    );
+
+    const errors = (values: Record<string, string>) => {
+      const result = parseChangePassword(form(values));
+      return result.ok ? {} : result.fieldErrors;
+    };
+    assert.deepEqual(
+      Object.keys(
+        errors({
+          currentPassword: "",
+          newPassword: "corta",
+          confirmPassword: "",
+        }),
+      ).sort(),
+      ["confirmPassword", "currentPassword", "newPassword"],
+    );
+    assert.match(
+      errors({
+        currentPassword: current,
+        newPassword: next,
+        confirmPassword: `${next}x`,
+      }).confirmPassword ?? "",
+      /no coinciden/,
+    );
+    assert.match(
+      errors({
+        currentPassword: current,
+        newPassword: current,
+        confirmPassword: current,
+      }).newPassword ?? "",
+      /distinta/,
     );
   });
 
