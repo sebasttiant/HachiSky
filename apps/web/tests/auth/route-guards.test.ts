@@ -71,6 +71,9 @@ describe("page guards", () => {
       "/settings/bank-accounts",
       "/settings/bank-accounts/new",
       "/settings/bank-accounts/[id]",
+      "/settings/signers",
+      "/settings/signers/new",
+      "/settings/signers/[id]",
       "/account/password",
     ]) {
       assert.ok(routes.includes(expected), `missing ${expected} in ${routes}`);
@@ -192,7 +195,7 @@ describe("module guards", () => {
 });
 
 describe("data entry points", () => {
-  it("every route handler is public on purpose or calls requireSession", () => {
+  it("every route handler is public on purpose or calls requireSession or requireModule", () => {
     const routes = routeHandlers.map(routeOf).sort();
     assert.deepEqual(
       routes.filter((route) => PUBLIC_ROUTE_HANDLERS.has(route)),
@@ -203,10 +206,94 @@ describe("data entry points", () => {
       if (PUBLIC_ROUTE_HANDLERS.has(route)) continue;
       assert.match(
         stripComments(readFileSync(file, "utf8")),
-        /requireSession\(/,
-        `${route}: route handler must call requireSession`,
+        /require(Session|Module)\(|checkModuleAccess\(/,
+        `${route}: route handler must call requireSession, requireModule or checkModuleAccess`,
       );
     }
+  });
+
+  it("serves stored billing images only through the admin settings guard", () => {
+    const file = routeHandlers.find(
+      (handler) => routeOf(handler) === "/api/billing/images/[id]",
+    );
+    assert.ok(file, "app/api/billing/images/[id]/route.ts must exist");
+    const source = stripComments(readFileSync(file, "utf8"));
+    const exported = [...source.matchAll(/export async function (\w+)/g)].map(
+      (match) => match[1],
+    );
+    assert.deepEqual(exported, ["GET"], "only GET is exported");
+    const guard = source.indexOf(
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: the literal source text of the guard call
+      'await requireModule("settings", `/api/billing/images/${id}`)',
+    );
+    assert.ok(
+      guard > 0,
+      'must await requireModule("settings", ...) with its own path',
+    );
+    const serve = source.indexOf("billingImageResponse(");
+    assert.ok(serve > guard, "the response is built only after the guard");
+    assert.doesNotMatch(source, /export const (dynamic|revalidate)\b/);
+  });
+
+  it("keeps the default Server Function body limit (no global raise)", async () => {
+    const { default: config } = await import("../../next.config.ts");
+    assert.equal(config.experimental?.serverActions?.bodySizeLimit, undefined);
+    const source = stripComments(
+      readFileSync(join(ROOT, "next.config.ts"), "utf8"),
+    );
+    assert.doesNotMatch(source, /bodySizeLimit/);
+  });
+
+  it("uploads billing images only through dedicated, guarded POST routes", () => {
+    const uploads = [
+      {
+        route: "/api/billing/uploads/issuer-logo",
+        guard:
+          'await checkModuleAccess("settings", "/api/billing/uploads/issuer-logo")',
+      },
+      {
+        route: "/api/billing/uploads/signers/[id]/signature",
+        guard:
+          // biome-ignore lint/suspicious/noTemplateCurlyInString: the literal source text of the guard call
+          'await checkModuleAccess("settings", `/api/billing/uploads/signers/${id}/signature`)',
+      },
+    ];
+    for (const { route, guard } of uploads) {
+      const file = routeHandlers.find((handler) => routeOf(handler) === route);
+      assert.ok(file, `${route}: route handler must exist`);
+      const source = stripComments(readFileSync(file, "utf8"));
+      const exported = [...source.matchAll(/export async function (\w+)/g)].map(
+        (match) => match[1],
+      );
+      assert.deepEqual(exported, ["POST"], `${route}: only POST is exported`);
+      const guardAt = source.indexOf(guard);
+      assert.ok(guardAt > 0, `${route}: must ${guard}`);
+      const handle = source.indexOf("handleBillingImageUpload(");
+      assert.ok(handle > guardAt, `${route}: handled only after the guard`);
+      assert.doesNotMatch(
+        source,
+        /request\.(formData|arrayBuffer|blob|json|text|body)\b/,
+        `${route}: the body is read only by handleBillingImageUpload`,
+      );
+    }
+    // No Server Function accepts image files any more.
+    const actions = stripComments(
+      readFileSync(join(ROOT, "src/billing/actions.ts"), "utf8"),
+    );
+    assert.doesNotMatch(actions, /upload/i);
+  });
+
+  it("checkModuleAccess applies the same session, password and module rules", () => {
+    const guard = stripComments(
+      readFileSync(join(ROOT, "src/auth/guard.ts"), "utf8"),
+    );
+    const body = guard.slice(
+      guard.indexOf("export async function checkModuleAccess"),
+    );
+    assert.match(
+      body.slice(0, body.indexOf("\n}\n")),
+      /await getCurrentSession\(\)[\s\S]*await getMustChangePassword\([\s\S]*moduleAccessDecision\(/,
+    );
   });
 
   it("every Server Function module calls requireSession or requireModule", () => {
@@ -278,8 +365,8 @@ describe("billing settings Server Functions", () => {
     ];
     assert.equal(
       exported.length,
-      4,
-      "save issuer, create, update and set-active actions",
+      7,
+      "issuer (save), bank account (create, update, set-active) and signer (create, update, set-active) actions; images upload through route handlers",
     );
     for (const match of exported) {
       const body = source.slice((match.index ?? 0) + match[0].length);

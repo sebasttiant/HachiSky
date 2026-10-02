@@ -73,6 +73,20 @@ export default async function SettingsPage() {
         </li>
         <li className={styles.hubTile}>
           <span className={styles.hubIcon}>
+            <ModuleIcon id="billing" size={24} />
+          </span>
+          <h2>
+            <Link href="/settings/signers" className={styles.hubLink}>
+              Firmantes
+            </Link>
+          </h2>
+          <p>
+            Quién firma las cuentas de cobro, con su cargo y su firma gráfica.
+            Se desactivan, no se borran.
+          </p>
+        </li>
+        <li className={styles.hubTile}>
+          <span className={styles.hubIcon}>
             <ModuleIcon id="reports" size={24} />
           </span>
           <h2>

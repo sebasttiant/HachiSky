@@ -10,7 +10,12 @@ import {
   setBankAccountActive,
   updateBankAccount,
 } from "./service.ts";
-import type { BankAccountField, IssuerField } from "./validation.ts";
+import { createSigner, setSignerActive, updateSigner } from "./signers.ts";
+import type {
+  BankAccountField,
+  IssuerField,
+  SignerField,
+} from "./validation.ts";
 
 // Form handling shared by the Server Functions (actions.ts). It holds no
 // framework imports so it can be tested against a real database: the
@@ -22,6 +27,11 @@ export const RULE_MESSAGES: Record<BillingRuleCode, string> = {
   not_found: "Esa cuenta bancaria ya no existe.",
   duplicate_bank_account:
     "Ya existe una cuenta con ese banco, número y moneda (puede estar inactiva).",
+  signer_not_found: "Ese firmante ya no existe.",
+  duplicate_signer:
+    "Ya existe un firmante con esa identificación (puede estar inactivo).",
+  issuer_not_configured:
+    "Configura primero los datos del emisor y luego sube el logo.",
 };
 
 const GENERIC_ERROR = "No se pudo completar la acción. Intenta de nuevo.";
@@ -45,6 +55,14 @@ const BANK_ACCOUNT_FIELDS: readonly BankAccountField[] = [
   "holderIdentificationType",
   "holderIdentificationNumber",
   "currency",
+];
+
+const SIGNER_FIELDS: readonly SignerField[] = [
+  "fullName",
+  "identificationType",
+  "identificationNumber",
+  "jobTitle",
+  "email",
 ];
 
 // Only strings are read; a file or a missing field becomes undefined and the
@@ -148,5 +166,57 @@ export async function submitSetBankAccountActive(
       active ? "activate_bank_account" : "deactivate_bank_account",
       error,
     );
+  }
+}
+
+// ---- Signers and images -----------------------------------------------------
+
+export async function submitCreateSigner(
+  deps: BillingDeps,
+  actor: BillingActor | null,
+  formData: FormData,
+): Promise<{ state: ActionState; id?: string }> {
+  try {
+    const { id } = await createSigner(
+      deps,
+      actor,
+      formToRaw(formData, SIGNER_FIELDS),
+    );
+    return { state: { status: "success" }, id };
+  } catch (error) {
+    return { state: failure("create_signer", error) };
+  }
+}
+
+export async function submitUpdateSigner(
+  deps: BillingDeps,
+  actor: BillingActor | null,
+  id: string,
+  formData: FormData,
+): Promise<ActionState> {
+  try {
+    await updateSigner(deps, actor, id, formToRaw(formData, SIGNER_FIELDS));
+    return { status: "success", message: "Cambios guardados." };
+  } catch (error) {
+    return failure("update_signer", error);
+  }
+}
+
+export async function submitSetSignerActive(
+  deps: BillingDeps,
+  actor: BillingActor | null,
+  id: string,
+  active: boolean,
+): Promise<ActionState> {
+  try {
+    await setSignerActive(deps, actor, id, active);
+    return {
+      status: "success",
+      message: active
+        ? "Firmante reactivado."
+        : "Firmante desactivado. Su información y sus firmas se conservan.",
+    };
+  } catch (error) {
+    return failure(active ? "activate_signer" : "deactivate_signer", error);
   }
 }

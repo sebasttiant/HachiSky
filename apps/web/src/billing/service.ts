@@ -11,6 +11,7 @@ import {
   type BankAccountInput,
   type IssuerFieldErrors,
   type IssuerInput,
+  type SignerFieldErrors,
   validateBankAccount,
   validateIssuer,
 } from "./validation.ts";
@@ -41,7 +42,10 @@ export type BillingRuleCode =
   | "unauthenticated"
   | "forbidden"
   | "not_found"
-  | "duplicate_bank_account";
+  | "duplicate_bank_account"
+  | "signer_not_found"
+  | "duplicate_signer"
+  | "issuer_not_configured";
 
 export class BillingRuleError extends Error {
   readonly code: BillingRuleCode;
@@ -53,8 +57,12 @@ export class BillingRuleError extends Error {
 }
 
 export class BillingValidationError extends Error {
-  readonly fieldErrors: IssuerFieldErrors & BankAccountFieldErrors;
-  constructor(fieldErrors: IssuerFieldErrors | BankAccountFieldErrors) {
+  readonly fieldErrors: IssuerFieldErrors &
+    BankAccountFieldErrors &
+    SignerFieldErrors;
+  constructor(
+    fieldErrors: IssuerFieldErrors | BankAccountFieldErrors | SignerFieldErrors,
+  ) {
     super("invalid billing settings");
     this.name = "BillingValidationError";
     this.fieldErrors = fieldErrors;
@@ -77,12 +85,13 @@ export interface BankAccountRecord extends BankAccountInput {
   updatedBy: string;
 }
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ISSUER_ROW_ID = 1;
 
 // Runs before anything else, so a refused actor never reaches validation or
 // the database. A missing actor is "no session"; an unknown role is refused.
-function authorize(
+export function authorize(
   actor: BillingActor | null | undefined,
   operation: BillingSettingsOperation,
 ): BillingActor {
@@ -95,7 +104,7 @@ function authorize(
   return actor;
 }
 
-function pgErrorCode(error: unknown): string | undefined {
+export function pgErrorCode(error: unknown): string | undefined {
   for (let current = error, depth = 0; current && depth < 4; depth += 1) {
     const code = (current as { code?: unknown }).code;
     if (typeof code === "string") return code;
@@ -111,9 +120,9 @@ function mapUniqueViolation(error: unknown): never {
   throw error;
 }
 
-type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
+export type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
 
-async function audit(
+export async function audit(
   tx: Tx,
   actor: BillingActor,
   action: string,
@@ -166,7 +175,12 @@ type IssuerRow = typeof issuerSettings.$inferSelect;
 type BankAccountRow = typeof bankAccount.$inferSelect;
 
 function toIssuerRecord(row: IssuerRow): IssuerRecord {
-  const { id: _id, ...rest } = row;
+  const {
+    id: _id,
+    logoImageId: _logoImageId,
+    logoImagePurpose: _logoImagePurpose,
+    ...rest
+  } = row;
   return {
     ...rest,
     identificationType:

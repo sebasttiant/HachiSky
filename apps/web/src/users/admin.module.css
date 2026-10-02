@@ -699,3 +699,16 @@
   gap: 0.1rem;
   min-width: 0;
 }
+
+/* Stored billing image (signature, issuer logo): white backdrop so a
+   transparent PNG stays readable in dark mode, never wider than its card. */
+.imagePreview {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  max-height: 12rem;
+  padding: var(--space-2);
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}

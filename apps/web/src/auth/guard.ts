@@ -5,6 +5,7 @@ import { getDb } from "../db/client.ts";
 import type { ModuleId } from "../shell/navigation.ts";
 import { getMustChangePassword as readMustChangePassword } from "../users/service.ts";
 import { getAuth } from "./auth.ts";
+import { type ModuleAccess, moduleAccessDecision } from "./module-access.ts";
 import { loginPath } from "./next-path.ts";
 import { passwordGateRedirect } from "./password-gate.ts";
 import { canAccessModule } from "./permissions.ts";
@@ -47,4 +48,23 @@ export async function requireModule(
   const session = await requireSession(currentPath);
   if (!canAccessModule(session.user.role, module)) forbidden();
   return session;
+}
+
+// For API route handlers that answer with a status code instead of a
+// redirect (JSON 401/403). Same checks as requireModule: session, pending
+// password change, module role. `currentPath` is the handler's own path
+// (enforced by tests/auth/route-guards.test.ts), kept for parity with
+// requireModule and for the password gate.
+export async function checkModuleAccess(
+  module: ModuleId,
+  currentPath: string,
+): Promise<ModuleAccess> {
+  const result = await getCurrentSession();
+  const mustChange =
+    result.status === "authenticated" &&
+    passwordGateRedirect(
+      await getMustChangePassword(result.user.id),
+      currentPath,
+    ) !== null;
+  return moduleAccessDecision(result, mustChange, module);
 }

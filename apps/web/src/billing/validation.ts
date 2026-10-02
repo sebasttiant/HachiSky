@@ -48,7 +48,20 @@ export interface BankAccountInput {
   currency: Currency;
 }
 
+export interface SignerInput {
+  fullName: string;
+  identificationType: IdentificationType;
+  identificationNumber: string;
+  jobTitle: string;
+  email: string;
+}
+
 export type IssuerField = keyof IssuerInput;
+export type SignerField = keyof SignerInput;
+export type SignerFieldErrors = Partial<Record<SignerField, string>>;
+export type SignerValidation =
+  | { ok: true; data: SignerInput }
+  | { ok: false; fieldErrors: SignerFieldErrors };
 export type BankAccountField = keyof BankAccountInput;
 export type IssuerFieldErrors = Partial<Record<IssuerField, string>>;
 export type BankAccountFieldErrors = Partial<Record<BankAccountField, string>>;
@@ -60,7 +73,14 @@ export type BankAccountValidation =
   | { ok: true; data: BankAccountInput }
   | { ok: false; fieldErrors: BankAccountFieldErrors };
 
-const LIMITS = { name: 200, address: 200, city: 100, bank: 100 } as const;
+const LIMITS = {
+  name: 200,
+  address: 200,
+  city: 100,
+  bank: 100,
+  jobTitle: 100,
+  email: 254,
+} as const;
 
 function asRecord(raw: unknown): Record<string, unknown> {
   return typeof raw === "object" && raw !== null
@@ -204,6 +224,49 @@ export function validateBankAccount(raw: unknown): BankAccountValidation {
       holderIdentificationType: holderType as IdentificationType,
       holderIdentificationNumber: holderNumber,
       currency: currency as Currency,
+    },
+  };
+}
+
+// Every signer field is required: the printed document shows name,
+// identification, job title and contact under the signature.
+export function validateSigner(raw: unknown): SignerValidation {
+  const input = asRecord(raw);
+  const errors: SignerFieldErrors = {};
+
+  const fullName = line(input.fullName);
+  if (!fullName) errors.fullName = "Escribe el nombre completo del firmante.";
+  else if (fullName.length > LIMITS.name)
+    errors.fullName = `El nombre es demasiado largo (máximo ${LIMITS.name} caracteres).`;
+
+  const type = input.identificationType;
+  if (!isIdentificationType(type))
+    errors.identificationType = "Elige un tipo de identificación.";
+  const { number, error: numberError } = checkIdentificationNumber(
+    type,
+    text(input.identificationNumber),
+  );
+  if (numberError) errors.identificationNumber = numberError;
+
+  const jobTitle = line(input.jobTitle);
+  if (!jobTitle) errors.jobTitle = "Escribe el cargo del firmante.";
+  else if (jobTitle.length > LIMITS.jobTitle)
+    errors.jobTitle = `El cargo es demasiado largo (máximo ${LIMITS.jobTitle} caracteres).`;
+
+  const email = text(input.email).toLowerCase();
+  if (!email) errors.email = "Escribe el correo del firmante.";
+  else if (email.length > LIMITS.email || !isValidEmail(email))
+    errors.email = "Escribe un correo válido.";
+
+  if (Object.keys(errors).length > 0) return { ok: false, fieldErrors: errors };
+  return {
+    ok: true,
+    data: {
+      fullName,
+      identificationType: type as IdentificationType,
+      identificationNumber: number,
+      jobTitle,
+      email,
     },
   };
 }

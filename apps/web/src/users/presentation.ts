@@ -27,6 +27,12 @@ export const ACTION_LABEL: Record<string, string> = {
   "billing.bank_account_update": "Editó una cuenta bancaria",
   "billing.bank_account_deactivate": "Desactivó una cuenta bancaria",
   "billing.bank_account_activate": "Reactivó una cuenta bancaria",
+  "billing.signer_create": "Creó un firmante",
+  "billing.signer_update": "Editó un firmante",
+  "billing.signer_deactivate": "Desactivó un firmante",
+  "billing.signer_activate": "Reactivó un firmante",
+  "billing.signer_signature_upload": "Subió una firma",
+  "billing.issuer_logo_upload": "Subió el logo del emisor",
 };
 
 // A `<action>.requested` row without its completion: the change was asked

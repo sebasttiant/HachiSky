@@ -1,18 +1,28 @@
 import { sql } from "drizzle-orm";
 import {
+  type AnyPgColumn,
   boolean,
   check,
+  customType,
+  foreignKey,
   index,
+  integer,
   pgTable,
   smallint,
   text,
   timestamp,
+  unique,
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 import { user } from "./auth.ts";
 
 const timestamptz = (name: string) => timestamp(name, { withTimezone: true });
+
+// node-postgres reads and writes bytea as a Buffer.
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType: () => "bytea",
+});
 
 // IL Asesorías is the only issuer, so its data is a single row. The primary
 // key is pinned to 1 by a CHECK: a second row cannot exist. No row means "not
@@ -31,6 +41,11 @@ export const issuerSettings = pgTable(
     email: text("email"),
     // Default payment terms copied into new documents (frozen on issue later).
     paymentTerms: text("payment_terms"),
+    // Current issuer logo version (see billing_image). The generated purpose
+    // column lets the composite foreign key below accept only a logo.
+    logoImageId: uuid("logo_image_id"),
+    logoImagePurpose:
+      text("logo_image_purpose").generatedAlwaysAs(sql`'issuer_logo'`),
     createdAt: timestamptz("created_at").defaultNow().notNull(),
     updatedAt: timestamptz("updated_at").defaultNow().notNull(),
     createdBy: text("created_by")
@@ -63,6 +78,11 @@ export const issuerSettings = pgTable(
       "issuer_settings_payment_terms_length",
       sql`char_length(${table.paymentTerms}) <= 1000`,
     ),
+    foreignKey({
+      name: "issuer_settings_logo_image_fk",
+      columns: [table.logoImageId, table.logoImagePurpose],
+      foreignColumns: [billingImage.id, billingImage.purpose],
+    }).onDelete("restrict"),
   ],
 );
 
@@ -127,6 +147,113 @@ export const bankAccount = pgTable(
     check(
       "bank_account_account_number_digits",
       sql`${table.accountNumber} ~ '^[0-9]{4,20}$'`,
+    ),
+  ],
+);
+
+// People who may sign billing documents (the signer is separate from the
+// author; IL Asesorías remains the issuer). Deactivated, never deleted. One
+// profile per identification, inactive rows included. The current signature
+// is a version of THIS signer's images: the composite foreign key refuses a
+// version that belongs to another signer or to the issuer logo.
+export const signerProfile = pgTable(
+  "signer_profile",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    fullName: text("full_name").notNull(),
+    identificationType: text("identification_type").notNull(),
+    identificationNumber: text("identification_number").notNull(),
+    jobTitle: text("job_title").notNull(),
+    email: text("email").notNull(),
+    active: boolean("active").default(true).notNull(),
+    currentSignatureImageId: uuid("current_signature_image_id"),
+    createdAt: timestamptz("created_at").defaultNow().notNull(),
+    updatedAt: timestamptz("updated_at").defaultNow().notNull(),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    updatedBy: text("updated_by")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+  },
+  (table) => [
+    uniqueIndex("signer_profile_identification_unique").on(
+      table.identificationType,
+      table.identificationNumber,
+    ),
+    index("signer_profile_active_idx").on(table.active),
+    foreignKey({
+      name: "signer_profile_current_signature_fk",
+      columns: [table.currentSignatureImageId, table.id],
+      foreignColumns: [billingImage.id, billingImage.signerProfileId],
+    }).onDelete("restrict"),
+    check(
+      "signer_profile_identification_type_check",
+      sql`${table.identificationType} in ('NIT', 'CC', 'CE', 'PP')`,
+    ),
+    check(
+      "signer_profile_full_name_not_blank",
+      sql`btrim(${table.fullName}) <> ''`,
+    ),
+    check(
+      "signer_profile_identification_number_not_blank",
+      sql`btrim(${table.identificationNumber}) <> ''`,
+    ),
+    check(
+      "signer_profile_job_title_not_blank",
+      sql`btrim(${table.jobTitle}) <> ''`,
+    ),
+    check("signer_profile_email_not_blank", sql`btrim(${table.email}) <> ''`),
+  ],
+);
+
+// Validated images (re-encoded PNG, never the raw upload), stored in the
+// database as immutable versions: a new upload is a new row and the owner
+// points at it; old rows are never changed or deleted (a trigger in
+// migration 0005 refuses UPDATE and DELETE). No public URL: served only by
+// app/api/billing/images/[id] to administrators.
+export const billingImage = pgTable(
+  "billing_image",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    purpose: text("purpose").notNull(),
+    signerProfileId: uuid("signer_profile_id").references(
+      (): AnyPgColumn => signerProfile.id,
+      { onDelete: "restrict" },
+    ),
+    data: bytea("data").notNull(),
+    sha256: text("sha256").notNull(),
+    byteSize: integer("byte_size").notNull(),
+    width: integer("width").notNull(),
+    height: integer("height").notNull(),
+    createdAt: timestamptz("created_at").defaultNow().notNull(),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+  },
+  (table) => [
+    unique("billing_image_id_signer_unique").on(
+      table.id,
+      table.signerProfileId,
+    ),
+    unique("billing_image_id_purpose_unique").on(table.id, table.purpose),
+    index("billing_image_signer_profile_idx").on(table.signerProfileId),
+    check(
+      "billing_image_purpose_check",
+      sql`${table.purpose} in ('signature', 'issuer_logo')`,
+    ),
+    check(
+      "billing_image_owner_check",
+      sql`(${table.purpose} = 'signature') = (${table.signerProfileId} is not null)`,
+    ),
+    check("billing_image_sha256_hex", sql`${table.sha256} ~ '^[0-9a-f]{64}$'`),
+    check(
+      "billing_image_byte_size_check",
+      sql`${table.byteSize} = octet_length(${table.data}) and ${table.byteSize} between 1 and 524288`,
+    ),
+    check(
+      "billing_image_dimensions_check",
+      sql`${table.width} between 1 and 2000 and ${table.height} between 1 and 2000`,
     ),
   ],
 );
