@@ -17,7 +17,7 @@ export default async function SettingsPage() {
       <PageHeader
         moduleId="settings"
         title="Configuración"
-        description="Administra quién usa HachiSky, qué puede hacer y revisa lo que ha cambiado."
+        description="Administra quién usa HachiSky, los datos de facturación y revisa lo que ha cambiado."
       />
       <ul className={styles.hubGrid}>
         <li className={styles.hubTile}>
@@ -42,6 +42,34 @@ export default async function SettingsPage() {
               contraseña temporal
             </span>
           ) : null}
+        </li>
+        <li className={styles.hubTile}>
+          <span className={styles.hubIcon}>
+            <ModuleIcon id="billing" size={24} />
+          </span>
+          <h2>
+            <Link href="/settings/issuer" className={styles.hubLink}>
+              Datos del emisor
+            </Link>
+          </h2>
+          <p>
+            Nombre, identificación y contacto de IL Asesorías en las cuentas de
+            cobro, y las condiciones de pago por defecto.
+          </p>
+        </li>
+        <li className={styles.hubTile}>
+          <span className={styles.hubIcon}>
+            <ModuleIcon id="billing" size={24} />
+          </span>
+          <h2>
+            <Link href="/settings/bank-accounts" className={styles.hubLink}>
+              Cuentas bancarias
+            </Link>
+          </h2>
+          <p>
+            Cuentas donde se paga, con su titular y su moneda. Se desactivan, no
+            se borran.
+          </p>
         </li>
         <li className={styles.hubTile}>
           <span className={styles.hubIcon}>

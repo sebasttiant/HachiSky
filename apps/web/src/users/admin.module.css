@@ -156,6 +156,15 @@
   align-content: start;
 }
 
+.fieldWide {
+  grid-column: 1 / -1;
+}
+
+.textarea {
+  min-height: 7rem;
+  resize: vertical;
+}
+
 .toolbar .field {
   flex: 1 1 12rem;
 }

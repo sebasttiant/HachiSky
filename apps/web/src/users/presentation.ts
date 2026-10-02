@@ -21,6 +21,12 @@ export const ACTION_LABEL: Record<string, string> = {
   "client.update": "Editó un cliente",
   "client.deactivate": "Desactivó un cliente",
   "client.activate": "Reactivó un cliente",
+  "billing.issuer_configure": "Configuró los datos del emisor",
+  "billing.issuer_update": "Editó los datos del emisor",
+  "billing.bank_account_create": "Creó una cuenta bancaria",
+  "billing.bank_account_update": "Editó una cuenta bancaria",
+  "billing.bank_account_deactivate": "Desactivó una cuenta bancaria",
+  "billing.bank_account_activate": "Reactivó una cuenta bancaria",
 };
 
 // A `<action>.requested` row without its completion: the change was asked

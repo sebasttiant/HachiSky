@@ -67,6 +67,10 @@ describe("page guards", () => {
       "/settings/users",
       "/settings/users/[id]",
       "/settings/activity",
+      "/settings/issuer",
+      "/settings/bank-accounts",
+      "/settings/bank-accounts/new",
+      "/settings/bank-accounts/[id]",
       "/account/password",
     ]) {
       assert.ok(routes.includes(expected), `missing ${expected} in ${routes}`);
@@ -260,5 +264,31 @@ describe("clients Server Functions", () => {
       );
     }
     assert.match(source, /await requireModule\("clients", /);
+  });
+});
+
+describe("billing settings Server Functions", () => {
+  it("every exported Server Function checks the settings module first", () => {
+    const source = stripComments(
+      readFileSync(join(ROOT, "src/billing/actions.ts"), "utf8"),
+    );
+    assert.match(source, /^\s*["']use server["'];?/m);
+    const exported = [
+      ...source.matchAll(/export async function (\w+)\([^)]*\)[^{]*\{/g),
+    ];
+    assert.equal(
+      exported.length,
+      4,
+      "save issuer, create, update and set-active actions",
+    );
+    for (const match of exported) {
+      const body = source.slice((match.index ?? 0) + match[0].length);
+      assert.match(
+        body.trimStart(),
+        /^const (\w+|\{[^}]*\}) = await billingContext\(/,
+        `${match[1]}: must start with await billingContext(...)`,
+      );
+    }
+    assert.match(source, /await requireModule\("settings", /);
   });
 });

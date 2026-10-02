@@ -18,12 +18,16 @@ const DANGER = new Set([
   "user.deactivate",
   "user.sessions_revoke",
   "client.deactivate",
+  "billing.bank_account_deactivate",
 ]);
 const OK = new Set([
   "user.create",
   "user.activate",
   "client.create",
   "client.activate",
+  "billing.issuer_configure",
+  "billing.bank_account_create",
+  "billing.bank_account_activate",
 ]);
 
 // Client actions have no target user; the audit details carry the client name.
