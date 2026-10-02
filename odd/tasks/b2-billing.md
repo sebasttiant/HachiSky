@@ -104,3 +104,28 @@ C3 (declaration text catalog) when authorized. Parent: Engram mirror, RDD assess
 - The approved review does NOT replace C1's pending checks: `pnpm build`, browser walk-through, forged request over real HTTP, phone-width layout and keyboard focus.
 - **Pending owner decision:** the bank account number rule "digits only, 4–20" was a writer assumption, not an owner requirement. COP and USD accounts may need other formats; do not add international formats (IBAN/SWIFT) on our own — the owner confirms the required formats before B2 closes. Issuer phone/email optional is also a writer assumption.
 - B2 is not complete: drafts, issue, annul and the printable document are still missing.
+
+## Save point (2026-10-01, end of session)
+
+**Branch state** (`feat/b2-billing`, local only, not pushed): `a079323` C1 · `ed37949` sharp 0.35.5 pinned · `970c9e5` C2 · `1a73491` C2 doc · plus this save-point docs commit. Working tree clean except this file before commit.
+
+**Verification evidence**
+- C2 integrated run (tree includes C1): `pnpm test` 516/516, `pnpm typecheck` 0, `biome check` source paths 0 errors (4 known warnings), `pnpm build` OK; static `public/brand/*` served byte-identical. **This build covers C1's pending build.** C1 browser checks remain pending.
+- Runner (`scratchpad/b2/r3.sh`, session RAM, lost on reboot): internet egress attached only for `pnpm install --frozen-lockfile`, disconnected and verified (`EAI_AGAIN`) before tests; DB never on egress.
+
+**Native review (RDD) status**
+- C1 `b89386a..a079323`: approved + acknowledged (lineage `review-2cfc4540ad84ac38`).
+- Full pending range `a079323..1a73491`: `lens_context_budget_exceeded` (no authority created). Owner approved splitting into consecutive ranges without rewriting commits:
+  - Range 1 `a079323..ed37949` (dependency + lockfile): **approved + acknowledged** (one reliability lens). WARNINGs checked by the coordinator: lockfile churn is only sharp 0.35.4→0.35.5, `@img/*` platform binaries (libvips 1.3.3→1.3.4) and unchanged-version metadata for `detect-libc`/`@img/colour`; no other dependency changed. Native binary loads on Linux glibc x64 (same base as the app image). Reviewed in a temporary detached worktree `HachiSky-worktrees/b2-review-r1` at `ed37949` (still present; remove only with owner OK).
+  - Range 2 `ed37949..1a73491`: **also exceeds the budget** (970c9e5 alone is 6,251 lines; no smaller split exists with current commits). Not retried.
+- **Proposal awaiting owner approval:** a separate branch `review/c2-slices` from `ed37949` re-creating the same content in 5 thematic commits (S1 schema + migration 0005 + snapshot; S2 image pipeline; S3 signers service; S4 upload routes + `checkModuleAccess` + client; S5 UI + doc), proving the final tree is byte-identical to `1a73491` (`git diff 1a73491 review/c2-slices` empty), then reviewing each slice as a consecutive range with its own native consent. Original commits untouched. Alternative: decline native review for C2 only (candidate-scoped).
+
+**Pending owner decisions / deviations**
+- 307 vs 401: `proxy.ts` redirects anonymous `/api/*` requests to `/login` before the upload route answers 401. Proxy NOT changed. Pending deviation; before closing B2 verify that an expired session can never produce a false "upload succeeded" message.
+- Bank account number format (writer assumption "digits only, 4–20") — owner confirms formats before B2 closes. Issuer phone/email optional — writer assumption.
+- Tax declaration: texts A/B pending the owner's accountant; mandatory-or-not pending; no default.
+- C1/C2 pending: browser walk-through (upload fetch, refresh, errors), forged request over real HTTP, phone-width layout, keyboard focus.
+
+**Next step (tomorrow):** owner decides on `review/c2-slices`; then close C2's review; then C3 only when authorized. B2 is NOT complete (C3 declarations, C4 drafts, C5 issue/annul, C6 printable document, C7 verification).
+
+**Environment notes:** disk ~8.6 GB free after a controlled cleanup (pnpm store prune 2.26 GB, npm cache 0.43 GB, orphaned bun cache 1.34 GB). Owner may still run `sudo dnf clean all` and `sudo journalctl --vacuum-size=200M`. Machine rebooted once on 2026-10-01 (clears `/tmp`, i.e. the session scratchpad: runners, logs, demo passwords). Demo `hachisky-u23fix-demo` (127.0.0.1:3103) is running but its password files were lost in that reboot.
