@@ -38,7 +38,9 @@ docker compose -p hachisky --project-directory apps/web -f apps/web/compose.yaml
 ```
 
 This starts Postgres (`db`), runs pending migrations once (`migrate`, exits
-after success), then starts the app (`web`) on
+after success), creates the default administrator on a fresh installation
+(`init-admin`, exits after success; see "Default administrator"), then starts
+the app (`web`) on
 `http://127.0.0.1:${HACHISKY_WEB_PORT:-3100}`.
 
 To stop the stack **without deleting data**:
@@ -142,6 +144,57 @@ failure, it logs `Migration failed (code=<SQLSTATE>)` (or `code=unknown`
 when no 5-character alphanumeric SQLSTATE is available) — never the raw
 error message, which can embed table names, column names, or literal
 values.
+
+## Default administrator
+
+Every fresh installation starts with the administrator
+**`admin@ilasesorias.com`** (name and job title "Administrador"). It is
+created at startup by the one-shot `init-admin` service, which runs after
+`migrate` and before `web` (`web` does not start unless it succeeds).
+
+On the first start:
+
+1. `init-admin` generates a random 32-character password (no `0`, `O`, `1`,
+   `l`, `I`) with `node:crypto`.
+2. It writes the password to a temporary file in `apps/web/secrets/` (file
+   `0600`, directory `0700`) **before** the account exists, creates the
+   admin through the same locked bootstrap as the CLI below, marks it
+   must-change-password, and renames the file to
+   `apps/web/secrets/initial-admin-password`.
+3. It prints one line, never the password:
+   `default-admin: created; password in secrets/initial-admin-password`.
+
+Read the password from the host (from the repository root):
+
+```bash
+cat apps/web/secrets/initial-admin-password
+```
+
+Sign in at `http://127.0.0.1:3100` with that email and password. The app
+then requires a new password before anything else (the same forced change as
+a user created from Configuración → Usuarios). After changing it, delete the
+file: `rm apps/web/secrets/initial-admin-password`.
+
+The directory is git-ignored and excluded from the Docker build context. It
+is a bind mount (`./secrets:/run/hachisky-secrets:Z`; `:Z` gives it a
+private SELinux label). The container runs as `node` (uid 1000), so the
+host directory must be writable by uid 1000. If Docker would create it as
+root, create it yourself first: `mkdir -m 700 apps/web/secrets`.
+
+**Idempotent.** If the installation already has a bootstrap record or any
+administrator, `init-admin` prints `default-admin: already initialized`,
+exits `0` and changes nothing: no file, no password reset. Existing
+installations keep their administrators.
+
+| Exit | Meaning |
+|------|---------|
+| 0 | Created, or already initialized (nothing done) |
+| 1 | Configuration error (database or auth environment, e.g. empty `BETTER_AUTH_SECRET`), unusable secrets directory, or an error before anything was written |
+| 3 | `password_file_exists`: `initial-admin-password` exists but the database is not initialized (for example it was recreated). Nothing is done; the file is never overwritten. Move or delete it, then start again |
+| 4 | Inconsistent: the bootstrap stopped part-way (reasons as in "Admin bootstrap"). The final file is not written. If an account may already use the generated password, the temporary file `initial-admin-password.<random>.tmp` is kept (`0600`) as the only copy; otherwise it is removed. Nothing is deleted or repaired; follow "Manual recovery procedure" |
+
+The stdin CLI below remains for manual bootstraps (for example an install
+started before this step existed, or a different first administrator).
 
 ## Admin bootstrap
 
@@ -326,7 +379,9 @@ auth-aware processes (`web` and `bootstrap-admin`).
    (see "Local secret").
 2. Start the stack (see "Starting the stack"). The `web` service receives
    `BETTER_AUTH_URL=http://127.0.0.1:${HACHISKY_WEB_PORT:-3100}`.
-3. Bootstrap the administrator once (see "Admin bootstrap").
+3. On a fresh installation, sign in as `admin@ilasesorias.com` with the
+   password from `apps/web/secrets/initial-admin-password` (see "Default
+   administrator"). Otherwise use the administrator created earlier.
 4. Open **`http://127.0.0.1:3100`** (not `localhost`). Better Auth trusts
    only the `BETTER_AUTH_URL` origin for cookie-bearing requests; from
    `http://localhost:3100` the browser sends `Origin: http://localhost:3100`

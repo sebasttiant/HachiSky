@@ -49,3 +49,50 @@ test("web validates the auth environment before starting the server", () => {
     /command: \["sh", "-c", "node src\/auth\/check-auth-env-cli\.ts && exec pnpm start"\]/,
   );
 });
+
+test("init-admin is a one-shot step after migrate with a private secrets bind mount", () => {
+  const init = serviceBlock("init-admin");
+  assert.doesNotMatch(init, /profiles:/, "runs on every `up`, not a profile");
+  assert.match(init, /image: hachisky-web:local/);
+  assert.match(
+    init,
+    /(command|entrypoint): \["node", "src\/auth\/default-admin-cli\.ts"\]/,
+  );
+  assert.match(init, /restart: "no"/);
+  assert.match(init, /migrate:\n\s+condition: service_completed_successfully/);
+  assert.match(init, /- \.\/secrets:\/run\/hachisky-secrets:Z/);
+  assert.match(init, /HACHISKY_SECRETS_DIR: \/run\/hachisky-secrets/);
+  assert.match(init, /BETTER_AUTH_SECRET: \$\{BETTER_AUTH_SECRET:-\}/);
+});
+
+test("init-admin never receives a password through env or command", () => {
+  const init = serviceBlock("init-admin");
+  for (const line of init.split("\n")) {
+    // Comments are not configuration; the database password is not the
+    // admin password.
+    if (/^\s*#/.test(line) || /PGPASSWORD|BETTER_AUTH_SECRET/.test(line)) {
+      continue;
+    }
+    assert.doesNotMatch(line, /password/i, `unexpected: ${line.trim()}`);
+  }
+  assert.doesNotMatch(init, /stdin_open/);
+});
+
+test("web starts only after init-admin completed successfully", () => {
+  const web = serviceBlock("web");
+  assert.match(
+    web,
+    /init-admin:\n\s+condition: service_completed_successfully/,
+  );
+  // The manual stdin bootstrap stays available under the ops profile.
+  assert.match(serviceBlock("bootstrap-admin"), /profiles: \["ops"\]/);
+});
+
+test("the secrets directory is never committed nor sent to the image", () => {
+  const read = (file: string) =>
+    readFileSync(new URL(`../../${file}`, import.meta.url), "utf8")
+      .split("\n")
+      .map((line) => line.trim());
+  assert.ok(read(".gitignore").includes("secrets/"));
+  assert.ok(read(".dockerignore").includes("secrets"));
+});

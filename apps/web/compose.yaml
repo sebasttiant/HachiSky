@@ -78,6 +78,8 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+      init-admin:
+        condition: service_completed_successfully
     healthcheck:
       test:
         [
@@ -88,6 +90,43 @@ services:
       timeout: 5s
       retries: 10
     restart: unless-stopped
+    networks:
+      - app-net
+
+  # One-shot startup step: on a fresh installation it creates the default
+  # administrator admin@ilasesorias.com with a random password written to
+  # ./secrets/initial-admin-password (0600). Already initialized: exits 0 and
+  # touches nothing. The password never goes through argv, env or logs. The
+  # image runs as `node` (uid 1000), so ./secrets must be writable by uid 1000.
+  # See README "Default administrator".
+  init-admin:
+    image: hachisky-web:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    command: ["node", "src/auth/default-admin-cli.ts"]
+    environment:
+      APP_ENV: development
+      PGHOST: db
+      PGPORT: "5432"
+      PGDATABASE: hachisky
+      PGUSER: hachisky
+      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      BETTER_AUTH_URL: http://127.0.0.1:${HACHISKY_WEB_PORT:-3100}
+      # Not `:?` (see bootstrap-admin). An empty value exits 1, so `web`,
+      # which waits for this step, does not start.
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-}
+      HACHISKY_SECRETS_DIR: /run/hachisky-secrets
+    volumes:
+      # `:Z` relabels the directory privately for SELinux hosts.
+      - ./secrets:/run/hachisky-secrets:Z
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
     networks:
       - app-net
 
