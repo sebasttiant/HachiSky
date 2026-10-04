@@ -91,22 +91,9 @@ it("renders logout with a non-submit button", async () => {
   assert.doesNotMatch(source, /Intentá|intentá/);
 });
 
-it("shows the signed-in user's name, job title and logout", async () => {
-  const { UserArea } = await import("../../src/shell/UserArea.tsx");
-  const html = renderToStaticMarkup(
-    createElement(UserArea, {
-      name: "Ana Pérez",
-      jobTitle: "Asesora de seguros",
-    }),
-  );
-  assert.match(html, /Ana Pérez/);
-  assert.match(html, /Asesora de seguros/);
-  assert.match(html, /Cerrar sesión/);
-});
-
 it("renders the user area in the header only when a user is given", () => {
   const header = readFileSync("src/shell/AppHeader.tsx", "utf8");
-  assert.match(header, /user \? <UserArea/);
+  assert.match(header, /user \? \(\s*<UserArea/);
 });
 
 it("derives avatar initials from the user's name", async () => {
@@ -117,32 +104,101 @@ it("derives avatar initials from the user's name", async () => {
   assert.equal(initials("   "), "?");
 });
 
-it("labels the logout button even where its text is visually hidden", async () => {
+async function renderUserArea(
+  props: { jobTitle?: string | null; role?: "admin" | "staff" } = {},
+) {
   const { UserArea } = await import("../../src/shell/UserArea.tsx");
-  const html = renderToStaticMarkup(
-    createElement(UserArea, { name: "Ana Pérez", jobTitle: null }),
+  return renderToStaticMarkup(
+    createElement(UserArea, {
+      name: "Ana Pérez",
+      role: props.role ?? "admin",
+      jobTitle: props.jobTitle === undefined ? null : props.jobTitle,
+    }),
   );
-  assert.match(html, /<button[^>]*type="button"[^>]*>[\s\S]*Cerrar sesión/);
-  assert.match(html, />AP</);
+}
+
+function splitMenu(html: string) {
+  const trigger = html.match(
+    /<button\b[^>]*aria-expanded[^>]*>[\s\S]*?<\/button>/,
+  );
+  assert.ok(trigger, "expected a disclosure trigger button");
+  const controls = trigger[0].match(/aria-controls="([^"]+)"/)?.[1];
+  assert.ok(controls, "trigger must reference its panel");
+  const panelStart = html.indexOf(`id="${controls}"`);
+  assert.ok(panelStart > -1, "panel id must match aria-controls");
+  const outside = html.replace(html.slice(panelStart), "");
+  return {
+    trigger: trigger[0],
+    panelTag: html.slice(html.lastIndexOf("<", panelStart), panelStart + 60),
+    panel: html.slice(panelStart),
+    outside,
+  };
+}
+
+it("opens the account actions from a closed disclosure button", async () => {
+  const { trigger, panelTag } = splitMenu(await renderUserArea());
+  assert.match(trigger, /type="button"/);
+  assert.match(trigger, /aria-expanded="false"/);
+  assert.match(panelTag, /\bhidden\b/);
+  assert.doesNotMatch(trigger, /role="menu"/);
 });
 
-it("links to the own password change with an accessible name", async () => {
-  const { UserArea } = await import("../../src/shell/UserArea.tsx");
-  const html = renderToStaticMarkup(
-    createElement(UserArea, { name: "Ana Pérez", jobTitle: null }),
+it("keeps the user's name in the trigger's accessible content", async () => {
+  const { trigger } = splitMenu(await renderUserArea());
+  assert.match(trigger, /Ana Pérez/);
+  assert.match(trigger, />AP</);
+});
+
+it("lists name, role, change-password link and logout inside the panel", async () => {
+  const { panel } = splitMenu(
+    await renderUserArea({ jobTitle: "Asesora de seguros" }),
   );
-  const link = html.match(/<a\b[^>]*>/)?.[0] ?? "";
+  assert.match(panel, /Ana Pérez/);
+  assert.match(panel, /Administrador/);
+  assert.match(panel, /Asesora de seguros/);
+  const link = panel.match(/<a\b[^>]*>[\s\S]*?<\/a>/)?.[0] ?? "";
   assert.match(link, /href="\/account\/password"/);
-  assert.match(link, /aria-label="Cambiar contraseña"/);
+  assert.match(link, /Cambiar contraseña/);
+  assert.match(panel, /<button[^>]*type="button"[^>]*>[\s\S]*Cerrar sesión/);
+});
+
+it("shows the staff role label", async () => {
+  const { panel } = splitMenu(await renderUserArea({ role: "staff" }));
+  assert.match(panel, /Colaborador/);
+});
+
+it("keeps the key link and logout out of the bar", async () => {
+  const { outside } = splitMenu(await renderUserArea());
+  assert.doesNotMatch(outside, /<a\b/);
+  assert.doesNotMatch(outside, /Cerrar sesión/);
+  assert.doesNotMatch(outside, /Cambiar contraseña/);
 });
 
 it("omits the job title when the user has none", async () => {
-  const { UserArea } = await import("../../src/shell/UserArea.tsx");
-  const html = renderToStaticMarkup(
-    createElement(UserArea, { name: "Ana Pérez", jobTitle: null }),
-  );
+  const html = await renderUserArea({ jobTitle: null });
   assert.match(html, /Ana Pérez/);
   assert.doesNotMatch(html, /null/);
+});
+
+it("closes the menu on Escape, outside interaction, focus loss and link follow", () => {
+  const source = readFileSync("src/shell/UserArea.tsx", "utf8");
+  assert.match(source, /"use client"/);
+  assert.match(source, /Escape/);
+  assert.match(source, /pointerdown/);
+  assert.match(source, /focusin/);
+  assert.match(source, /<Link[^>]*onClick/);
+});
+
+it("passes the session role from the header to the user menu", () => {
+  const header = readFileSync("src/shell/AppHeader.tsx", "utf8");
+  assert.match(header, /role: RoleName/);
+  assert.match(header, /role=\{user\.role\}/);
+});
+
+it("keeps the logout flow: signOut then a full navigation to /login", () => {
+  const source = readFileSync("src/shell/LogoutButton.tsx", "utf8");
+  assert.match(source, /signOut\(\)/);
+  assert.match(source, /window\.location\.replace\("\/login"\)/);
 });
 
 it("feeds the header from the server-side session", () => {

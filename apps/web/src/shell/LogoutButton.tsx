@@ -40,18 +40,15 @@ export function LogoutButton() {
   }
 
   return (
-    <div className={styles.logoutWrap}>
+    <div>
       <button
         type="button"
-        className={styles.logout}
-        title="Cerrar sesión"
+        className={styles.item}
         onClick={logout}
         disabled={pending}
       >
         <LogoutIcon />
-        <span className={styles.logoutLabel}>
-          {pending ? "Cerrando sesión…" : "Cerrar sesión"}
-        </span>
+        <span>{pending ? "Cerrando sesión…" : "Cerrar sesión"}</span>
       </button>
       {error && (
         <p role="alert" className={styles.error}>
