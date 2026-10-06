@@ -1,12 +1,16 @@
 import type { RoleName } from "../auth/session.ts";
 
-// Billing settings (issuer and its logo, bank accounts, default payment
-// terms, signer profiles and their signature images) are for
+// Billing settings (issuer profiles with their logos and default payment
+// terms, bank accounts, signer profiles and their signature images) are for
 // administrators only (owner, 2026-10-01); reading them is admin-only too.
 // The service checks this on every call; the UI only mirrors it.
 export type BillingSettingsOperation =
-  | "view_issuer"
-  | "save_issuer"
+  | "view_issuers"
+  | "create_issuer"
+  | "edit_issuer"
+  | "deactivate_issuer"
+  | "reactivate_issuer"
+  | "set_default_issuer"
   | "view_bank_accounts"
   | "create_bank_account"
   | "edit_bank_account"
@@ -25,8 +29,12 @@ export const BILLING_SETTINGS_PERMISSIONS: Record<
   BillingSettingsOperation,
   readonly RoleName[]
 > = {
-  view_issuer: ["admin"],
-  save_issuer: ["admin"],
+  view_issuers: ["admin"],
+  create_issuer: ["admin"],
+  edit_issuer: ["admin"],
+  deactivate_issuer: ["admin"],
+  reactivate_issuer: ["admin"],
+  set_default_issuer: ["admin"],
   view_bank_accounts: ["admin"],
   create_bank_account: ["admin"],
   edit_bank_account: ["admin"],

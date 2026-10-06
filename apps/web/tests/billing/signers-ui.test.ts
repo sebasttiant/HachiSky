@@ -178,7 +178,7 @@ describe("image upload form", () => {
     );
     const html = renderToStaticMarkup(
       createElement(ImageUploadForm, {
-        uploadUrl: "/api/billing/uploads/issuer-logo",
+        uploadUrl: "/api/billing/uploads/issuers/x/logo",
         purpose: "issuer_logo",
         label: "Logo",
         submitLabel: "Subir logo",

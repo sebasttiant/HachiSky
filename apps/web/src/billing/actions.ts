@@ -9,8 +9,10 @@ import type { ActionState } from "../users/action-state.ts";
 import {
   BANK_ACCOUNTS_PATH,
   bankAccountPath,
-  ISSUER_PATH,
+  ISSUERS_PATH,
+  issuerPath,
   NEW_BANK_ACCOUNT_PATH,
+  NEW_ISSUER_PATH,
   NEW_SIGNER_PATH,
   SIGNERS_PATH,
   signerPath,
@@ -18,11 +20,14 @@ import {
 import type { BillingActor, BillingDeps } from "./service.ts";
 import {
   submitCreateBankAccount,
+  submitCreateIssuer,
   submitCreateSigner,
-  submitSaveIssuer,
   submitSetBankAccountActive,
+  submitSetDefaultIssuer,
+  submitSetIssuerActive,
   submitSetSignerActive,
   submitUpdateBankAccount,
+  submitUpdateIssuer,
   submitUpdateSigner,
 } from "./submit.ts";
 
@@ -46,13 +51,50 @@ async function billingContext(
   };
 }
 
-export async function saveIssuerAction(
+export async function createIssuerAction(
   _previous: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const { deps, actor } = await billingContext(ISSUER_PATH);
-  const state = await submitSaveIssuer(deps, actor, formData);
-  if (state.status === "success") revalidatePath(ISSUER_PATH, "layout");
+  const { deps, actor } = await billingContext(NEW_ISSUER_PATH);
+  const { state, id, isDefault } = await submitCreateIssuer(
+    deps,
+    actor,
+    formData,
+  );
+  if (!id) return state;
+  revalidatePath(ISSUERS_PATH, "layout");
+  redirect(`${issuerPath(id)}?creado=1${isDefault ? "&predeterminado=1" : ""}`);
+}
+
+export async function updateIssuerAction(
+  id: string,
+  _previous: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const { deps, actor } = await billingContext(issuerPath(id));
+  const state = await submitUpdateIssuer(deps, actor, id, formData);
+  if (state.status === "success") revalidatePath(ISSUERS_PATH, "layout");
+  return state;
+}
+
+export async function setIssuerActiveAction(
+  id: string,
+  active: boolean,
+  _previous: ActionState,
+): Promise<ActionState> {
+  const { deps, actor } = await billingContext(issuerPath(id));
+  const state = await submitSetIssuerActive(deps, actor, id, active);
+  if (state.status === "success") revalidatePath(ISSUERS_PATH, "layout");
+  return state;
+}
+
+export async function setDefaultIssuerAction(
+  id: string,
+  _previous: ActionState,
+): Promise<ActionState> {
+  const { deps, actor } = await billingContext(issuerPath(id));
+  const state = await submitSetDefaultIssuer(deps, actor, id);
+  if (state.status === "success") revalidatePath(ISSUERS_PATH, "layout");
   return state;
 }
 

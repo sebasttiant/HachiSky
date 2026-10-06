@@ -7,6 +7,7 @@ import {
   type ImageRejection,
   sharpDecoder,
 } from "./image.ts";
+import { uploadIssuerLogo } from "./issuers.ts";
 import { canPerformBillingSettingsOperation } from "./permissions.ts";
 import {
   type BillingActor,
@@ -14,7 +15,7 @@ import {
   type BillingRuleCode,
   BillingRuleError,
 } from "./service.ts";
-import { uploadIssuerLogo, uploadSignerSignature } from "./signers.ts";
+import { uploadSignerSignature } from "./signers.ts";
 import { RULE_MESSAGES } from "./submit.ts";
 
 // The dedicated upload route handlers (app/api/billing/uploads/...): the
@@ -40,7 +41,7 @@ export type UploadAccess =
 
 export type UploadTarget =
   | { kind: "signature"; signerId: string }
-  | { kind: "issuer_logo" };
+  | { kind: "issuer_logo"; issuerId: string };
 
 export interface UploadInput {
   request: Request;
@@ -68,9 +69,12 @@ const RULE_STATUS: Record<BillingRuleCode, number> = {
   forbidden: 403,
   not_found: 404,
   signer_not_found: 404,
-  issuer_not_configured: 409,
+  issuer_not_found: 404,
+  issuer_inactive: 409,
+  issuer_is_default: 409,
   duplicate_bank_account: 409,
   duplicate_signer: 409,
+  duplicate_issuer: 409,
 };
 
 function json(status: number, body: Record<string, unknown>): Response {
@@ -215,7 +219,13 @@ export async function handleBillingImageUpload(
             upload,
             decoder,
           )
-        : await uploadIssuerLogo(deps, access.actor, upload, decoder);
+        : await uploadIssuerLogo(
+            deps,
+            access.actor,
+            target.issuerId,
+            upload,
+            decoder,
+          );
     return json(201, {
       ok: true,
       imageId,

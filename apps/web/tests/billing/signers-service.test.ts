@@ -8,18 +8,15 @@ import {
   type BillingActor,
   BillingRuleError,
   BillingValidationError,
-  saveIssuerSettings,
 } from "../../src/billing/service.ts";
 import {
   createSigner,
   getBillingImage,
-  getIssuerLogo,
   getSigner,
   listSignatureVersions,
   listSigners,
   setSignerActive,
   updateSigner,
-  uploadIssuerLogo,
   uploadSignerSignature,
 } from "../../src/billing/signers.ts";
 import { closeDb, getPool } from "../../src/db/client.ts";
@@ -49,16 +46,8 @@ const signer = {
   email: "Firmante@Example.test",
 };
 
-const issuer = {
-  legalName: "Emisor Demo S.A.S.",
-  identificationType: "NIT",
-  identificationNumber: "900.000.002-2",
-  address: "Calle Falsa 123",
-  city: "Ciudad Demo",
-};
-
 const BILLING_TABLES =
-  "signer_profile, billing_image, bank_account, issuer_settings";
+  "bank_account, issuer_logo, issuer_profile, signer_profile, billing_image";
 
 before(async () => {
   await assertTestDatabase(getPool());
@@ -230,8 +219,6 @@ describe("signer profiles", () => {
         updateSigner(deps, actor, id, signer),
         setSignerActive(deps, actor, id, false),
         uploadSignerSignature(deps, actor, id, png),
-        uploadIssuerLogo(deps, actor, png),
-        getIssuerLogo(deps, actor),
         getBillingImage(deps, actor, id),
         listSignatureVersions(deps, actor, id),
       ]) {
@@ -395,63 +382,6 @@ describe("signature images", () => {
         "update signer_profile set current_signature_image_id = $1 where id = $2",
         [imageId, b.id],
       ),
-      (error) => (error as { code?: string }).code === "23503",
-    );
-  });
-});
-
-describe("issuer logo", () => {
-  it("needs the issuer configured first", async () => {
-    assert.equal(
-      await code(uploadIssuerLogo(deps, admin, blob(await solidPng()))),
-      "issuer_not_configured",
-    );
-    assert.equal(await count("billing_image"), 0);
-  });
-
-  it("stores versions through the same pipeline and points the issuer at the latest", async () => {
-    await saveIssuerSettings(deps, admin, issuer);
-    assert.equal(await getIssuerLogo(deps, admin), null);
-    const first = await uploadIssuerLogo(
-      deps,
-      admin,
-      blob(await solidPng(600, 600)),
-    );
-    const second = await uploadIssuerLogo(
-      deps,
-      admin,
-      blob(await solidJpeg(500, 250)),
-    );
-    const logo = await getIssuerLogo(deps, admin);
-    assert.equal(logo?.id, second.imageId);
-    assert.equal(logo?.width, 500);
-    assert.ok(await getBillingImage(deps, admin, first.imageId));
-    const rows = (await auditRows()).filter(
-      (r) => r.action === "billing.issuer_logo_upload",
-    );
-    assert.equal(rows.length, 2);
-    assert.deepEqual(Object.keys(rows[1]?.details ?? {}).sort(), [
-      "byteSize",
-      "imageId",
-      "sha256",
-    ]);
-    assert.equal(
-      await code(uploadIssuerLogo(deps, admin, blob(await solidPng(2001, 10)))),
-      "image:dimensions",
-    );
-  });
-
-  it("cannot point the issuer at a signature version", async () => {
-    await saveIssuerSettings(deps, admin, issuer);
-    const { id } = await createSigner(deps, admin, signer);
-    const { imageId } = await uploadSignerSignature(
-      deps,
-      admin,
-      id,
-      blob(await solidPng()),
-    );
-    await assert.rejects(
-      pool.query("update issuer_settings set logo_image_id = $1", [imageId]),
       (error) => (error as { code?: string }).code === "23503",
     );
   });

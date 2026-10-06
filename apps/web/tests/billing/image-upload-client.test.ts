@@ -5,7 +5,7 @@ import { uploadBillingImage } from "../../src/billing/image-upload-client.ts";
 // The browser side of the upload route: what it sends and how it turns each
 // answer into the form state (Spanish messages under the file field).
 
-const URL_ = "/api/billing/uploads/issuer-logo";
+const URL_ = "/api/billing/uploads/issuers/x/logo";
 
 function file(size: number, type = "image/png") {
   return new File([new Uint8Array(size)], "logo.png", { type });

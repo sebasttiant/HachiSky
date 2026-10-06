@@ -68,6 +68,9 @@ describe("page guards", () => {
       "/settings/users/[id]",
       "/settings/activity",
       "/settings/issuer",
+      "/settings/issuers",
+      "/settings/issuers/new",
+      "/settings/issuers/[id]",
       "/settings/bank-accounts",
       "/settings/bank-accounts/new",
       "/settings/bank-accounts/[id]",
@@ -247,9 +250,10 @@ describe("data entry points", () => {
   it("uploads billing images only through dedicated, guarded POST routes", () => {
     const uploads = [
       {
-        route: "/api/billing/uploads/issuer-logo",
+        route: "/api/billing/uploads/issuers/[id]/logo",
         guard:
-          'await checkModuleAccess("settings", "/api/billing/uploads/issuer-logo")',
+          // biome-ignore lint/suspicious/noTemplateCurlyInString: the literal source text of the guard call
+          'await checkModuleAccess("settings", `/api/billing/uploads/issuers/${id}/logo`)',
       },
       {
         route: "/api/billing/uploads/signers/[id]/signature",
@@ -276,6 +280,13 @@ describe("data entry points", () => {
         `${route}: the body is read only by handleBillingImageUpload`,
       );
     }
+    // The single-issuer upload route is gone (logos belong to a profile).
+    assert.equal(
+      routeHandlers.some(
+        (handler) => routeOf(handler) === "/api/billing/uploads/issuer-logo",
+      ),
+      false,
+    );
     // No Server Function accepts image files any more.
     const actions = stripComments(
       readFileSync(join(ROOT, "src/billing/actions.ts"), "utf8"),
@@ -365,8 +376,8 @@ describe("billing settings Server Functions", () => {
     ];
     assert.equal(
       exported.length,
-      7,
-      "issuer (save), bank account (create, update, set-active) and signer (create, update, set-active) actions; images upload through route handlers",
+      10,
+      "issuer (create, update, set-active, set-default), bank account (create, update, set-active) and signer (create, update, set-active) actions; images upload through route handlers",
     );
     for (const match of exported) {
       const body = source.slice((match.index ?? 0) + match[0].length);

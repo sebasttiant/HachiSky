@@ -8,7 +8,7 @@ import {
   index,
   integer,
   pgTable,
-  smallint,
+  primaryKey,
   text,
   timestamp,
   unique,
@@ -24,14 +24,19 @@ const bytea = customType<{ data: Buffer; driverData: Buffer }>({
   dataType: () => "bytea",
 });
 
-// IL Asesorías is the only issuer, so its data is a single row. The primary
-// key is pinned to 1 by a CHECK: a second row cannot exist. No row means "not
-// configured yet"; nothing here is seeded with real data. RESTRICT keeps every
-// user that created or changed it.
-export const issuerSettings = pgTable(
-  "issuer_settings",
+// Issuer profiles: the entities billing documents are issued for (HachiSky
+// is the platform, not necessarily the issuer). Deactivated, never deleted,
+// so issued documents keep a valid reference. One profile per
+// identification, inactive rows included (reactivate instead of
+// duplicating). At most one default profile, and the default is always
+// active. The current logo is a version owned by THIS profile (see
+// issuer_logo): the composite foreign key refuses another issuer's logo.
+// Nothing here is seeded with real data. RESTRICT keeps every user that
+// created or changed a profile.
+export const issuerProfile = pgTable(
+  "issuer_profile",
   {
-    id: smallint("id").primaryKey().default(1),
+    id: uuid("id").primaryKey().defaultRandom(),
     legalName: text("legal_name").notNull(),
     identificationType: text("identification_type").notNull(),
     identificationNumber: text("identification_number").notNull(),
@@ -41,11 +46,9 @@ export const issuerSettings = pgTable(
     email: text("email"),
     // Default payment terms copied into new documents (frozen on issue later).
     paymentTerms: text("payment_terms"),
-    // Current issuer logo version (see billing_image). The generated purpose
-    // column lets the composite foreign key below accept only a logo.
-    logoImageId: uuid("logo_image_id"),
-    logoImagePurpose:
-      text("logo_image_purpose").generatedAlwaysAs(sql`'issuer_logo'`),
+    active: boolean("active").default(true).notNull(),
+    isDefault: boolean("is_default").default(false).notNull(),
+    currentLogoImageId: uuid("current_logo_image_id"),
     createdAt: timestamptz("created_at").defaultNow().notNull(),
     updatedAt: timestamptz("updated_at").defaultNow().notNull(),
     createdBy: text("created_by")
@@ -56,31 +59,73 @@ export const issuerSettings = pgTable(
       .references(() => user.id, { onDelete: "restrict" }),
   },
   (table) => [
-    check("issuer_settings_singleton", sql`${table.id} = 1`),
+    uniqueIndex("issuer_profile_identification_unique").on(
+      table.identificationType,
+      table.identificationNumber,
+    ),
+    uniqueIndex("issuer_profile_single_default")
+      .on(table.isDefault)
+      .where(sql`${table.isDefault}`),
+    index("issuer_profile_active_idx").on(table.active),
+    foreignKey({
+      name: "issuer_profile_current_logo_fk",
+      columns: [table.currentLogoImageId, table.id],
+      foreignColumns: [issuerLogo.imageId, issuerLogo.issuerProfileId],
+    }).onDelete("restrict"),
     check(
-      "issuer_settings_identification_type_check",
+      "issuer_profile_default_is_active",
+      sql`not ${table.isDefault} or ${table.active}`,
+    ),
+    check(
+      "issuer_profile_identification_type_check",
       sql`${table.identificationType} in ('NIT', 'CC', 'CE', 'PP')`,
     ),
     check(
-      "issuer_settings_legal_name_not_blank",
+      "issuer_profile_legal_name_not_blank",
       sql`btrim(${table.legalName}) <> ''`,
     ),
     check(
-      "issuer_settings_identification_number_not_blank",
+      "issuer_profile_identification_number_not_blank",
       sql`btrim(${table.identificationNumber}) <> ''`,
     ),
     check(
-      "issuer_settings_address_not_blank",
+      "issuer_profile_address_not_blank",
       sql`btrim(${table.address}) <> ''`,
     ),
-    check("issuer_settings_city_not_blank", sql`btrim(${table.city}) <> ''`),
+    check("issuer_profile_city_not_blank", sql`btrim(${table.city}) <> ''`),
     check(
-      "issuer_settings_payment_terms_length",
+      "issuer_profile_payment_terms_length",
       sql`char_length(${table.paymentTerms}) <= 1000`,
     ),
+  ],
+);
+
+// Which issuer owns each logo version. billing_image rows are immutable and
+// carry no issuer, so ownership lives here, immutable too (a trigger in
+// migration 0006 refuses UPDATE and DELETE). The generated purpose column
+// lets the composite foreign key accept only an issuer logo image.
+export const issuerLogo = pgTable(
+  "issuer_logo",
+  {
+    imageId: uuid("image_id").notNull(),
+    imagePurpose: text("image_purpose").generatedAlwaysAs(sql`'issuer_logo'`),
+    issuerProfileId: uuid("issuer_profile_id")
+      .notNull()
+      .references((): AnyPgColumn => issuerProfile.id, {
+        onDelete: "restrict",
+      }),
+    createdAt: timestamptz("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({ name: "issuer_logo_pkey", columns: [table.imageId] }),
+    unique("issuer_logo_image_issuer_unique").on(
+      table.imageId,
+      table.issuerProfileId,
+    ),
+    index("issuer_logo_issuer_profile_idx").on(table.issuerProfileId),
     foreignKey({
-      name: "issuer_settings_logo_image_fk",
-      columns: [table.logoImageId, table.logoImagePurpose],
+      name: "issuer_logo_image_fk",
+      columns: [table.imageId, table.imagePurpose],
       foreignColumns: [billingImage.id, billingImage.purpose],
     }).onDelete("restrict"),
   ],
@@ -103,6 +148,12 @@ export const bankAccount = pgTable(
     holderIdentificationType: text("holder_identification_type").notNull(),
     holderIdentificationNumber: text("holder_identification_number").notNull(),
     currency: text("currency").notNull(),
+    // Null for accounts that existed before issuer profiles and could not be
+    // assigned unambiguously. The app does not set or require it yet.
+    issuerProfileId: uuid("issuer_profile_id").references(
+      () => issuerProfile.id,
+      { onDelete: "restrict" },
+    ),
     active: boolean("active").default(true).notNull(),
     createdAt: timestamptz("created_at").defaultNow().notNull(),
     updatedAt: timestamptz("updated_at").defaultNow().notNull(),
@@ -120,6 +171,7 @@ export const bankAccount = pgTable(
       table.currency,
     ),
     index("bank_account_active_idx").on(table.active),
+    index("bank_account_issuer_profile_idx").on(table.issuerProfileId),
     check(
       "bank_account_account_type_check",
       sql`${table.accountType} in ('ahorros', 'corriente')`,
@@ -152,7 +204,7 @@ export const bankAccount = pgTable(
 );
 
 // People who may sign billing documents (the signer is separate from the
-// author; IL Asesorías remains the issuer). Deactivated, never deleted. One
+// author and from the issuer profile). Deactivated, never deleted. One
 // profile per identification, inactive rows included. The current signature
 // is a version of THIS signer's images: the composite foreign key refuses a
 // version that belongs to another signer or to the issuer logo.

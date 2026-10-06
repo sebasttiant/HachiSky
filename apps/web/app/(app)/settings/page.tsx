@@ -48,13 +48,13 @@ export default async function SettingsPage() {
             <ModuleIcon id="billing" size={24} />
           </span>
           <h2>
-            <Link href="/settings/issuer" className={styles.hubLink}>
-              Datos del emisor
+            <Link href="/settings/issuers" className={styles.hubLink}>
+              Emisores
             </Link>
           </h2>
           <p>
-            Nombre, identificación y contacto de IL Asesorías en las cuentas de
-            cobro, y las condiciones de pago por defecto.
+            Quién emite las cuentas de cobro: identificación, contacto, logo y
+            condiciones de pago por defecto. Uno es el predeterminado.
           </p>
         </li>
         <li className={styles.hubTile}>

@@ -22,11 +22,11 @@ import {
 } from "./service.ts";
 import { type SignerInput, validateSigner } from "./validation.ts";
 
-const { billingImage, issuerSettings, signerProfile } = schema;
+const { billingImage, signerProfile } = schema;
 
-// Signer profiles and the images kept with billing settings (each signer's
-// graphic signature and the issuer logo). Same rules as service.ts: the role
-// is checked first on every call (admin only, reads included), input is
+// Signer profiles and their graphic signatures, plus the image helpers that
+// issuers.ts reuses for issuer logos. Same rules as service.ts: the role is
+// checked first on every call (admin only, reads included), input is
 // validated here, and every change writes its audit row in the same
 // transaction. Images go through image.ts and are stored as immutable
 // versions; audit rows carry ids, hash and size only, never bytes or
@@ -68,7 +68,7 @@ const SIGNER_FIELDS = [
   "email",
 ] as const satisfies readonly (keyof SignerInput)[];
 
-const summaryColumns = {
+export const summaryColumns = {
   id: billingImage.id,
   sha256: billingImage.sha256,
   byteSize: billingImage.byteSize,
@@ -90,7 +90,7 @@ function mapDuplicateSigner(error: unknown): never {
   throw error;
 }
 
-async function readUpload(
+export async function readUpload(
   upload: ImageUpload,
   purpose: ImagePurpose,
   decoder: ImageDecoder,
@@ -105,7 +105,7 @@ async function readUpload(
   return result.image;
 }
 
-async function insertImage(
+export async function insertImage(
   tx: Tx,
   actor: BillingActor,
   purpose: ImagePurpose,
@@ -342,48 +342,6 @@ export async function uploadSignerSignature(
     });
     return { imageId };
   });
-}
-
-// The logo lives on the issuer row, so the issuer must be configured first.
-export async function uploadIssuerLogo(
-  deps: BillingDeps,
-  actorInput: BillingActor | null | undefined,
-  upload: ImageUpload,
-  decoder: ImageDecoder = sharpDecoder,
-): Promise<{ imageId: string }> {
-  const actor = authorize(actorInput, "upload_issuer_logo");
-  const image = await readUpload(upload, "issuer_logo", decoder);
-  return deps.db.transaction(async (tx) => {
-    const [current] = await tx
-      .select({ id: issuerSettings.id })
-      .from(issuerSettings)
-      .for("update");
-    if (!current) throw new BillingRuleError("issuer_not_configured");
-    const imageId = await insertImage(tx, actor, "issuer_logo", null, image);
-    await tx
-      .update(issuerSettings)
-      .set({ logoImageId: imageId, updatedBy: actor.id, updatedAt: sql`now()` })
-      .where(eq(issuerSettings.id, current.id));
-    await audit(tx, actor, "billing.issuer_logo_upload", {
-      imageId,
-      sha256: image.sha256,
-      byteSize: image.byteSize,
-    });
-    return { imageId };
-  });
-}
-
-export async function getIssuerLogo(
-  deps: BillingDeps,
-  actorInput: BillingActor | null | undefined,
-): Promise<ImageVersionSummary | null> {
-  authorize(actorInput, "view_issuer");
-  const [row] = await deps.db
-    .select(summaryColumns)
-    .from(issuerSettings)
-    .innerJoin(billingImage, eq(billingImage.id, issuerSettings.logoImageId))
-    .limit(1);
-  return row ?? null;
 }
 
 // One exact version with its bytes, for the protected image route.

@@ -31,7 +31,7 @@ let admin: BillingActor;
 let staff: BillingActor;
 
 const BILLING_TABLES =
-  "signer_profile, billing_image, bank_account, issuer_settings";
+  "bank_account, issuer_logo, issuer_profile, signer_profile, billing_image";
 
 const signer = {
   fullName: "Firmante Demo",

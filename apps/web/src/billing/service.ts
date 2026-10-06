@@ -10,16 +10,17 @@ import {
   type BankAccountFieldErrors,
   type BankAccountInput,
   type IssuerFieldErrors,
-  type IssuerInput,
   type SignerFieldErrors,
+  UUID,
   validateBankAccount,
-  validateIssuer,
 } from "./validation.ts";
 
-const { auditLog, bankAccount, issuerSettings } = schema;
+export { UUID };
 
-// Business rules for the billing settings: the issuer (single row), bank
-// accounts and the default payment terms. The service is the authority: every
+const { auditLog, bankAccount } = schema;
+
+// Business rules shared by the billing settings, and the bank accounts.
+// Issuer profiles live in issuers.ts and signers in signers.ts. The service is the authority: every
 // operation checks the actor's role first (admin only, reads included),
 // validates and normalizes its own input, and writes the audit row in the same
 // transaction as the change. Audit details carry ids and changed field names
@@ -45,7 +46,10 @@ export type BillingRuleCode =
   | "duplicate_bank_account"
   | "signer_not_found"
   | "duplicate_signer"
-  | "issuer_not_configured";
+  | "issuer_not_found"
+  | "duplicate_issuer"
+  | "issuer_is_default"
+  | "issuer_inactive";
 
 export class BillingRuleError extends Error {
   readonly code: BillingRuleCode;
@@ -69,13 +73,6 @@ export class BillingValidationError extends Error {
   }
 }
 
-export interface IssuerRecord extends IssuerInput {
-  createdAt: Date;
-  updatedAt: Date;
-  createdBy: string;
-  updatedBy: string;
-}
-
 export interface BankAccountRecord extends BankAccountInput {
   id: string;
   active: boolean;
@@ -84,10 +81,6 @@ export interface BankAccountRecord extends BankAccountInput {
   createdBy: string;
   updatedBy: string;
 }
-
-export const UUID =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const ISSUER_ROW_ID = 1;
 
 // Runs before anything else, so a refused actor never reaches validation or
 // the database. A missing actor is "no session"; an unknown role is refused.
@@ -138,28 +131,11 @@ export async function audit(
   });
 }
 
-function parseIssuer(raw: unknown): IssuerInput {
-  const result = validateIssuer(raw);
-  if (!result.ok) throw new BillingValidationError(result.fieldErrors);
-  return result.data;
-}
-
 function parseBankAccount(raw: unknown): BankAccountInput {
   const result = validateBankAccount(raw);
   if (!result.ok) throw new BillingValidationError(result.fieldErrors);
   return result.data;
 }
-
-const ISSUER_FIELDS = [
-  "legalName",
-  "identificationType",
-  "identificationNumber",
-  "address",
-  "city",
-  "phone",
-  "email",
-  "paymentTerms",
-] as const satisfies readonly (keyof IssuerInput)[];
 
 const BANK_ACCOUNT_FIELDS = [
   "bankName",
@@ -171,22 +147,7 @@ const BANK_ACCOUNT_FIELDS = [
   "currency",
 ] as const satisfies readonly (keyof BankAccountInput)[];
 
-type IssuerRow = typeof issuerSettings.$inferSelect;
 type BankAccountRow = typeof bankAccount.$inferSelect;
-
-function toIssuerRecord(row: IssuerRow): IssuerRecord {
-  const {
-    id: _id,
-    logoImageId: _logoImageId,
-    logoImagePurpose: _logoImagePurpose,
-    ...rest
-  } = row;
-  return {
-    ...rest,
-    identificationType:
-      row.identificationType as IssuerRecord["identificationType"],
-  };
-}
 
 function toBankAccountRecord(row: BankAccountRow): BankAccountRecord {
   return {
@@ -196,67 +157,6 @@ function toBankAccountRecord(row: BankAccountRow): BankAccountRecord {
       row.holderIdentificationType as BankAccountRecord["holderIdentificationType"],
     currency: row.currency as BankAccountRecord["currency"],
   };
-}
-
-// ---- Issuer ---------------------------------------------------------------
-
-// `null` means "not configured yet": there is no default issuer.
-export async function getIssuerSettings(
-  deps: BillingDeps,
-  actorInput: BillingActor | null | undefined,
-): Promise<IssuerRecord | null> {
-  authorize(actorInput, "view_issuer");
-  const [row] = await deps.db
-    .select()
-    .from(issuerSettings)
-    .where(eq(issuerSettings.id, ISSUER_ROW_ID))
-    .limit(1);
-  return row ? toIssuerRecord(row) : null;
-}
-
-export async function saveIssuerSettings(
-  deps: BillingDeps,
-  actorInput: BillingActor | null | undefined,
-  raw: unknown,
-): Promise<{ created: boolean }> {
-  const actor = authorize(actorInput, "save_issuer");
-  const data = parseIssuer(raw);
-  return deps.db.transaction(async (tx) => {
-    // ON CONFLICT DO NOTHING makes concurrent first saves converge: the loser
-    // waits for the winner's commit and then takes the update path below.
-    const inserted = await tx
-      .insert(issuerSettings)
-      .values({
-        ...data,
-        id: ISSUER_ROW_ID,
-        createdBy: actor.id,
-        updatedBy: actor.id,
-      })
-      .onConflictDoNothing()
-      .returning({ id: issuerSettings.id });
-    if (inserted.length > 0) {
-      await audit(tx, actor, "billing.issuer_configure", {
-        changedFields: ISSUER_FIELDS.filter((field) => data[field] !== null),
-      });
-      return { created: true };
-    }
-    const [current] = await tx
-      .select()
-      .from(issuerSettings)
-      .where(eq(issuerSettings.id, ISSUER_ROW_ID))
-      .for("update");
-    if (!current) throw new Error("issuer settings row vanished");
-    const changedFields = ISSUER_FIELDS.filter(
-      (field) => current[field] !== data[field],
-    );
-    if (changedFields.length === 0) return { created: false };
-    await tx
-      .update(issuerSettings)
-      .set({ ...data, updatedBy: actor.id, updatedAt: sql`now()` })
-      .where(eq(issuerSettings.id, ISSUER_ROW_ID));
-    await audit(tx, actor, "billing.issuer_update", { changedFields });
-    return { created: false };
-  });
 }
 
 // ---- Bank accounts ----------------------------------------------------------

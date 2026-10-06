@@ -7,9 +7,7 @@ import {
   BillingValidationError,
   createBankAccount,
   getBankAccount,
-  getIssuerSettings,
   listBankAccounts,
-  saveIssuerSettings,
   setBankAccountActive,
   updateBankAccount,
 } from "../../src/billing/service.ts";
@@ -31,18 +29,12 @@ const deps = { db: drizzle(pool, { schema }) };
 let admin: BillingActor;
 let staff: BillingActor;
 
-const issuer = {
-  legalName: "Emisor Demo S.A.S.",
-  identificationType: "NIT",
-  identificationNumber: "900.000.002-2",
-  address: "Calle Falsa 123",
-  city: "Ciudad Demo",
-  phone: "+57 300 000 0000",
-  email: "emisor@example.test",
-  paymentTerms: "Pago a 30 días.",
-};
+const BILLING_TABLES =
+  "bank_account, issuer_logo, issuer_profile, signer_profile, billing_image";
 
-const account = {
+let account: Record<string, string>;
+
+const accountFields = {
   bankName: "Banco Demo",
   accountType: "ahorros",
   accountNumber: "000111222",
@@ -59,7 +51,7 @@ before(async () => {
 
 beforeEach(async () => {
   await cleanAuthTables(pool);
-  await pool.query("truncate table bank_account, issuer_settings");
+  await pool.query(`truncate table ${BILLING_TABLES} cascade`);
   const a = await createTestUser(auth, "admin@example.test", { role: "admin" });
   const s = await createTestUser(auth, "staff@example.test", { role: "staff" });
   admin = {
@@ -69,16 +61,17 @@ beforeEach(async () => {
     userAgent: "node-test",
   };
   staff = { id: s.id, role: "staff", ipAddress: null, userAgent: null };
+  account = { ...accountFields };
 });
 
 after(async () => {
-  await pool.query("truncate table bank_account, issuer_settings");
+  await pool.query(`truncate table ${BILLING_TABLES} cascade`);
   await cleanAuthTables(pool);
   await pool.end();
   await closeDb();
 });
 
-async function count(table: "bank_account" | "issuer_settings" | "audit_log") {
+async function count(table: "bank_account" | "issuer_profile" | "audit_log") {
   const { rows } = await pool.query<{ n: number }>(
     `select count(*)::int as n from ${table}`,
   );
@@ -102,95 +95,6 @@ async function rejects(promise: Promise<unknown>) {
   }
   return "no-error";
 }
-
-describe("issuer settings", () => {
-  it("is not configured until an admin saves it", async () => {
-    assert.equal(await getIssuerSettings(deps, admin), null);
-  });
-
-  it("saves, normalizes and reads back the single row", async () => {
-    assert.deepEqual(await saveIssuerSettings(deps, admin, issuer), {
-      created: true,
-    });
-    const saved = await getIssuerSettings(deps, admin);
-    assert.ok(saved);
-    assert.equal(saved.legalName, "Emisor Demo S.A.S.");
-    assert.equal(saved.identificationNumber, "9000000022");
-    assert.equal(saved.paymentTerms, "Pago a 30 días.");
-    assert.equal(saved.updatedBy, admin.id);
-    assert.equal(await count("issuer_settings"), 1);
-  });
-
-  it("updates in place and never creates a second row", async () => {
-    await saveIssuerSettings(deps, admin, issuer);
-    assert.deepEqual(
-      await saveIssuerSettings(deps, admin, { ...issuer, city: "Otra Ciudad" }),
-      { created: false },
-    );
-    assert.equal(await count("issuer_settings"), 1);
-    assert.equal((await getIssuerSettings(deps, admin))?.city, "Otra Ciudad");
-  });
-
-  it("audits creation and update with field names only, no values", async () => {
-    await saveIssuerSettings(deps, admin, issuer);
-    await saveIssuerSettings(deps, admin, {
-      ...issuer,
-      phone: "+57 311 111 1111",
-      email: "otro@example.test",
-      paymentTerms: "Contado.",
-    });
-    const rows = await auditRows();
-    assert.deepEqual(
-      rows.map((row) => row.action),
-      ["billing.issuer_configure", "billing.issuer_update"],
-    );
-    assert.deepEqual(rows[1].details, {
-      changedFields: ["phone", "email", "paymentTerms"],
-    });
-    assert.equal(rows[1].actor_user_id, admin.id);
-    assert.equal(rows[1].target_user_id, null);
-    assert.equal(rows[1].ip_address, "203.0.113.7");
-    const serialized = JSON.stringify(rows);
-    for (const secret of [
-      "9000000022",
-      "900.000.002-2",
-      "311",
-      "300 000",
-      "otro@example.test",
-      "emisor@example.test",
-      "Emisor Demo",
-    ]) {
-      assert.equal(serialized.includes(secret), false, secret);
-    }
-  });
-
-  it("writes no audit row when nothing changed", async () => {
-    await saveIssuerSettings(deps, admin, issuer);
-    const before = await count("audit_log");
-    await saveIssuerSettings(deps, admin, issuer);
-    assert.equal(await count("audit_log"), before);
-  });
-
-  it("rejects invalid input with field errors and saves nothing", async () => {
-    await assert.rejects(
-      saveIssuerSettings(deps, admin, { ...issuer, legalName: "" }),
-      (error: unknown) =>
-        error instanceof BillingValidationError &&
-        Boolean(error.fieldErrors.legalName),
-    );
-    assert.equal(await count("issuer_settings"), 0);
-    assert.equal(await count("audit_log"), 0);
-  });
-
-  it("lets concurrent first saves converge on one row", async () => {
-    const results = await Promise.all([
-      saveIssuerSettings(deps, admin, issuer),
-      saveIssuerSettings(deps, admin, { ...issuer, city: "Otra Ciudad" }),
-    ]);
-    assert.equal(results.filter((result) => result.created).length, 1);
-    assert.equal(await count("issuer_settings"), 1);
-  });
-});
 
 describe("bank accounts", () => {
   it("creates an active account with its creator and audits it", async () => {
@@ -388,17 +292,11 @@ describe("authorization: admin only, nothing changes otherwise", () => {
 
   it("refuses every operation to staff, no session and forged roles", async () => {
     const { id } = await createBankAccount(deps, admin, account);
-    await saveIssuerSettings(deps, admin, issuer);
     const audits = await count("audit_log");
     const operations: [
       string,
       (actor: BillingActor | null) => Promise<unknown>,
     ][] = [
-      ["getIssuerSettings", (a) => getIssuerSettings(deps, a)],
-      [
-        "saveIssuerSettings",
-        (a) => saveIssuerSettings(deps, a, { ...issuer, city: "X Ciudad" }),
-      ],
       ["listBankAccounts", (a) => listBankAccounts(deps, a)],
       ["getBankAccount", (a) => getBankAccount(deps, a, id)],
       [
@@ -427,10 +325,8 @@ describe("authorization: admin only, nothing changes otherwise", () => {
       }
     }
     assert.equal(await count("bank_account"), 1);
-    assert.equal(await count("issuer_settings"), 1);
     assert.equal(await count("audit_log"), audits);
     assert.equal((await getBankAccount(deps, admin, id))?.active, true);
-    assert.equal((await getIssuerSettings(deps, admin))?.city, "Ciudad Demo");
   });
 
   it("refuses before validating: an invalid payload from staff is forbidden, not a field error", async () => {
@@ -439,7 +335,7 @@ describe("authorization: admin only, nothing changes otherwise", () => {
       "forbidden",
     );
     assert.equal(
-      await rejects(saveIssuerSettings(deps, null, {})),
+      await rejects(createBankAccount(deps, null, {})),
       "unauthenticated",
     );
   });

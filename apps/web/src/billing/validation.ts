@@ -1,5 +1,5 @@
-// Validation and normalization for the billing settings (issuer and bank
-// accounts). Pure (no server imports) so the service and the forms share it;
+// Validation and normalization for the billing settings (issuer profiles,
+// bank accounts and signers). Pure (no server imports) so the service and the forms share it;
 // the service always re-validates.
 import {
   checkIdentificationNumber,
@@ -26,6 +26,10 @@ export const CURRENCY_LABEL: Record<Currency, string> = {
 };
 
 export const PAYMENT_TERMS_MAX = 1000;
+
+// Row ids are uuids; anything else is refused before reaching the database.
+export const UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export interface IssuerInput {
   legalName: string;

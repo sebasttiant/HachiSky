@@ -1,12 +1,17 @@
 import type { ActionState } from "../users/action-state.ts";
 import {
+  createIssuer,
+  setDefaultIssuer,
+  setIssuerActive,
+  updateIssuer,
+} from "./issuers.ts";
+import {
   type BillingActor,
   type BillingDeps,
   type BillingRuleCode,
   BillingRuleError,
   BillingValidationError,
   createBankAccount,
-  saveIssuerSettings,
   setBankAccountActive,
   updateBankAccount,
 } from "./service.ts";
@@ -30,8 +35,13 @@ export const RULE_MESSAGES: Record<BillingRuleCode, string> = {
   signer_not_found: "Ese firmante ya no existe.",
   duplicate_signer:
     "Ya existe un firmante con esa identificación (puede estar inactivo).",
-  issuer_not_configured:
-    "Configura primero los datos del emisor y luego sube el logo.",
+  issuer_not_found: "Ese emisor ya no existe.",
+  duplicate_issuer:
+    "Ya existe un emisor con esa identificación (puede estar inactivo).",
+  issuer_is_default:
+    "Este es el emisor predeterminado. Elige primero otro emisor como predeterminado para poder desactivarlo.",
+  issuer_inactive:
+    "Ese emisor está inactivo. Reactívalo o elige un emisor activo.",
 };
 
 const GENERIC_ERROR = "No se pudo completar la acción. Intenta de nuevo.";
@@ -98,18 +108,73 @@ function failure(action: string, error: unknown): ActionState {
   return { status: "error", message: GENERIC_ERROR };
 }
 
-export async function submitSaveIssuer(
+// ---- Issuer profiles ----------------------------------------------------------
+
+// `isDefault` tells the page whether this first issuer became the default.
+export async function submitCreateIssuer(
   deps: BillingDeps,
   actor: BillingActor | null,
   formData: FormData,
-): Promise<ActionState> {
+): Promise<{ state: ActionState; id?: string; isDefault?: boolean }> {
   try {
-    await saveIssuerSettings(deps, actor, formToRaw(formData, ISSUER_FIELDS));
-    return { status: "success", message: "Datos del emisor guardados." };
+    const { id, isDefault } = await createIssuer(
+      deps,
+      actor,
+      formToRaw(formData, ISSUER_FIELDS),
+    );
+    return { state: { status: "success" }, id, isDefault };
   } catch (error) {
-    return failure("save_issuer", error);
+    return { state: failure("create_issuer", error) };
   }
 }
+
+export async function submitUpdateIssuer(
+  deps: BillingDeps,
+  actor: BillingActor | null,
+  id: string,
+  formData: FormData,
+): Promise<ActionState> {
+  try {
+    await updateIssuer(deps, actor, id, formToRaw(formData, ISSUER_FIELDS));
+    return { status: "success", message: "Cambios guardados." };
+  } catch (error) {
+    return failure("update_issuer", error);
+  }
+}
+
+export async function submitSetIssuerActive(
+  deps: BillingDeps,
+  actor: BillingActor | null,
+  id: string,
+  active: boolean,
+): Promise<ActionState> {
+  try {
+    await setIssuerActive(deps, actor, id, active);
+    return {
+      status: "success",
+      message: active
+        ? "Emisor reactivado."
+        : "Emisor desactivado. Su información y sus logos se conservan.",
+    };
+  } catch (error) {
+    return failure(active ? "activate_issuer" : "deactivate_issuer", error);
+  }
+}
+
+export async function submitSetDefaultIssuer(
+  deps: BillingDeps,
+  actor: BillingActor | null,
+  id: string,
+): Promise<ActionState> {
+  try {
+    await setDefaultIssuer(deps, actor, id);
+    return { status: "success", message: "Ahora es el emisor predeterminado." };
+  } catch (error) {
+    return failure("set_default_issuer", error);
+  }
+}
+
+// ---- Bank accounts ------------------------------------------------------------
 
 export async function submitCreateBankAccount(
   deps: BillingDeps,

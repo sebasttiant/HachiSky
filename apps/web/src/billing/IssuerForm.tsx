@@ -21,14 +21,19 @@ export interface IssuerFormValues {
   paymentTerms: string | null;
 }
 
-// Issuer identity and default payment terms (administrators only). The server
+// Identity and default payment terms of one issuer profile, shared by
+// "Nuevo emisor" and the edit page (administrators only). The server
 // validates and answers with Spanish field errors; nothing here is trusted.
 export function IssuerForm({
   action,
   values,
+  submitLabel,
+  pendingLabel,
 }: {
   action: (previous: ActionState, formData: FormData) => Promise<ActionState>;
   values?: IssuerFormValues;
+  submitLabel: string;
+  pendingLabel: string;
 }) {
   const { state, pending, onSubmit } = useFormAction(action);
 
@@ -178,7 +183,7 @@ export function IssuerForm({
           className={`${styles.button} ${styles.primary}`}
           disabled={pending}
         >
-          {pending ? "Guardando…" : "Guardar datos del emisor"}
+          {pending ? pendingLabel : submitLabel}
         </button>
       </div>
     </form>

@@ -21,8 +21,13 @@ export const ACTION_LABEL: Record<string, string> = {
   "client.update": "Editó un cliente",
   "client.deactivate": "Desactivó un cliente",
   "client.activate": "Reactivó un cliente",
+  // Kept for history written before issuer profiles existed.
   "billing.issuer_configure": "Configuró los datos del emisor",
   "billing.issuer_update": "Editó los datos del emisor",
+  "billing.issuer_create": "Creó un emisor",
+  "billing.issuer_deactivate": "Desactivó un emisor",
+  "billing.issuer_activate": "Reactivó un emisor",
+  "billing.issuer_set_default": "Cambió el emisor predeterminado",
   "billing.bank_account_create": "Creó una cuenta bancaria",
   "billing.bank_account_update": "Editó una cuenta bancaria",
   "billing.bank_account_deactivate": "Desactivó una cuenta bancaria",

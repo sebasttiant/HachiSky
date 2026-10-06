@@ -43,6 +43,13 @@
       "when": 1790901583433,
       "tag": "0005_billing_signers",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791151508735,
+      "tag": "0006_issuer_profiles",
+      "breakpoints": true
     }
   ]
 }

@@ -25,7 +25,7 @@ export default async function SignersPage() {
       <PageHeader
         moduleId="settings"
         title="Firmantes"
-        description="Personas que firman las cuentas de cobro, con su cargo y su firma gráfica. IL Asesorías sigue siendo el emisor. Los firmantes no se borran: se desactivan."
+        description="Personas que firman las cuentas de cobro, con su cargo y su firma gráfica. El emisor se configura aparte, en Emisores.Los firmantes no se borran: se desactivan."
         actions={
           <Link
             href={NEW_SIGNER_PATH}

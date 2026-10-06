@@ -5,9 +5,12 @@ import type { BillingActor } from "../../src/billing/service.ts";
 import {
   RULE_MESSAGES,
   submitCreateBankAccount,
-  submitSaveIssuer,
+  submitCreateIssuer,
   submitSetBankAccountActive,
+  submitSetDefaultIssuer,
+  submitSetIssuerActive,
   submitUpdateBankAccount,
+  submitUpdateIssuer,
 } from "../../src/billing/submit.ts";
 import { closeDb, getPool } from "../../src/db/client.ts";
 import { runMigrations } from "../../src/db/migrate.ts";
@@ -47,7 +50,12 @@ const issuer = {
   paymentTerms: "Pago a 30 días.",
 };
 
-const account = {
+const BILLING_TABLES =
+  "bank_account, issuer_logo, issuer_profile, signer_profile, billing_image";
+
+let account: Record<string, string>;
+
+const accountFields = {
   bankName: "Banco Demo",
   accountType: "ahorros",
   accountNumber: "000111222",
@@ -64,59 +72,133 @@ before(async () => {
 
 beforeEach(async () => {
   await cleanAuthTables(pool);
-  await pool.query("truncate table bank_account, issuer_settings");
+  await pool.query(`truncate table ${BILLING_TABLES} cascade`);
   const a = await createTestUser(auth, "admin@example.test", { role: "admin" });
   const s = await createTestUser(auth, "staff@example.test", { role: "staff" });
   admin = { id: a.id, role: "admin", ipAddress: null, userAgent: null };
   staff = { id: s.id, role: "staff", ipAddress: null, userAgent: null };
+  account = { ...accountFields };
 });
 
 after(async () => {
-  await pool.query("truncate table bank_account, issuer_settings");
+  await pool.query(`truncate table ${BILLING_TABLES} cascade`);
   await cleanAuthTables(pool);
   await pool.end();
   await closeDb();
 });
 
-async function count(table: "bank_account" | "issuer_settings" | "audit_log") {
+async function count(table: "bank_account" | "issuer_profile" | "audit_log") {
   const { rows } = await pool.query<{ n: number }>(
     `select count(*)::int as n from ${table}`,
   );
   return rows[0]?.n ?? -1;
 }
 
-describe("submitSaveIssuer", () => {
+describe("issuer submits", () => {
   it("answers Spanish field errors and saves nothing", async () => {
-    const state = await submitSaveIssuer(deps, admin, form({}));
+    const { state, id } = await submitCreateIssuer(deps, admin, form({}));
+    assert.equal(id, undefined);
     assert.equal(state.status, "error");
     assert.equal(state.message, "Revisa los campos marcados.");
     assert.equal(
       state.fieldErrors?.legalName,
       "Escribe el nombre o razón social del emisor.",
     );
-    assert.equal(await count("issuer_settings"), 0);
+    assert.equal(await count("issuer_profile"), 0);
     assert.equal(await count("audit_log"), 0);
   });
 
-  it("saves and confirms in Spanish", async () => {
-    const state = await submitSaveIssuer(deps, admin, form(issuer));
-    assert.deepEqual(state, {
-      status: "success",
-      message: "Datos del emisor guardados.",
+  it("creates issuers and says which one became the default", async () => {
+    const first = await submitCreateIssuer(deps, admin, form(issuer));
+    assert.equal(first.state.status, "success");
+    assert.equal(first.isDefault, true);
+    const second = await submitCreateIssuer(
+      deps,
+      admin,
+      form({ ...issuer, identificationNumber: "900.000.003-3" }),
+    );
+    assert.equal(second.isDefault, false);
+    const duplicate = await submitCreateIssuer(deps, admin, form(issuer));
+    assert.equal(duplicate.state.message, RULE_MESSAGES.duplicate_issuer);
+    assert.match(duplicate.state.message ?? "", /Ya existe un emisor/);
+    assert.equal(await count("issuer_profile"), 2);
+  });
+
+  it("updates, switches the default and explains the default rule in Spanish", async () => {
+    const a = await submitCreateIssuer(deps, admin, form(issuer));
+    const b = await submitCreateIssuer(
+      deps,
+      admin,
+      form({ ...issuer, identificationNumber: "900.000.003-3" }),
+    );
+    const aId = a.id ?? "";
+    const bId = b.id ?? "";
+    assert.deepEqual(
+      await submitUpdateIssuer(
+        deps,
+        admin,
+        aId,
+        form({ ...issuer, city: "Otra Ciudad" }),
+      ),
+      { status: "success", message: "Cambios guardados." },
+    );
+    assert.deepEqual(await submitSetIssuerActive(deps, admin, aId, false), {
+      status: "error",
+      message:
+        "Este es el emisor predeterminado. Elige primero otro emisor como predeterminado para poder desactivarlo.",
     });
-    assert.equal(await count("issuer_settings"), 1);
+    assert.deepEqual(await submitSetIssuerActive(deps, admin, bId, false), {
+      status: "success",
+      message: "Emisor desactivado. Su información y sus logos se conservan.",
+    });
+    assert.equal(
+      (await submitSetDefaultIssuer(deps, admin, bId)).message,
+      RULE_MESSAGES.issuer_inactive,
+    );
+    assert.deepEqual(await submitSetIssuerActive(deps, admin, bId, true), {
+      status: "success",
+      message: "Emisor reactivado.",
+    });
+    assert.deepEqual(await submitSetDefaultIssuer(deps, admin, bId), {
+      status: "success",
+      message: "Ahora es el emisor predeterminado.",
+    });
+    assert.equal(
+      (
+        await submitUpdateIssuer(
+          deps,
+          admin,
+          "11111111-1111-4111-8111-111111111111",
+          form(issuer),
+        )
+      ).message,
+      RULE_MESSAGES.issuer_not_found,
+    );
   });
 
   it("refuses staff and no session in Spanish, changing nothing", async () => {
-    const staffState = await submitSaveIssuer(deps, staff, form(issuer));
-    assert.deepEqual(staffState, {
-      status: "error",
-      message: RULE_MESSAGES.forbidden,
-    });
-    const anonymous = await submitSaveIssuer(deps, null, form(issuer));
-    assert.equal(anonymous.message, RULE_MESSAGES.unauthenticated);
-    assert.equal(await count("issuer_settings"), 0);
-    assert.equal(await count("audit_log"), 0);
+    const created = await submitCreateIssuer(deps, admin, form(issuer));
+    const id = created.id ?? "";
+    const audits = await count("audit_log");
+    const outcomes = [
+      (await submitCreateIssuer(deps, staff, form(issuer))).state,
+      (await submitCreateIssuer(deps, null, form(issuer))).state,
+      await submitUpdateIssuer(deps, staff, id, form({ ...issuer, city: "X" })),
+      await submitSetIssuerActive(deps, null, id, false),
+      await submitSetDefaultIssuer(deps, staff, id),
+    ];
+    assert.deepEqual(
+      outcomes.map((state) => state.message),
+      [
+        RULE_MESSAGES.forbidden,
+        RULE_MESSAGES.unauthenticated,
+        RULE_MESSAGES.forbidden,
+        RULE_MESSAGES.unauthenticated,
+        RULE_MESSAGES.forbidden,
+      ],
+    );
+    assert.equal(await count("issuer_profile"), 1);
+    assert.equal(await count("audit_log"), audits);
   });
 });
 

@@ -7,14 +7,12 @@ import {
   type UploadTarget,
 } from "../../src/billing/image-upload.ts";
 import {
-  type BillingActor,
-  saveIssuerSettings,
-} from "../../src/billing/service.ts";
-import {
-  createSigner,
-  getIssuerLogo,
-  getSigner,
-} from "../../src/billing/signers.ts";
+  createIssuer,
+  getIssuer,
+  setIssuerActive,
+} from "../../src/billing/issuers.ts";
+import type { BillingActor } from "../../src/billing/service.ts";
+import { createSigner, getSigner } from "../../src/billing/signers.ts";
 import { closeDb, getPool } from "../../src/db/client.ts";
 import { runMigrations } from "../../src/db/migrate.ts";
 import * as schema from "../../src/db/schema/index.ts";
@@ -50,7 +48,7 @@ let staff: BillingActor;
 let signerId: string;
 
 const BILLING_TABLES =
-  "signer_profile, billing_image, bank_account, issuer_settings";
+  "bank_account, issuer_logo, issuer_profile, signer_profile, billing_image";
 
 before(async () => {
   await assertTestDatabase(getPool());
@@ -207,29 +205,45 @@ describe("accepted uploads", () => {
     assert.equal(await count("billing_image"), 2);
   });
 
-  it("uploads the issuer logo only once the issuer exists (409 before)", async () => {
+  it("uploads a logo to the chosen issuer only, refusing unknown (404) and inactive (409) issuers", async () => {
     const bytes = new Uint8Array(await solidPng());
-    const missing = await upload(request(bytes), {
-      target: { kind: "issuer_logo" },
-    });
-    assert.equal(missing.status, 409);
-    assert.match(
-      missing.body.message,
-      /Configura primero los datos del emisor/,
-    );
-    await saveIssuerSettings(deps, admin, {
+    const issuer = {
       legalName: "Emisor Demo S.A.S.",
       identificationType: "NIT",
       identificationNumber: "9000000022",
       address: "Calle Falsa 123",
       city: "Ciudad Demo",
+    };
+    const a = await createIssuer(deps, admin, issuer);
+    const b = await createIssuer(deps, admin, {
+      ...issuer,
+      identificationNumber: "9000000033",
     });
+    const missing = await upload(request(bytes), {
+      target: {
+        kind: "issuer_logo",
+        issuerId: "11111111-1111-4111-8111-111111111111",
+      },
+    });
+    assert.equal(missing.status, 404);
+    assert.match(missing.body.message, /Ese emisor ya no existe/);
     const saved = await upload(request(bytes), {
-      target: { kind: "issuer_logo" },
+      target: { kind: "issuer_logo", issuerId: a.id },
     });
     assert.equal(saved.status, 201);
     assert.equal(saved.body.message, "Logo guardado.");
-    assert.equal((await getIssuerLogo(deps, admin))?.id, saved.body.imageId);
+    assert.equal(
+      (await getIssuer(deps, admin, a.id))?.logo?.id,
+      saved.body.imageId,
+    );
+    assert.equal((await getIssuer(deps, admin, b.id))?.logo, null);
+    await setIssuerActive(deps, admin, b.id, false);
+    const inactive = await upload(request(bytes), {
+      target: { kind: "issuer_logo", issuerId: b.id },
+    });
+    assert.equal(inactive.status, 409);
+    assert.equal(inactive.body.error, "issuer_inactive");
+    assert.equal(await count("issuer_logo"), 1);
   });
 });
 
