@@ -65,6 +65,7 @@ const BANK_ACCOUNT_FIELDS: readonly BankAccountField[] = [
   "holderIdentificationType",
   "holderIdentificationNumber",
   "currency",
+  "issuerProfileId",
 ];
 
 const SIGNER_FIELDS: readonly SignerField[] = [

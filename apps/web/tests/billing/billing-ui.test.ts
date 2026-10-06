@@ -41,6 +41,12 @@ const account = {
   holderIdentificationType: "CC" as const,
   holderIdentificationNumber: "1000000001",
   currency: "COP" as const,
+  issuerProfileId: "66666666-6666-4666-8666-666666666666",
+  issuer: {
+    id: "66666666-6666-4666-8666-666666666666",
+    legalName: "Emisor Demo S.A.S.",
+    active: true,
+  },
   active: true,
   createdAt: new Date("2026-10-01T10:00:00Z"),
   updatedAt: new Date("2026-10-01T10:00:00Z"),
@@ -101,6 +107,9 @@ describe("bank account form", () => {
     const html = renderToStaticMarkup(
       createElement(BankAccountForm, {
         action: noop as never,
+        issuers: [
+          { id: account.issuerProfileId, legalName: "Emisor Demo S.A.S." },
+        ],
         values: account,
         submitLabel: "Guardar cambios",
         pendingLabel: "Guardando…",
@@ -114,6 +123,7 @@ describe("bank account form", () => {
       "Tipo de identificación del titular",
       "Número de identificación del titular",
       "Moneda",
+      "Emisor",
     ]) {
       assert.match(html, new RegExp(label));
     }

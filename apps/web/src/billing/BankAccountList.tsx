@@ -9,6 +9,13 @@ function holder(account: BankAccountRecord) {
   return `${account.holderIdentificationType} ${account.holderIdentificationNumber}`;
 }
 
+function issuerName(account: BankAccountRecord) {
+  if (!account.issuer) return "Sin emisor asignado";
+  return account.issuer.active
+    ? account.issuer.legalName
+    : `${account.issuer.legalName} (inactivo)`;
+}
+
 function EmptyList() {
   return (
     <div className={styles.empty}>
@@ -27,8 +34,8 @@ function EmptyList() {
   );
 }
 
-// Holder and currency are always visible: they decide which accounts a
-// document in that currency may use.
+// Issuer, holder and currency are always visible: they decide which
+// accounts a document of that issuer and currency may use.
 export function BankAccountList({
   items,
 }: {
@@ -52,6 +59,9 @@ export function BankAccountList({
               <span className={styles.muted}>
                 Titular: {account.holderName} ({holder(account)})
               </span>
+              <span className={styles.muted}>
+                Emisor: {issuerName(account)}
+              </span>
             </div>
             <div className={styles.badges}>
               <StatusBadge active={account.active} />
@@ -71,6 +81,7 @@ export function BankAccountList({
         <table className={styles.table}>
           <thead>
             <tr>
+              <th scope="col">Emisor</th>
               <th scope="col">Banco</th>
               <th scope="col">Tipo</th>
               <th scope="col">Número</th>
@@ -88,6 +99,7 @@ export function BankAccountList({
                 key={account.id}
                 className={account.active ? "" : styles.rowInactive}
               >
+                <td>{issuerName(account)}</td>
                 <td>
                   <strong>{account.bankName}</strong>
                 </td>

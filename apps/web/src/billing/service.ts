@@ -17,7 +17,7 @@ import {
 
 export { UUID };
 
-const { auditLog, bankAccount } = schema;
+const { auditLog, bankAccount, issuerProfile } = schema;
 
 // Business rules shared by the billing settings, and the bank accounts.
 // Issuer profiles live in issuers.ts and signers in signers.ts. The service is the authority: every
@@ -73,8 +73,20 @@ export class BillingValidationError extends Error {
   }
 }
 
-export interface BankAccountRecord extends BankAccountInput {
+// The issuer an account belongs to, as shown next to the account.
+export interface BankAccountIssuer {
   id: string;
+  legalName: string;
+  active: boolean;
+}
+
+export interface BankAccountRecord
+  extends Omit<BankAccountInput, "issuerProfileId"> {
+  id: string;
+  // Null only for accounts that predate issuer profiles and could not be
+  // assigned unambiguously; editing one requires choosing an active issuer.
+  issuerProfileId: string | null;
+  issuer: BankAccountIssuer | null;
   active: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -145,13 +157,18 @@ const BANK_ACCOUNT_FIELDS = [
   "holderIdentificationType",
   "holderIdentificationNumber",
   "currency",
+  "issuerProfileId",
 ] as const satisfies readonly (keyof BankAccountInput)[];
 
 type BankAccountRow = typeof bankAccount.$inferSelect;
 
-function toBankAccountRecord(row: BankAccountRow): BankAccountRecord {
+function toBankAccountRecord(
+  row: BankAccountRow,
+  issuer: BankAccountIssuer | null,
+): BankAccountRecord {
   return {
     ...row,
+    issuer,
     accountType: row.accountType as BankAccountRecord["accountType"],
     holderIdentificationType:
       row.holderIdentificationType as BankAccountRecord["holderIdentificationType"],
@@ -161,21 +178,45 @@ function toBankAccountRecord(row: BankAccountRow): BankAccountRecord {
 
 // ---- Bank accounts ----------------------------------------------------------
 
+function selectBankAccounts(db: Db) {
+  return db
+    .select({
+      account: bankAccount,
+      issuer: {
+        id: issuerProfile.id,
+        legalName: issuerProfile.legalName,
+        active: issuerProfile.active,
+      },
+    })
+    .from(bankAccount)
+    .leftJoin(issuerProfile, eq(issuerProfile.id, bankAccount.issuerProfileId))
+    .$dynamic();
+}
+
+// An account may only be saved under an existing, active issuer. The row is
+// locked (FOR SHARE) so a concurrent deactivation waits for this write.
+async function assertAssignableIssuer(tx: Tx, issuerId: string) {
+  const [issuer] = await tx
+    .select({ active: issuerProfile.active })
+    .from(issuerProfile)
+    .where(eq(issuerProfile.id, issuerId))
+    .for("share");
+  if (!issuer) throw new BillingRuleError("issuer_not_found");
+  if (!issuer.active) throw new BillingRuleError("issuer_inactive");
+}
+
 export async function listBankAccounts(
   deps: BillingDeps,
   actorInput: BillingActor | null | undefined,
 ): Promise<BankAccountRecord[]> {
   authorize(actorInput, "view_bank_accounts");
-  const rows = await deps.db
-    .select()
-    .from(bankAccount)
-    .orderBy(
-      desc(bankAccount.active),
-      asc(bankAccount.bankName),
-      asc(bankAccount.holderName),
-      asc(bankAccount.id),
-    );
-  return rows.map(toBankAccountRecord);
+  const rows = await selectBankAccounts(deps.db).orderBy(
+    desc(bankAccount.active),
+    asc(bankAccount.bankName),
+    asc(bankAccount.holderName),
+    asc(bankAccount.id),
+  );
+  return rows.map((row) => toBankAccountRecord(row.account, row.issuer));
 }
 
 export async function getBankAccount(
@@ -185,12 +226,10 @@ export async function getBankAccount(
 ): Promise<BankAccountRecord | null> {
   authorize(actorInput, "view_bank_accounts");
   if (!UUID.test(id)) return null;
-  const [row] = await deps.db
-    .select()
-    .from(bankAccount)
+  const [row] = await selectBankAccounts(deps.db)
     .where(eq(bankAccount.id, id))
     .limit(1);
-  return row ? toBankAccountRecord(row) : null;
+  return row ? toBankAccountRecord(row.account, row.issuer) : null;
 }
 
 export async function createBankAccount(
@@ -202,6 +241,7 @@ export async function createBankAccount(
   const data = parseBankAccount(raw);
   try {
     return await deps.db.transaction(async (tx) => {
+      await assertAssignableIssuer(tx, data.issuerProfileId);
       const [created] = await tx
         .insert(bankAccount)
         .values({ ...data, createdBy: actor.id, updatedBy: actor.id })
@@ -238,6 +278,9 @@ export async function updateBankAccount(
         (field) => current[field] !== data[field],
       );
       if (changedFields.length === 0) return;
+      // Checked on every effective change, so an account whose issuer was
+      // deactivated (or never assigned) must be moved to an active one.
+      await assertAssignableIssuer(tx, data.issuerProfileId);
       await tx
         .update(bankAccount)
         .set({ ...data, updatedBy: actor.id, updatedAt: sql`now()` })

@@ -77,8 +77,16 @@ beforeEach(async () => {
   const s = await createTestUser(auth, "staff@example.test", { role: "staff" });
   admin = { id: a.id, role: "admin", ipAddress: null, userAgent: null };
   staff = { id: s.id, role: "staff", ipAddress: null, userAgent: null };
-  account = { ...accountFields };
+  account = { ...accountFields, issuerProfileId: "" };
 });
+
+// Bank accounts need an issuer; created through the submit under test.
+async function withIssuer() {
+  const { id } = await submitCreateIssuer(deps, admin, form(issuer));
+  assert.ok(id);
+  account = { ...accountFields, issuerProfileId: id };
+  return id;
+}
 
 after(async () => {
   await pool.query(`truncate table ${BILLING_TABLES} cascade`);
@@ -203,6 +211,32 @@ describe("issuer submits", () => {
 });
 
 describe("bank account submits", () => {
+  beforeEach(async () => {
+    await withIssuer();
+  });
+
+  it("asks for the issuer and refuses an unknown one", async () => {
+    const missing = await submitCreateBankAccount(
+      deps,
+      admin,
+      form({ ...account, issuerProfileId: "" }),
+    );
+    assert.equal(
+      missing.state.fieldErrors?.issuerProfileId,
+      "Elige el emisor de la cuenta.",
+    );
+    const unknown = await submitCreateBankAccount(
+      deps,
+      admin,
+      form({
+        ...account,
+        issuerProfileId: "11111111-1111-4111-8111-111111111111",
+      }),
+    );
+    assert.equal(unknown.state.message, RULE_MESSAGES.issuer_not_found);
+    assert.equal(await count("bank_account"), 0);
+  });
+
   it("creates an account and returns its id", async () => {
     const { state, id } = await submitCreateBankAccount(
       deps,

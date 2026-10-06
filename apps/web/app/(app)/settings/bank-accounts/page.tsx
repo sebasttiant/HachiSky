@@ -25,7 +25,7 @@ export default async function BankAccountsPage() {
       <PageHeader
         moduleId="settings"
         title="Cuentas bancarias"
-        description="Cuentas donde los clientes pagan las cuentas de cobro. Cada una indica su titular y su moneda. Las cuentas no se borran: se desactivan."
+        description="Cuentas donde los clientes pagan las cuentas de cobro. Cada una pertenece a un emisor e indica su titular y su moneda. Las cuentas no se borran: se desactivan."
         actions={
           <Link
             href={NEW_BANK_ACCOUNT_PATH}

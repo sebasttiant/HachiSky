@@ -148,8 +148,9 @@ export const bankAccount = pgTable(
     holderIdentificationType: text("holder_identification_type").notNull(),
     holderIdentificationNumber: text("holder_identification_number").notNull(),
     currency: text("currency").notNull(),
-    // Null for accounts that existed before issuer profiles and could not be
-    // assigned unambiguously. The app does not set or require it yet.
+    // Null only for accounts that existed before issuer profiles and could
+    // not be assigned unambiguously; the app requires an active issuer on
+    // every create and update.
     issuerProfileId: uuid("issuer_profile_id").references(
       () => issuerProfile.id,
       { onDelete: "restrict" },

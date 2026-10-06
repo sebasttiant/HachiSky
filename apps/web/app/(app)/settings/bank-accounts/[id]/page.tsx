@@ -8,6 +8,8 @@ import {
 } from "../../../../../src/billing/actions.ts";
 import { BankAccountForm } from "../../../../../src/billing/BankAccountForm.tsx";
 import { BankAccountStatusSection } from "../../../../../src/billing/BankAccountStatusSection.tsx";
+import { listIssuers } from "../../../../../src/billing/issuers.ts";
+import { issuerPath } from "../../../../../src/billing/paths.ts";
 import { getBankAccount } from "../../../../../src/billing/service.ts";
 import { ACCOUNT_TYPE_LABEL } from "../../../../../src/billing/validation.ts";
 import { getDb } from "../../../../../src/db/client.ts";
@@ -27,12 +29,18 @@ export default async function BankAccountDetailPage({
   const { id } = await params;
   // biome-ignore format: tests/auth/route-guards.test.ts matches this call on one line
   const { user } = await requireModule("settings", `/settings/bank-accounts/${id}`);
-  const account = await getBankAccount(
-    { db: getDb() },
-    { id: user.id, role: user.role, ipAddress: null, userAgent: null },
-    id,
-  );
+  const deps = { db: getDb() };
+  const actor = {
+    id: user.id,
+    role: user.role,
+    ipAddress: null,
+    userAgent: null,
+  };
+  const account = await getBankAccount(deps, actor, id);
   if (!account) notFound();
+  const issuers = (await listIssuers(deps, actor)).filter(
+    (issuer) => issuer.active,
+  );
   const justCreated = (await searchParams).creada === "1";
 
   return (
@@ -70,6 +78,7 @@ export default async function BankAccountDetailPage({
             </h2>
             <BankAccountForm
               action={updateBankAccountAction.bind(null, account.id)}
+              issuers={issuers}
               values={account}
               submitLabel="Guardar cambios"
               pendingLabel="Guardando…"
@@ -92,6 +101,21 @@ export default async function BankAccountDetailPage({
               Resumen
             </h2>
             <dl className={styles.facts}>
+              <div>
+                <dt>Emisor</dt>
+                <dd>
+                  {account.issuer ? (
+                    <Link href={issuerPath(account.issuer.id)}>
+                      {account.issuer.legalName}
+                    </Link>
+                  ) : (
+                    "Sin emisor asignado"
+                  )}
+                  {account.issuer && !account.issuer.active
+                    ? " (inactivo)"
+                    : null}
+                </dd>
+              </div>
               <div>
                 <dt>Creada</dt>
                 <dd>{formatDateTime(account.createdAt)}</dd>

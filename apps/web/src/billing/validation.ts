@@ -50,6 +50,9 @@ export interface BankAccountInput {
   holderIdentificationType: IdentificationType;
   holderIdentificationNumber: string;
   currency: Currency;
+  // The issuer the account belongs to. Only its shape is checked here; the
+  // service checks that it exists and is active.
+  issuerProfileId: string;
 }
 
 export interface SignerInput {
@@ -217,6 +220,10 @@ export function validateBankAccount(raw: unknown): BankAccountValidation {
   const currency = input.currency;
   if (!isCurrency(currency)) errors.currency = "Elige la moneda.";
 
+  const issuerProfileId = text(input.issuerProfileId).toLowerCase();
+  if (!UUID.test(issuerProfileId))
+    errors.issuerProfileId = "Elige el emisor de la cuenta.";
+
   if (Object.keys(errors).length > 0) return { ok: false, fieldErrors: errors };
   return {
     ok: true,
@@ -228,6 +235,7 @@ export function validateBankAccount(raw: unknown): BankAccountValidation {
       holderIdentificationType: holderType as IdentificationType,
       holderIdentificationNumber: holderNumber,
       currency: currency as Currency,
+      issuerProfileId,
     },
   };
 }

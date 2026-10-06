@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { after, before, beforeEach, describe, it } from "node:test";
 import { drizzle } from "drizzle-orm/node-postgres";
+import { createIssuer, setIssuerActive } from "../../src/billing/issuers.ts";
 import {
   type BillingActor,
   BillingRuleError,
@@ -11,6 +12,7 @@ import {
   setBankAccountActive,
   updateBankAccount,
 } from "../../src/billing/service.ts";
+import { createSigner } from "../../src/billing/signers.ts";
 import { closeDb, getPool } from "../../src/db/client.ts";
 import { runMigrations } from "../../src/db/migrate.ts";
 import * as schema from "../../src/db/schema/index.ts";
@@ -29,9 +31,28 @@ const deps = { db: drizzle(pool, { schema }) };
 let admin: BillingActor;
 let staff: BillingActor;
 
+const issuer = {
+  legalName: "Emisor Demo S.A.S.",
+  identificationType: "NIT",
+  identificationNumber: "900.000.002-2",
+  address: "Calle Falsa 123",
+  city: "Ciudad Demo",
+  phone: "+57 300 000 0000",
+  email: "emisor@example.test",
+  paymentTerms: "Pago a 30 días.",
+};
+
+const otherIssuer = {
+  ...issuer,
+  legalName: "Otro Emisor Demo",
+  identificationNumber: "900.000.003-3",
+};
+
 const BILLING_TABLES =
   "bank_account, issuer_logo, issuer_profile, signer_profile, billing_image";
 
+// Every account belongs to an issuer: the default one created per test.
+let issuerId: string;
 let account: Record<string, string>;
 
 const accountFields = {
@@ -61,7 +82,11 @@ beforeEach(async () => {
     userAgent: "node-test",
   };
   staff = { id: s.id, role: "staff", ipAddress: null, userAgent: null };
-  account = { ...accountFields };
+  issuerId = (await createIssuer(deps, admin, issuer)).id;
+  account = { ...accountFields, issuerProfileId: issuerId };
+  // The issuer setup is not under test here (truncate skips row triggers;
+  // cleanAuthTables already empties audit_log through the user cascade).
+  await pool.query("truncate table audit_log");
 });
 
 after(async () => {
@@ -276,6 +301,111 @@ describe("bank accounts", () => {
         ["Banco C", true],
         ["Banco B", false],
       ],
+    );
+  });
+});
+
+describe("bank accounts and their issuer", () => {
+  it("stores and shows the issuer of each account", async () => {
+    const { id } = await createBankAccount(deps, admin, account);
+    const saved = await getBankAccount(deps, admin, id);
+    assert.equal(saved?.issuerProfileId, issuerId);
+    assert.deepEqual(saved?.issuer, {
+      id: issuerId,
+      legalName: "Emisor Demo S.A.S.",
+      active: true,
+    });
+    const [listed] = await listBankAccounts(deps, admin);
+    assert.equal(listed?.issuer?.legalName, "Emisor Demo S.A.S.");
+  });
+
+  it("requires an issuer: missing or malformed is a field error", async () => {
+    for (const issuerProfileId of [undefined, "", "nope"]) {
+      await assert.rejects(
+        createBankAccount(deps, admin, { ...accountFields, issuerProfileId }),
+        (error: unknown) =>
+          error instanceof BillingValidationError &&
+          error.fieldErrors.issuerProfileId === "Elige el emisor de la cuenta.",
+      );
+    }
+    assert.equal(await count("bank_account"), 0);
+  });
+
+  it("refuses an unknown issuer, another kind of id and an inactive issuer", async () => {
+    const { id: signerId } = await createSigner(deps, admin, {
+      fullName: "Firmante Demo",
+      identificationType: "CC",
+      identificationNumber: "1000000009",
+      jobTitle: "Representante legal",
+      email: "firmante@example.test",
+    });
+    const other = await createIssuer(deps, admin, otherIssuer);
+    await setIssuerActive(deps, admin, other.id, false);
+    const cases: [string, string][] = [
+      ["11111111-1111-4111-8111-111111111111", "issuer_not_found"],
+      [signerId, "issuer_not_found"],
+      [other.id, "issuer_inactive"],
+    ];
+    for (const [issuerProfileId, expected] of cases) {
+      assert.equal(
+        await rejects(
+          createBankAccount(deps, admin, { ...account, issuerProfileId }),
+        ),
+        expected,
+      );
+    }
+    assert.equal(await count("bank_account"), 0);
+  });
+
+  it("moves an account to another active issuer, and refuses an inactive one on update", async () => {
+    const { id } = await createBankAccount(deps, admin, account);
+    const other = await createIssuer(deps, admin, otherIssuer);
+    await updateBankAccount(deps, admin, id, {
+      ...account,
+      issuerProfileId: other.id,
+    });
+    assert.equal(
+      (await getBankAccount(deps, admin, id))?.issuerProfileId,
+      other.id,
+    );
+    assert.deepEqual((await auditRows()).at(-1)?.details, {
+      bankAccountId: id,
+      changedFields: ["issuerProfileId"],
+    });
+    await updateBankAccount(deps, admin, id, account);
+    await setIssuerActive(deps, admin, other.id, false);
+    assert.equal(
+      await rejects(
+        updateBankAccount(deps, admin, id, {
+          ...account,
+          issuerProfileId: other.id,
+        }),
+      ),
+      "issuer_inactive",
+    );
+    assert.equal(
+      (await getBankAccount(deps, admin, id))?.issuerProfileId,
+      issuerId,
+    );
+  });
+
+  it("asks for an active issuer when editing an account left without one", async () => {
+    const { id } = await createBankAccount(deps, admin, account);
+    await pool.query(
+      "update bank_account set issuer_profile_id = null where id = $1",
+      [id],
+    );
+    const unassigned = await getBankAccount(deps, admin, id);
+    assert.equal(unassigned?.issuerProfileId, null);
+    assert.equal(unassigned?.issuer, null);
+    await assert.rejects(
+      updateBankAccount(deps, admin, id, accountFields),
+      BillingValidationError,
+    );
+    await updateBankAccount(deps, admin, id, account);
+    assert.equal(
+      (await getBankAccount(deps, admin, id))?.issuerProfileId,
+      issuerId,
     );
   });
 });

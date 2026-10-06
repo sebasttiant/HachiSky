@@ -21,6 +21,7 @@ const account = {
   holderIdentificationType: "CC",
   holderIdentificationNumber: "1.000.000.001",
   currency: "COP",
+  issuerProfileId: " 0A1B2C3D-0000-4000-8000-000000000001 ",
 };
 
 function issuerErrors(overrides: Record<string, unknown>) {
@@ -132,6 +133,7 @@ describe("validateBankAccount", () => {
       holderIdentificationType: "CC",
       holderIdentificationNumber: "1000000001",
       currency: "COP",
+      issuerProfileId: "0a1b2c3d-0000-4000-8000-000000000001",
     });
   });
 
@@ -157,6 +159,20 @@ describe("validateBankAccount", () => {
       "Escribe el número de identificación.",
     );
     assert.equal(result.fieldErrors.currency, "Elige la moneda.");
+    assert.equal(
+      result.fieldErrors.issuerProfileId,
+      "Elige el emisor de la cuenta.",
+    );
+  });
+
+  it("accepts only a uuid as the issuer", () => {
+    for (const issuerProfileId of ["", "nope", "1", 42, null]) {
+      assert.equal(
+        accountErrors({ issuerProfileId }).issuerProfileId,
+        "Elige el emisor de la cuenta.",
+        String(issuerProfileId),
+      );
+    }
   });
 
   it("accepts only ahorros or corriente and only COP or USD", () => {

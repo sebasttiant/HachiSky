@@ -72,6 +72,24 @@ const other = {
   logo: null,
 };
 
+const account = {
+  id: "33333333-3333-4333-8333-333333333333",
+  bankName: "Banco Demo",
+  accountType: "ahorros" as const,
+  accountNumber: "000111222",
+  holderName: "Titular Demo",
+  holderIdentificationType: "CC" as const,
+  holderIdentificationNumber: "1000000001",
+  currency: "COP" as const,
+  issuerProfileId: issuer.id,
+  issuer: { id: issuer.id, legalName: issuer.legalName, active: true },
+  active: true,
+  createdAt: new Date("2026-10-01T10:00:00Z"),
+  updatedAt: new Date("2026-10-01T10:00:00Z"),
+  createdBy: "u1",
+  updatedBy: "u1",
+};
+
 describe("issuer list", () => {
   it("shows name, identification, status and the default mark", async () => {
     const { IssuerList } = await import("../../src/billing/IssuerList.tsx");
@@ -228,6 +246,102 @@ describe("issuer logo section", () => {
     assert.match(html, /todavía no tiene logo/);
     assert.match(html, /Reactiva el emisor/);
     assert.doesNotMatch(html, /type="file"/);
+  });
+});
+
+describe("bank accounts and issuers", () => {
+  it("lists the issuer of each account, or says it has none", async () => {
+    const { BankAccountList } = await import(
+      "../../src/billing/BankAccountList.tsx"
+    );
+    const html = renderToStaticMarkup(
+      createElement(BankAccountList, {
+        items: [
+          account,
+          {
+            ...account,
+            id: "x",
+            accountNumber: "000999888",
+            issuerProfileId: null,
+            issuer: null,
+          },
+        ],
+      }),
+    );
+    assert.match(html, /Emisor Demo S\.A\.S\./);
+    assert.match(html, /Sin emisor asignado/);
+  });
+
+  it("requires choosing one of the active issuers", async () => {
+    const { BankAccountForm } = await import(
+      "../../src/billing/BankAccountForm.tsx"
+    );
+    const html = renderToStaticMarkup(
+      createElement(BankAccountForm, {
+        action: noop as never,
+        issuers: [{ id: issuer.id, legalName: issuer.legalName }],
+        submitLabel: "Crear cuenta",
+        pendingLabel: "Creando…",
+      }),
+    );
+    assert.match(html, /<label[^>]*for="account-issuer"[^>]*>Emisor<\/label>/);
+    assert.match(html, /<select[^>]*name="issuerProfileId"/);
+    assert.match(html, /<option value=""[^>]*>Elige un emisor<\/option>/);
+    assert.match(html, /<option value="66666666-6666-4666-8666-666666666666">/);
+  });
+
+  it("flags an account whose issuer is inactive and does not preselect it", async () => {
+    const { BankAccountForm } = await import(
+      "../../src/billing/BankAccountForm.tsx"
+    );
+    const html = renderToStaticMarkup(
+      createElement(BankAccountForm, {
+        action: noop as never,
+        issuers: [{ id: issuer.id, legalName: issuer.legalName }],
+        values: {
+          ...account,
+          issuerProfileId: other.id,
+          issuer: { id: other.id, legalName: other.legalName, active: false },
+        },
+        submitLabel: "Guardar cambios",
+        pendingLabel: "Guardando…",
+      }),
+    );
+    assert.match(html, /Otro Emisor Demo/);
+    assert.match(html, /está inactivo/);
+    assert.doesNotMatch(html, /value="77777777-7777-4777-8777-777777777777"/);
+  });
+
+  it("flags an account without issuer", async () => {
+    const { BankAccountForm } = await import(
+      "../../src/billing/BankAccountForm.tsx"
+    );
+    const html = renderToStaticMarkup(
+      createElement(BankAccountForm, {
+        action: noop as never,
+        issuers: [{ id: issuer.id, legalName: issuer.legalName }],
+        values: { ...account, issuerProfileId: null, issuer: null },
+        submitLabel: "Guardar cambios",
+        pendingLabel: "Guardando…",
+      }),
+    );
+    assert.match(html, /no tiene emisor asignado/);
+  });
+
+  it("points to creating an issuer when there is no active one", async () => {
+    const { BankAccountForm } = await import(
+      "../../src/billing/BankAccountForm.tsx"
+    );
+    const html = renderToStaticMarkup(
+      createElement(BankAccountForm, {
+        action: noop as never,
+        issuers: [],
+        submitLabel: "Crear cuenta",
+        pendingLabel: "Creando…",
+      }),
+    );
+    assert.match(html, /No hay emisores activos/);
+    assert.match(html, /href="\/settings\/issuers\/new"/);
   });
 });
 
