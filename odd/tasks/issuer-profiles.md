@@ -29,7 +29,7 @@ Out of scope: drafts, issuing, numbering, voiding, PDF, reports, client logo, DI
 - [x] U2 Operations/permissions/audit: issuer service, default rules, bank account ↔ issuer, logo upload per issuer, upload route handler. Route: same writer.
 - [x] U3 UI: Emisores list/new/edit + logo, bank account forms/list, redirect, settings hub. Route: same writer.
 - [x] U4 Demo: backup (restricted, verified with pg_restore --list), snapshot, offline build, migrate demo DB, browser flow. Route: inline (parent).
-- [ ] U5 Commit + native review — pending owner authorization.
+- [x] U5 The single commit `22a67ed` stayed on `feat/b2-billing`. Its native review exceeded the lens budget, so the owner authorized a local split. That split is `e8a916e` (Judgment Day approved) and `7ab7ced` (native review approved). `feat/b2-publish` replays the reviewed admin commit on top as `033524e`. No push yet.
 
 ## Checks
 - Runner: `~/.local/state/hachisky-b2-demo/test-runner.sh` (no network); `TESTER=1` uses the disposable `db-test` (tmpfs, own internal network). Baseline 2026-10-04: billing-service + image-upload + auth-schema 46/46.
