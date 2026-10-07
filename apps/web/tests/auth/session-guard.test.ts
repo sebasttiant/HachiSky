@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { after, before, beforeEach, describe, it } from "node:test";
 import { createAuthRouteHandlers } from "../../src/auth/http.ts";
-import { decideProxy, isPublicPath } from "../../src/auth/proxy-decision.ts";
+import { decideProxy, isPublicRequest } from "../../src/auth/proxy-decision.ts";
 import { resolveSession } from "../../src/auth/session.ts";
 import { closeDb, getPool } from "../../src/db/client.ts";
 import { runMigrations } from "../../src/db/migrate.ts";
@@ -33,6 +33,15 @@ async function signedInCookie(email: string) {
 
 function headersWith(cookie?: string) {
   return new Headers(cookie ? { cookie } : {});
+}
+
+// A denied session must come back with the header that expires its cookie,
+// even on the passive (no refresh) path used by the page guards.
+function assertClearsSessionCookie(setCookies: string[]) {
+  assert.ok(
+    setCookies.some((c) => /^better-auth\.session_token=;.*Max-Age=0/i.test(c)),
+    setCookies.join(" | "),
+  );
 }
 
 async function sessionCount(userId: string) {
@@ -108,6 +117,7 @@ describe("resolveSession", () => {
       { status: result.status, reason: "reason" in result && result.reason },
       { status: "denied", reason: "banned" },
     );
+    assertClearsSessionCookie(result.setCookies);
     assert.equal(await sessionCount(user.id), 0, "all sessions deleted");
     // The other device is denied too.
     assert.equal(
@@ -153,6 +163,8 @@ describe("resolveSession", () => {
       { status: result.status, reason: "reason" in result && result.reason },
       { status: "denied", reason: "invalid_role" },
     );
+    assertClearsSessionCookie(result.setCookies);
+    assert.equal(await sessionCount(user.id), 0);
   });
 
   it("does not renew the session unless asked to", async () => {
@@ -177,15 +189,20 @@ describe("resolveSession", () => {
   });
 });
 
-describe("isPublicPath", () => {
-  it("treats only /login, the auth endpoints and the health check as public", () => {
-    for (const path of [
-      "/login",
-      "/api/health",
-      "/api/auth/sign-in/email",
-      "/api/auth/get-session",
-    ]) {
-      assert.equal(isPublicPath(path), true, path);
+describe("isPublicRequest", () => {
+  function request(method: string, path: string) {
+    return new Request(`${ORIGIN}${path}`, { method });
+  }
+
+  it("treats only /login, the health check and the allowed auth endpoints as public", () => {
+    for (const [method, path] of [
+      ["GET", "/login"],
+      ["GET", "/api/health"],
+      ["POST", "/api/auth/sign-in/email"],
+      ["POST", "/api/auth/sign-out"],
+      ["GET", "/api/auth/get-session"],
+    ] as const) {
+      assert.equal(isPublicRequest(request(method, path)), true, path);
     }
     for (const path of [
       "/",
@@ -197,7 +214,30 @@ describe("isPublicPath", () => {
       "/api/authx/sign-in",
       "/reports",
     ]) {
-      assert.equal(isPublicPath(path), false, path);
+      assert.equal(isPublicRequest(request("GET", path)), false, path);
+    }
+  });
+
+  it("does not treat other auth endpoints or methods as public", () => {
+    for (const [method, path] of [
+      ["POST", "/api/auth/sign-up/email"],
+      ["POST", "/api/auth/admin/set-role"],
+      ["GET", "/api/auth/admin/list-users"],
+      ["POST", "/api/auth/request-password-reset"],
+      ["GET", "/api/auth/unknown"],
+      ["GET", "/api/auth/sign-in/email"],
+      ["POST", "/api/auth/get-session"],
+      ["GET", "/api/auth/sign-out"],
+      ["GET", "/api/auth/get-session/"],
+      ["POST", "/api/auth/sign-in/email/"],
+      ["POST", "/api/auth/sign-in%2Femail"],
+      ["POST", "/api/auth//sign-in/email"],
+    ] as const) {
+      assert.equal(
+        isPublicRequest(request(method, path)),
+        false,
+        `${method} ${path}`,
+      );
     }
   });
 });
@@ -222,6 +262,27 @@ describe("decideProxy", () => {
     for (const path of ["/login", "/api/health", "/api/auth/get-session"]) {
       const decision = await decideProxy(auth, pageRequest(path));
       assert.equal(decision.type, "next", path);
+    }
+    const signIn = await decideProxy(
+      auth,
+      new Request(`${ORIGIN}/api/auth/sign-in/email`, { method: "POST" }),
+    );
+    assert.equal(signIn.type, "next");
+  });
+
+  // The route handler still answers 404 to these (auth-http tests); the proxy
+  // no longer skips the session check for them.
+  it("redirects anonymous requests to auth endpoints outside the allowlist", async () => {
+    for (const [method, path] of [
+      ["POST", "/api/auth/sign-up/email"],
+      ["GET", "/api/auth/admin/list-users"],
+      ["POST", "/api/auth/get-session"],
+    ] as const) {
+      const decision = await decideProxy(
+        auth,
+        new Request(`${ORIGIN}${path}`, { method }),
+      );
+      assert.equal(decision.type, "redirect", `${method} ${path}`);
     }
   });
 

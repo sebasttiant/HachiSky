@@ -25,7 +25,7 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   // Static assets never need a session. Public pages and endpoints are
-  // decided in code (isPublicPath) so the rule is testable.
+  // decided in code (isPublicRequest) so the rule is testable.
   matcher: [
     "/((?!_next/static|_next/image|favicon\\.ico|icon\\.png|apple-icon\\.png|brand/).*)",
   ],

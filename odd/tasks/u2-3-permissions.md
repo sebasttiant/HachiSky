@@ -81,7 +81,11 @@ Delivery: expected well over the 400-line review budget; split into chained PRs 
 - [x] **C2** (closure finding F2) Mutations vs audit: Better Auth commits on its own connections, outside the audit transaction. Make each mutation leave observable, recoverable evidence without promising atomicity and without schema changes. Route: delegated writer (writer trigger).
 - [x] **C3** (closure finding F3, hypothesis confirmed) `changeOwnPassword` vs admin `resetPassword` race. Confirm only with a controlled barrier test; fix only if RED. Route: delegated writer (writer trigger).
 - [x] **C4** Record deployment conditions (X-Forwarded-For trust, health check scope) in this document and the README. Documentation only.
-- [ ] **P5** Judgment Day follow-ups from U2.2: test the clearing cookie on the page-guard denied path; restrict the proxy's public `/api/auth/*` prefix to the allowlist.
+- [x] **P5** Judgment Day follow-ups from U2.2: test the clearing cookie on the page-guard denied path; restrict the proxy's public `/api/auth/*` prefix to the allowlist.
+  - Done 2026-10-07 on `fix/auth-hardening` (parent inline; subagents unavailable: model provider usage limit). `isPublicPath(pathname)` replaced by `isPublicRequest(request)` in `src/auth/proxy-decision.ts`: `/login`, `/api/health`, and only the auth endpoints in `AUTH_HTTP_ROUTES` (exact method + pathname, reusing `isAllowedAuthRequest` from `src/auth/http.ts`). Other `/api/auth/*` requests now go through the session check: anonymous ones get the 307 to `/login`; with a session they reach the handler, which still answers 404. Passive `resolveSession` denials (banned, invalid role) now assert the expiring `better-auth.session_token` cookie and deleted sessions. Page guards still cannot forward that cookie (Server Components); the proxy does.
+  - RED: `tests/auth/session-guard.test.ts` failed with `does not provide an export named 'isPublicRequest'`. The clearing-cookie assertions cover existing behavior (no RED possible); mutation checks instead.
+  - GREEN (disposable runner `hv-authhard`, worktree `src`/`tests`/`proxy.ts` mounted read-only on image `hv-authhard-test:f8e14ee`, DB `hachisky_test`/`hachisky-test` proven): session-guard, auth-http, module-access, route-guards, password-gate, next-path, default-admin, bootstrap-admin, compose **108/108** (baseline 106 + 2 new); `pnpm typecheck` exit 0; `biome check` on the 3 changed files exit 0.
+  - Mutations (on a temporary copy of `src`, worktree untouched): proxy back to the `/api/auth/` prefix → 2 tests fail; denied path returning no cookies → 3 tests fail.
 - [x] **P6** Local demo and evidence; Judgment Day before the PR. Demo evidence is the 2026-10-01 headless run (18/18). Judgment Day of `863c25b~1..a338135` is recorded below.
 
 ## Closure findings (2026-10-01)
@@ -171,7 +175,7 @@ Pending:
 
 ## Next step
 
-P5 (U2.2 follow-ups) stays open and moves to its own pre-deploy branch. The password-change attempt limit stays an owner decision.
+P5 (U2.2 follow-ups) is done on the pre-deploy branch `fix/auth-hardening` (see P5 above); native review pending. The password-change attempt limit stays an owner decision.
 
 ## Judgment Day (2026-10-06)
 
