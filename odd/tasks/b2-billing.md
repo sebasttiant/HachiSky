@@ -129,3 +129,17 @@ C3 (declaration text catalog) when authorized. Parent: Engram mirror, RDD assess
 **Next step (tomorrow):** owner decides on `review/c2-slices`; then close C2's review; then C3 only when authorized. B2 is NOT complete (C3 declarations, C4 drafts, C5 issue/annul, C6 printable document, C7 verification).
 
 **Environment notes:** disk ~8.6 GB free after a controlled cleanup (pnpm store prune 2.26 GB, npm cache 0.43 GB, orphaned bun cache 1.34 GB). Owner may still run `sudo dnf clean all` and `sudo journalctl --vacuum-size=200M`. Machine rebooted once on 2026-10-01 (clears `/tmp`, i.e. the session scratchpad: runners, logs, demo passwords). Demo `hachisky-u23fix-demo` (127.0.0.1:3103) is running but its password files were lost in that reboot.
+
+## C2 Judgment Day (2026-10-06)
+
+The owner accepted the same path used for issuer unit 1: native review of `970c9e5` cannot fit the lens budget, so two blind read-only judges inspected `git diff ed37949 970c9e5` (47 files, +6251/−25). The `review/c2-slices` rewrite was not started. Clone review mode was disabled for the judgment and re-enabled immediately after. Status after re-enable: on, decided by global, clone-local unset.
+
+- Target: commit `970c9e5` against `ed37949`. Round: 1. No fix round.
+- Judge A (`5b710cce-604c-4179-a36a-083b40ee29ed`): one SUGGESTION. `apps/web/src/billing/image-upload-client.ts:48` sends `Content-Type: application/octet-stream` when the browser leaves `File.type` empty, and the server answers 415 before reading the bytes.
+- Judge B (`956ec753-f1eb-4cb9-a94e-361bb11cb498`): one WARNING. `apps/web/src/billing/image-upload.ts:109` stores the first `x-forwarded-for` value as the upload audit IP. Same class as the already recorded C1 advisory `R1-xff-audit-ip`.
+- Confirmed by both judges: none. Severe findings: none. Contradiction: none.
+- INFO only: the two findings above. Not fixed. This judgment is not delivery approval and does not authorize a deployment.
+- Skill resolution: paths injected (`typescript`, `react-19`, `nextjs-15`).
+- JUDGMENT: APPROVED.
+
+`1a73491` (the C2 notes commit) was outside this diff and stays NOT REVIEWED. `must_change_failed` is unchanged and still blocks any deployment.
