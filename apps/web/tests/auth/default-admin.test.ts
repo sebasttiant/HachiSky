@@ -15,6 +15,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, before, beforeEach, describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
+import { eq } from "drizzle-orm";
 import {
   type BootstrapHooks,
   createBootstrapDeps,
@@ -304,10 +305,44 @@ describe("refusals and failures", () => {
     // The temporary file still opens the partially bootstrapped account.
     assert.ok((await signIn(readFileSync(kept, "utf8").trim())).token);
 
-    // Nothing is deleted or repaired; the next run sees an admin and stops.
+    // The account exists and can sign in, but the forced-change row was never
+    // written. The next startup repairs that row and leaves the password file.
     const next = await ensure();
-    assert.equal(next.outcome, "already_initialized");
+    assert.equal(next.outcome, "forced_change_repaired");
+    assert.equal(next.exitCode, 0);
     assert.deepEqual(readdirSync(secretsDir), files);
+    const { security } = await state();
+    assert.equal(security.length, 1);
+    assert.equal(security[0]?.mustChangePassword, true);
+    const later = await ensure();
+    assert.equal(later.outcome, "already_initialized");
+  });
+
+  it("repairs a default admin whose forced-change row is missing and then stays still", async () => {
+    const created = await ensure();
+    assert.equal(created.outcome, "created");
+    if (created.outcome !== "created") return;
+    const file = readFileSync(finalFile());
+    await getDb()
+      .delete(schema.userSecurity)
+      .where(eq(schema.userSecurity.userId, created.userId));
+
+    const repaired = await ensure();
+    assert.equal(repaired.outcome, "forced_change_repaired");
+    assert.equal(repaired.exitCode, 0);
+    if (repaired.outcome !== "forced_change_repaired") return;
+    assert.equal(repaired.userId, created.userId);
+    const { security, users, records } = await state();
+    assert.equal(security.length, 1);
+    assert.equal(security[0]?.mustChangePassword, true);
+    assert.equal(users.length, 1);
+    assert.equal(records.length, 1);
+    assert.ok(readFileSync(finalFile()).equals(file));
+
+    const again = await ensure();
+    assert.equal(again.outcome, "already_initialized");
+    assert.equal((await state()).security[0]?.mustChangePassword, true);
+    assert.ok(readFileSync(finalFile()).equals(file));
   });
 });
 

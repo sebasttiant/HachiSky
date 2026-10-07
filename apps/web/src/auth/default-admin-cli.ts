@@ -15,7 +15,8 @@ import {
 // Output is ONE status line. It never contains the password.
 //
 // Exit codes:
-//   0  created, or already initialized (nothing done)
+//   0  created, already initialized (nothing done), or the missing
+//      forced-change row for the default admin was repaired
 //   1  configuration error, unusable secrets directory, or an error before
 //      anything was written
 //   3  the password file already exists but the system is not initialized;
@@ -31,6 +32,8 @@ function describe(result: DefaultAdminResult): string {
       return `created; password in secrets/${PASSWORD_FILE}`;
     case "already_initialized":
       return "already initialized";
+    case "forced_change_repaired":
+      return "repaired the missing forced password change";
     case "inconsistent":
       return `inconsistent (${result.reason})`;
     default:
