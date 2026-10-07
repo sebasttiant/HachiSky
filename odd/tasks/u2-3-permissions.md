@@ -82,7 +82,7 @@ Delivery: expected well over the 400-line review budget; split into chained PRs 
 - [x] **C3** (closure finding F3, hypothesis confirmed) `changeOwnPassword` vs admin `resetPassword` race. Confirm only with a controlled barrier test; fix only if RED. Route: delegated writer (writer trigger).
 - [x] **C4** Record deployment conditions (X-Forwarded-For trust, health check scope) in this document and the README. Documentation only.
 - [ ] **P5** Judgment Day follow-ups from U2.2: test the clearing cookie on the page-guard denied path; restrict the proxy's public `/api/auth/*` prefix to the allowlist.
-- [ ] **P6** Local demo and evidence; Judgment Day before the PR.
+- [x] **P6** Local demo and evidence; Judgment Day before the PR. Demo evidence is the 2026-10-01 headless run (18/18). Judgment Day of `863c25b~1..a338135` is recorded below.
 
 ## Closure findings (2026-10-01)
 
@@ -171,4 +171,15 @@ Pending:
 
 ## Next step
 
-P5 (U2.2 follow-ups), then P6: Judgment Day over the whole branch, then split into chained PRs for review (the branch is well over the 400-line budget).
+P5 (U2.2 follow-ups) stays open and moves to its own pre-deploy branch. The password-change attempt limit stays an owner decision.
+
+## Judgment Day (2026-10-06)
+
+Two blind read-only judges inspected `git diff 863c25b~1 a338135` (65 files, +6064/−38). Native review stayed on. One round. No fix round. This judgment is not delivery approval.
+
+- Judge A (`00b8c77b-a67f-4229-8b27-18d868a37d53`): one WARNING. `apps/web/src/users/service.ts:272-275` — `notResolvedRequest` scans `audit_log` by `details->>'requestId'` with no expression index, so the activity lists grow with the table.
+- Judge B (`5c573f66-e54e-4c26-922e-736d16b6eeec`): the same WARNING at `apps/web/src/users/service.ts:272-276`.
+- Confirmed by both: that WARNING only. Severe findings: none. Contradiction: none. Suspect: none.
+- INFO: the missing index was already noted above as fine at current volume; an expression index would need a migration and was not added. The missing attempt limit on the own password change stays an open owner decision; neither judge treated it as a severe defect.
+- Skill resolution: paths injected (`typescript`, `react-19`, `nextjs-15`, `zod-4`).
+- JUDGMENT: APPROVED.
