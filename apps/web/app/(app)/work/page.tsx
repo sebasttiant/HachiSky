@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { requireSession } from "../../../src/auth/guard.ts";
+import { requireModule } from "../../../src/auth/guard.ts";
 import { PageHeader } from "../../../src/shell/PageHeader.tsx";
 import { WorkdayPreview } from "../../../src/work/WorkdayPreview.tsx";
 import styles from "./page.module.css";
@@ -7,7 +7,7 @@ import styles from "./page.module.css";
 export const metadata: Metadata = { title: "Trabajo" };
 
 export default async function WorkPage() {
-  await requireSession("/work");
+  await requireModule("work", "/work");
   return (
     <div className="container">
       <PageHeader

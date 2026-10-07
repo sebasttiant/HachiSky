@@ -1,8 +1,14 @@
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+import { forbidden, redirect } from "next/navigation";
 import { cache } from "react";
+import { getDb } from "../db/client.ts";
+import type { ModuleId } from "../shell/navigation.ts";
+import { getMustChangePassword as readMustChangePassword } from "../users/service.ts";
 import { getAuth } from "./auth.ts";
+import { type ModuleAccess, moduleAccessDecision } from "./module-access.ts";
 import { loginPath } from "./next-path.ts";
+import { passwordGateRedirect } from "./password-gate.ts";
+import { canAccessModule } from "./permissions.ts";
 import { type AuthenticatedSession, resolveSession } from "./session.ts";
 
 // Authoritative server-side session check (data-access layer). Deduplicated
@@ -14,13 +20,51 @@ export const getCurrentSession = cache(async () => {
   return resolveSession(getAuth(), requestHeaders);
 });
 
-// Every protected page, route handler and Server Function calls this with its
-// own route (enforced by tests/auth/route-guards.test.ts). Layouts are not
-// enough: they do not re-run on client-side navigation.
+// Every protected page, route handler and Server Function calls this (or
+// requireModule) with its own route (enforced by tests/auth/route-guards.test.ts).
+// Layouts are not enough: they do not re-run on client-side navigation.
+export const getMustChangePassword = cache((userId: string) =>
+  readMustChangePassword({ db: getDb() }, userId),
+);
+
 export async function requireSession(
   currentPath: string,
 ): Promise<AuthenticatedSession> {
   const result = await getCurrentSession();
   if (result.status !== "authenticated") redirect(loginPath(currentPath));
+  const gate = passwordGateRedirect(
+    await getMustChangePassword(result.user.id),
+    currentPath,
+  );
+  if (gate) redirect(gate);
   return result;
+}
+
+// A signed-in user whose role may not use the module gets a 403.
+export async function requireModule(
+  module: ModuleId,
+  currentPath: string,
+): Promise<AuthenticatedSession> {
+  const session = await requireSession(currentPath);
+  if (!canAccessModule(session.user.role, module)) forbidden();
+  return session;
+}
+
+// For API route handlers that answer with a status code instead of a
+// redirect (JSON 401/403). Same checks as requireModule: session, pending
+// password change, module role. `currentPath` is the handler's own path
+// (enforced by tests/auth/route-guards.test.ts), kept for parity with
+// requireModule and for the password gate.
+export async function checkModuleAccess(
+  module: ModuleId,
+  currentPath: string,
+): Promise<ModuleAccess> {
+  const result = await getCurrentSession();
+  const mustChange =
+    result.status === "authenticated" &&
+    passwordGateRedirect(
+      await getMustChangePassword(result.user.id),
+      currentPath,
+    ) !== null;
+  return moduleAccessDecision(result, mustChange, module);
 }

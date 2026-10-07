@@ -15,6 +15,41 @@
       "when": 1790704859914,
       "tag": "0001_auth_foundation",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790817018332,
+      "tag": "0002_admin_security_audit",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790882548324,
+      "tag": "0003_clients",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790900154324,
+      "tag": "0004_billing_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790901583433,
+      "tag": "0005_billing_signers",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791151508735,
+      "tag": "0006_issuer_profiles",
+      "breakpoints": true
     }
   ]
 }
