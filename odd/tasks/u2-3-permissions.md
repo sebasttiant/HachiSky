@@ -86,6 +86,7 @@ Delivery: expected well over the 400-line review budget; split into chained PRs 
   - RED: `tests/auth/session-guard.test.ts` failed with `does not provide an export named 'isPublicRequest'`. The clearing-cookie assertions cover existing behavior (no RED possible); mutation checks instead.
   - GREEN (disposable runner `hv-authhard`, worktree `src`/`tests`/`proxy.ts` mounted read-only on image `hv-authhard-test:f8e14ee`, DB `hachisky_test`/`hachisky-test` proven): session-guard, auth-http, module-access, route-guards, password-gate, next-path, default-admin, bootstrap-admin, compose **108/108** (baseline 106 + 2 new); `pnpm typecheck` exit 0; `biome check` on the 3 changed files exit 0.
   - Mutations (on a temporary copy of `src`, worktree untouched): proxy back to the `/api/auth/` prefix → 2 tests fail; denied path returning no cookies → 3 tests fail.
+  - Native review (2026-10-08): `79a1b03` against `390dba5`, four lenses, risk high, lineage `review-c772eac74d4f2568`, approved and acknowledged; authority burned. Not delivery approval. No push.
 - [x] **P6** Local demo and evidence; Judgment Day before the PR. Demo evidence is the 2026-10-01 headless run (18/18). Judgment Day of `863c25b~1..a338135` is recorded below.
 
 ## Closure findings (2026-10-01)
@@ -175,7 +176,7 @@ Pending:
 
 ## Next step
 
-P5 (U2.2 follow-ups) is done on the pre-deploy branch `fix/auth-hardening` (see P5 above); native review pending. The password-change attempt limit stays an owner decision.
+P5 (U2.2 follow-ups) is done and reviewed on the pre-deploy branch `fix/auth-hardening` (see P5 above). The password-change attempt limit stays an owner decision.
 
 ## Judgment Day (2026-10-06)
 
