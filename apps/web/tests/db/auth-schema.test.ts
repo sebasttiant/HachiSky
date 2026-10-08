@@ -90,6 +90,7 @@ describe("migration 0001 on a fresh database", () => {
           "bank_account",
           "billing_image",
           "client",
+          "declaration_text",
           "issuer_logo",
           "issuer_profile",
           "session",

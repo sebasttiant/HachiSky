@@ -42,6 +42,9 @@ export const RULE_MESSAGES: Record<BillingRuleCode, string> = {
     "Este es el emisor predeterminado. Elige primero otro emisor como predeterminado para poder desactivarlo.",
   issuer_inactive:
     "Ese emisor está inactivo. Reactívalo o elige un emisor activo.",
+  declaration_not_found: "Esa declaración ya no existe.",
+  duplicate_declaration:
+    "Ya existe una declaración con ese nombre (puede estar inactiva).",
 };
 
 const GENERIC_ERROR = "No se pudo completar la acción. Intenta de nuevo.";

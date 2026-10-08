@@ -50,6 +50,13 @@
       "when": 1791151508735,
       "tag": "0006_issuer_profiles",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791417983345,
+      "tag": "0007_declaration_texts",
+      "breakpoints": true
     }
   ]
 }

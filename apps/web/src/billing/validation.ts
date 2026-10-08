@@ -26,6 +26,8 @@ export const CURRENCY_LABEL: Record<Currency, string> = {
 };
 
 export const PAYMENT_TERMS_MAX = 1000;
+export const DECLARATION_LABEL_MAX = 120;
+export const DECLARATION_BODY_MAX = 2000;
 
 // Row ids are uuids; anything else is refused before reaching the database.
 export const UUID =
@@ -63,7 +65,19 @@ export interface SignerInput {
   email: string;
 }
 
+// A tax declaration text. `label` names it in lists and pickers; `body` is
+// the text printed on the document.
+export interface DeclarationInput {
+  label: string;
+  body: string;
+}
+
 export type IssuerField = keyof IssuerInput;
+export type DeclarationField = keyof DeclarationInput;
+export type DeclarationFieldErrors = Partial<Record<DeclarationField, string>>;
+export type DeclarationValidation =
+  | { ok: true; data: DeclarationInput }
+  | { ok: false; fieldErrors: DeclarationFieldErrors };
 export type SignerField = keyof SignerInput;
 export type SignerFieldErrors = Partial<Record<SignerField, string>>;
 export type SignerValidation =
@@ -281,4 +295,24 @@ export function validateSigner(raw: unknown): SignerValidation {
       email,
     },
   };
+}
+
+// The body keeps its line breaks (normalized to \n) because the printed
+// document shows the text as written.
+export function validateDeclaration(raw: unknown): DeclarationValidation {
+  const input = asRecord(raw);
+  const errors: DeclarationFieldErrors = {};
+
+  const label = line(input.label);
+  if (!label) errors.label = "Escribe un nombre para la declaración.";
+  else if (label.length > DECLARATION_LABEL_MAX)
+    errors.label = `El nombre es demasiado largo (máximo ${DECLARATION_LABEL_MAX} caracteres).`;
+
+  const body = text(input.body).replace(/\r\n?/g, "\n");
+  if (!body) errors.body = "Escribe el texto de la declaración.";
+  else if (body.length > DECLARATION_BODY_MAX)
+    errors.body = `El texto es demasiado largo (máximo ${DECLARATION_BODY_MAX} caracteres).`;
+
+  if (Object.keys(errors).length > 0) return { ok: false, fieldErrors: errors };
+  return { ok: true, data: { label, body } };
 }

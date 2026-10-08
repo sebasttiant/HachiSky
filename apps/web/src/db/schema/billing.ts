@@ -310,3 +310,38 @@ export const billingImage = pgTable(
     ),
   ],
 );
+
+// Tax declaration texts an admin may attach to a document (owner, 2026-10-01:
+// configurable, none by default, mandatory-or-not still pending). There is no
+// default or preselected text. Deactivated, never deleted; an issued document
+// will freeze the text itself, so editing one never changes issued documents.
+// One label per text, case-insensitive, inactive rows included.
+export const declarationText = pgTable(
+  "declaration_text",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    label: text("label").notNull(),
+    body: text("body").notNull(),
+    active: boolean("active").default(true).notNull(),
+    createdAt: timestamptz("created_at").defaultNow().notNull(),
+    updatedAt: timestamptz("updated_at").defaultNow().notNull(),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    updatedBy: text("updated_by")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+  },
+  (table) => [
+    uniqueIndex("declaration_text_label_unique").on(sql`lower(${table.label})`),
+    index("declaration_text_active_idx").on(table.active),
+    check(
+      "declaration_text_label_check",
+      sql`btrim(${table.label}) <> '' and char_length(${table.label}) <= 120`,
+    ),
+    check(
+      "declaration_text_body_check",
+      sql`btrim(${table.body}, E' \\t\\r\\n') <> '' and char_length(${table.body}) <= 2000`,
+    ),
+  ],
+);

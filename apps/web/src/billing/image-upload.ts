@@ -75,6 +75,8 @@ const RULE_STATUS: Record<BillingRuleCode, number> = {
   duplicate_bank_account: 409,
   duplicate_signer: 409,
   duplicate_issuer: 409,
+  declaration_not_found: 404,
+  duplicate_declaration: 409,
 };
 
 function json(status: number, body: Record<string, unknown>): Response {

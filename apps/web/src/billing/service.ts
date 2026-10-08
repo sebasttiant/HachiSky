@@ -9,6 +9,7 @@ import {
 import {
   type BankAccountFieldErrors,
   type BankAccountInput,
+  type DeclarationFieldErrors,
   type IssuerFieldErrors,
   type SignerFieldErrors,
   UUID,
@@ -49,7 +50,9 @@ export type BillingRuleCode =
   | "issuer_not_found"
   | "duplicate_issuer"
   | "issuer_is_default"
-  | "issuer_inactive";
+  | "issuer_inactive"
+  | "declaration_not_found"
+  | "duplicate_declaration";
 
 export class BillingRuleError extends Error {
   readonly code: BillingRuleCode;
@@ -63,9 +66,14 @@ export class BillingRuleError extends Error {
 export class BillingValidationError extends Error {
   readonly fieldErrors: IssuerFieldErrors &
     BankAccountFieldErrors &
-    SignerFieldErrors;
+    SignerFieldErrors &
+    DeclarationFieldErrors;
   constructor(
-    fieldErrors: IssuerFieldErrors | BankAccountFieldErrors | SignerFieldErrors,
+    fieldErrors:
+      | IssuerFieldErrors
+      | BankAccountFieldErrors
+      | SignerFieldErrors
+      | DeclarationFieldErrors,
   ) {
     super("invalid billing settings");
     this.name = "BillingValidationError";
