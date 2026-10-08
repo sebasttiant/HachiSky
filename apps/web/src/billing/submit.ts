@@ -51,6 +51,7 @@ export const RULE_MESSAGES: Record<BillingRuleCode, string> = {
   declaration_not_found: "Esa declaración ya no existe.",
   duplicate_declaration:
     "Ya existe una declaración con ese nombre (puede estar inactiva).",
+  draft_not_found: "Ese borrador ya no existe.",
 };
 
 const GENERIC_ERROR = "No se pudo completar la acción. Intenta de nuevo.";

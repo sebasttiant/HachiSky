@@ -29,7 +29,11 @@ export type BillingSettingsOperation =
   | "create_declaration"
   | "edit_declaration"
   | "deactivate_declaration"
-  | "reactivate_declaration";
+  | "reactivate_declaration"
+  | "view_drafts"
+  | "create_draft"
+  | "edit_draft"
+  | "discard_draft";
 
 export const BILLING_SETTINGS_PERMISSIONS: Record<
   BillingSettingsOperation,
@@ -59,6 +63,11 @@ export const BILLING_SETTINGS_PERMISSIONS: Record<
   edit_declaration: ["admin"],
   deactivate_declaration: ["admin"],
   reactivate_declaration: ["admin"],
+  // Cuentas de cobro (module "billing", administrators only).
+  view_drafts: ["admin"],
+  create_draft: ["admin"],
+  edit_draft: ["admin"],
+  discard_draft: ["admin"],
 };
 
 export function canPerformBillingSettingsOperation(

@@ -88,6 +88,8 @@ describe("migration 0001 on a fresh database", () => {
           "app_instance",
           "audit_log",
           "bank_account",
+          "billing_document",
+          "billing_document_line",
           "billing_image",
           "client",
           "declaration_text",

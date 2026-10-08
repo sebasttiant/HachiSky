@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   type AnyPgColumn,
+  bigint,
   boolean,
   check,
   customType,
@@ -9,6 +10,7 @@ import {
   integer,
   pgTable,
   primaryKey,
+  smallint,
   text,
   timestamp,
   unique,
@@ -16,6 +18,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { user } from "./auth.ts";
+import { client } from "./client.ts";
 
 const timestamptz = (name: string) => timestamp(name, { withTimezone: true });
 
@@ -342,6 +345,103 @@ export const declarationText = pgTable(
     check(
       "declaration_text_body_check",
       sql`btrim(${table.body}, E' \\t\\r\\n') <> '' and char_length(${table.body}) <= 2000`,
+    ),
+  ],
+);
+
+// Cuentas de cobro. Only drafts exist until issuing is built (C5): a draft
+// has no number, can be edited and can be discarded (deleted with its
+// lines). Client, issuer and currency are required from the start; the bank
+// account, signer and declaration are chosen while drafting. RESTRICT keeps
+// every row a document points at. The total is never stored: it is the sum
+// of the lines.
+export const billingDocument = pgTable(
+  "billing_document",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    status: text("status").default("draft").notNull(),
+    clientId: uuid("client_id")
+      .notNull()
+      .references(() => client.id, { onDelete: "restrict" }),
+    issuerProfileId: uuid("issuer_profile_id")
+      .notNull()
+      .references(() => issuerProfile.id, { onDelete: "restrict" }),
+    currency: text("currency").notNull(),
+    bankAccountId: uuid("bank_account_id").references(() => bankAccount.id, {
+      onDelete: "restrict",
+    }),
+    signerProfileId: uuid("signer_profile_id").references(
+      () => signerProfile.id,
+      { onDelete: "restrict" },
+    ),
+    declarationTextId: uuid("declaration_text_id").references(
+      () => declarationText.id,
+      { onDelete: "restrict" },
+    ),
+    paymentTerms: text("payment_terms"),
+    createdAt: timestamptz("created_at").defaultNow().notNull(),
+    updatedAt: timestamptz("updated_at").defaultNow().notNull(),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    updatedBy: text("updated_by")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+  },
+  (table) => [
+    index("billing_document_status_idx").on(table.status),
+    index("billing_document_client_idx").on(table.clientId),
+    check("billing_document_status_check", sql`${table.status} in ('draft')`),
+    check(
+      "billing_document_currency_check",
+      sql`${table.currency} in ('COP', 'USD')`,
+    ),
+    check(
+      "billing_document_payment_terms_length",
+      sql`char_length(${table.paymentTerms}) <= 1000`,
+    ),
+  ],
+);
+
+// One row per line, in order. The amount is the line total in minor units
+// (whole pesos or US cents); quantity is informative and never multiplies it.
+export const billingDocumentLine = pgTable(
+  "billing_document_line",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    documentId: uuid("document_id")
+      .notNull()
+      .references(() => billingDocument.id, { onDelete: "cascade" }),
+    position: smallint("position").notNull(),
+    product: text("product").notNull(),
+    description: text("description"),
+    quantity: text("quantity"),
+    amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    unique("billing_document_line_position_unique").on(
+      table.documentId,
+      table.position,
+    ),
+    check(
+      "billing_document_line_position_check",
+      sql`${table.position} between 1 and 50`,
+    ),
+    check(
+      "billing_document_line_product_check",
+      sql`btrim(${table.product}) <> '' and char_length(${table.product}) <= 200`,
+    ),
+    check(
+      "billing_document_line_description_length",
+      sql`char_length(${table.description}) <= 1000`,
+    ),
+    check(
+      "billing_document_line_quantity_length",
+      sql`char_length(${table.quantity}) <= 30`,
+    ),
+    check(
+      "billing_document_line_amount_check",
+      sql`${table.amountMinor} between 1 and 99999999999999`,
     ),
   ],
 );

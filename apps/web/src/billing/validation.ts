@@ -8,6 +8,7 @@ import {
   isValidEmail,
   isValidPhone,
 } from "../clients/validation.ts";
+import { parseAmount } from "./money.ts";
 
 export const ACCOUNT_TYPES = ["ahorros", "corriente"] as const;
 export type AccountType = (typeof ACCOUNT_TYPES)[number];
@@ -315,4 +316,203 @@ export function validateDeclaration(raw: unknown): DeclarationValidation {
 
   if (Object.keys(errors).length > 0) return { ok: false, fieldErrors: errors };
   return { ok: true, data: { label, body } };
+}
+
+// ---- Drafts (cuentas de cobro) ----------------------------------------------
+
+export const DRAFT_LINES_MAX = 50;
+export const LINE_PRODUCT_MAX = 200;
+export const LINE_DESCRIPTION_MAX = 1000;
+export const LINE_QUANTITY_MAX = 30;
+
+// What starting a draft needs. Everything else is chosen while drafting.
+export interface NewDraftInput {
+  clientId: string;
+  issuerProfileId: string;
+  currency: Currency;
+}
+
+export interface DraftLineInput {
+  product: string;
+  description: string | null;
+  // Informative only; it never multiplies the amount.
+  quantity: string | null;
+  amountMinor: number;
+}
+
+export interface DraftInput extends NewDraftInput {
+  bankAccountId: string | null;
+  signerProfileId: string | null;
+  declarationTextId: string | null;
+  paymentTerms: string | null;
+  lines: DraftLineInput[];
+}
+
+// Keys are the input field names; line errors use `lines.<row>.<field>`,
+// where <row> is the row as the form sent it (blank rows included).
+export type DraftFieldErrors = Partial<Record<string, string>>;
+export type NewDraftValidation =
+  | { ok: true; data: NewDraftInput }
+  | { ok: false; fieldErrors: DraftFieldErrors };
+export type DraftValidation =
+  | { ok: true; data: DraftInput }
+  | { ok: false; fieldErrors: DraftFieldErrors };
+
+function multiline(value: unknown): string {
+  return text(value).replace(/\r\n?/g, "\n");
+}
+
+function requiredId(
+  value: unknown,
+  field: string,
+  message: string,
+  errors: DraftFieldErrors,
+): string {
+  const id = text(value).toLowerCase();
+  if (!UUID.test(id)) errors[field] = message;
+  return id;
+}
+
+// Empty means "not chosen yet"; anything else must look like an id. Whether
+// the row exists and is active is the service's check.
+function optionalId(
+  value: unknown,
+  field: string,
+  message: string,
+  errors: DraftFieldErrors,
+): string | null {
+  const id = text(value).toLowerCase();
+  if (!id) return null;
+  if (!UUID.test(id)) errors[field] = message;
+  return id;
+}
+
+export const DRAFT_MESSAGES = {
+  clientId: "Elige un cliente activo.",
+  issuerProfileId: "Elige un emisor activo.",
+  currency: "Elige la moneda: pesos (COP) o dólares (USD).",
+  bankAccountId: "Elige una cuenta bancaria activa.",
+  bankAccountIssuer: "La cuenta bancaria debe ser del emisor elegido.",
+  bankAccountCurrency:
+    "La cuenta bancaria debe estar en la moneda del documento.",
+  signerProfileId: "Elige un firmante activo.",
+  declarationTextId: "Elige una declaración activa.",
+} as const;
+
+export function validateNewDraft(raw: unknown): NewDraftValidation {
+  const input = asRecord(raw);
+  const errors: DraftFieldErrors = {};
+  const clientId = requiredId(
+    input.clientId,
+    "clientId",
+    DRAFT_MESSAGES.clientId,
+    errors,
+  );
+  const issuerProfileId = requiredId(
+    input.issuerProfileId,
+    "issuerProfileId",
+    DRAFT_MESSAGES.issuerProfileId,
+    errors,
+  );
+  const currency = input.currency;
+  if (!isCurrency(currency)) errors.currency = DRAFT_MESSAGES.currency;
+  if (Object.keys(errors).length > 0) return { ok: false, fieldErrors: errors };
+  return {
+    ok: true,
+    data: { clientId, issuerProfileId, currency: currency as Currency },
+  };
+}
+
+function isBlankLine(line: Record<string, unknown>): boolean {
+  return ["product", "description", "quantity", "amount"].every(
+    (field) => text(line[field]) === "",
+  );
+}
+
+function validateLine(
+  fields: Record<string, unknown>,
+  row: number,
+  currency: Currency | null,
+  errors: DraftFieldErrors,
+): DraftLineInput {
+  const prefix = `lines.${row}`;
+  const product = line(fields.product);
+  if (!product) errors[`${prefix}.product`] = "Escribe el producto.";
+  else if (product.length > LINE_PRODUCT_MAX)
+    errors[`${prefix}.product`] =
+      `El producto es demasiado largo (máximo ${LINE_PRODUCT_MAX} caracteres).`;
+
+  const description = multiline(fields.description) || null;
+  if (description && description.length > LINE_DESCRIPTION_MAX)
+    errors[`${prefix}.description`] =
+      `La descripción es demasiado larga (máximo ${LINE_DESCRIPTION_MAX} caracteres).`;
+
+  const quantity = line(fields.quantity) || null;
+  if (quantity && quantity.length > LINE_QUANTITY_MAX)
+    errors[`${prefix}.quantity`] =
+      `La cantidad es demasiado larga (máximo ${LINE_QUANTITY_MAX} caracteres).`;
+
+  let amountMinor = 0;
+  // Without a valid currency the amount cannot be read; the currency error
+  // is reported instead.
+  if (currency) {
+    const amount = parseAmount(text(fields.amount), currency);
+    if (amount.ok) amountMinor = amount.minor;
+    else errors[`${prefix}.amount`] = amount.error;
+  }
+  return { product, description, quantity, amountMinor };
+}
+
+export function validateDraft(raw: unknown): DraftValidation {
+  const input = asRecord(raw);
+  const start = validateNewDraft(raw);
+  const errors: DraftFieldErrors = start.ok ? {} : { ...start.fieldErrors };
+  const currency = isCurrency(input.currency) ? input.currency : null;
+
+  const bankAccountId = optionalId(
+    input.bankAccountId,
+    "bankAccountId",
+    DRAFT_MESSAGES.bankAccountId,
+    errors,
+  );
+  const signerProfileId = optionalId(
+    input.signerProfileId,
+    "signerProfileId",
+    DRAFT_MESSAGES.signerProfileId,
+    errors,
+  );
+  const declarationTextId = optionalId(
+    input.declarationTextId,
+    "declarationTextId",
+    DRAFT_MESSAGES.declarationTextId,
+    errors,
+  );
+
+  const paymentTerms = multiline(input.paymentTerms) || null;
+  if (paymentTerms && paymentTerms.length > PAYMENT_TERMS_MAX)
+    errors.paymentTerms = `Las condiciones de pago son demasiado largas (máximo ${PAYMENT_TERMS_MAX} caracteres).`;
+
+  const rawLines = Array.isArray(input.lines) ? input.lines : [];
+  const lines: DraftLineInput[] = [];
+  rawLines.forEach((rawLine, row) => {
+    const record = asRecord(rawLine);
+    if (isBlankLine(record)) return;
+    lines.push(validateLine(record, row, currency, errors));
+  });
+  if (lines.length > DRAFT_LINES_MAX)
+    errors.lines = `Una cuenta de cobro admite máximo ${DRAFT_LINES_MAX} líneas.`;
+
+  if (!start.ok || Object.keys(errors).length > 0)
+    return { ok: false, fieldErrors: errors };
+  return {
+    ok: true,
+    data: {
+      ...start.data,
+      bankAccountId,
+      signerProfileId,
+      declarationTextId,
+      paymentTerms,
+      lines,
+    },
+  };
 }
