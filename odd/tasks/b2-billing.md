@@ -50,6 +50,7 @@ The owner's first useful business flow after clients: create a client, enter con
     - GREEN (runner `hv-c3`, DB `hachisky_test`/`hachisky-test` proven, tmpfs, internal network, no ports): focused 42/42; full `pnpm test` **597/597**; `pnpm typecheck` exit 0; `biome check src app tests proxy.ts next.config.ts drizzle.config.ts` exit 0 (4 known `globals.css` warnings).
     - Mutations (temporary copy of `src`): a declaration action skipping `billingContext` → route guard test fails; the form dropping `body` → 5 submit tests fail.
     - Not done: `pnpm build`, browser walk-through, phone-width layout (same pending checks as C1/C2).
+  - Native reviews (2026-10-08, four lenses each, risk high): C3a `b8b8372` against `cc56cff`, lineage `review-21e083352dab4484`; C3b `0080328` against `b8b8372`, lineage `review-3455b93946727b24`. Both approved and acknowledged; authority burned. Not delivery approval. No push.
 - [ ] **C4** Drafts: document + lines, money module, draft CRUD.
 - [ ] **C5** Numbering cutover, issue with snapshots, annul.
 - [ ] **C6** Printable A4 view.
