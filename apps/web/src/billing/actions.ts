@@ -9,9 +9,12 @@ import type { ActionState } from "../users/action-state.ts";
 import {
   BANK_ACCOUNTS_PATH,
   bankAccountPath,
+  DECLARATIONS_PATH,
+  declarationPath,
   ISSUERS_PATH,
   issuerPath,
   NEW_BANK_ACCOUNT_PATH,
+  NEW_DECLARATION_PATH,
   NEW_ISSUER_PATH,
   NEW_SIGNER_PATH,
   SIGNERS_PATH,
@@ -20,13 +23,16 @@ import {
 import type { BillingActor, BillingDeps } from "./service.ts";
 import {
   submitCreateBankAccount,
+  submitCreateDeclaration,
   submitCreateIssuer,
   submitCreateSigner,
   submitSetBankAccountActive,
+  submitSetDeclarationActive,
   submitSetDefaultIssuer,
   submitSetIssuerActive,
   submitSetSignerActive,
   submitUpdateBankAccount,
+  submitUpdateDeclaration,
   submitUpdateIssuer,
   submitUpdateSigner,
 } from "./submit.ts";
@@ -161,5 +167,38 @@ export async function setSignerActiveAction(
   const { deps, actor } = await billingContext(signerPath(id));
   const state = await submitSetSignerActive(deps, actor, id, active);
   if (state.status === "success") revalidatePath(SIGNERS_PATH, "layout");
+  return state;
+}
+
+export async function createDeclarationAction(
+  _previous: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const { deps, actor } = await billingContext(NEW_DECLARATION_PATH);
+  const { state, id } = await submitCreateDeclaration(deps, actor, formData);
+  if (!id) return state;
+  revalidatePath(DECLARATIONS_PATH, "layout");
+  redirect(`${declarationPath(id)}?creada=1`);
+}
+
+export async function updateDeclarationAction(
+  id: string,
+  _previous: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const { deps, actor } = await billingContext(declarationPath(id));
+  const state = await submitUpdateDeclaration(deps, actor, id, formData);
+  if (state.status === "success") revalidatePath(DECLARATIONS_PATH, "layout");
+  return state;
+}
+
+export async function setDeclarationActiveAction(
+  id: string,
+  active: boolean,
+  _previous: ActionState,
+): Promise<ActionState> {
+  const { deps, actor } = await billingContext(declarationPath(id));
+  const state = await submitSetDeclarationActive(deps, actor, id, active);
+  if (state.status === "success") revalidatePath(DECLARATIONS_PATH, "layout");
   return state;
 }

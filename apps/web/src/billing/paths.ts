@@ -20,6 +20,13 @@ export function signerPath(id: string): string {
   return `${SIGNERS_PATH}/${encodeURIComponent(id)}`;
 }
 
+export const DECLARATIONS_PATH = `${SETTINGS_PATH}/declarations`;
+export const NEW_DECLARATION_PATH = `${DECLARATIONS_PATH}/new`;
+
+export function declarationPath(id: string): string {
+  return `${DECLARATIONS_PATH}/${encodeURIComponent(id)}`;
+}
+
 // Upload route handlers (raw image body, admins only; see image-upload.ts).
 export function issuerLogoUploadPath(id: string): string {
   return `/api/billing/uploads/issuers/${encodeURIComponent(id)}/logo`;

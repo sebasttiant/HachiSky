@@ -77,6 +77,9 @@ describe("page guards", () => {
       "/settings/signers",
       "/settings/signers/new",
       "/settings/signers/[id]",
+      "/settings/declarations",
+      "/settings/declarations/new",
+      "/settings/declarations/[id]",
       "/account/password",
     ]) {
       assert.ok(routes.includes(expected), `missing ${expected} in ${routes}`);
@@ -376,8 +379,8 @@ describe("billing settings Server Functions", () => {
     ];
     assert.equal(
       exported.length,
-      10,
-      "issuer (create, update, set-active, set-default), bank account (create, update, set-active) and signer (create, update, set-active) actions; images upload through route handlers",
+      13,
+      "issuer (create, update, set-active, set-default), bank account (create, update, set-active), signer (create, update, set-active) and declaration (create, update, set-active) actions; images upload through route handlers",
     );
     for (const match of exported) {
       const body = source.slice((match.index ?? 0) + match[0].length);

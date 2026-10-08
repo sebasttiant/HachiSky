@@ -1,5 +1,10 @@
 import type { ActionState } from "../users/action-state.ts";
 import {
+  createDeclaration,
+  setDeclarationActive,
+  updateDeclaration,
+} from "./declarations.ts";
+import {
   createIssuer,
   setDefaultIssuer,
   setIssuerActive,
@@ -18,6 +23,7 @@ import {
 import { createSigner, setSignerActive, updateSigner } from "./signers.ts";
 import type {
   BankAccountField,
+  DeclarationField,
   IssuerField,
   SignerField,
 } from "./validation.ts";
@@ -78,6 +84,8 @@ const SIGNER_FIELDS: readonly SignerField[] = [
   "jobTitle",
   "email",
 ];
+
+const DECLARATION_FIELDS: readonly DeclarationField[] = ["label", "body"];
 
 // Only strings are read; a file or a missing field becomes undefined and the
 // service reports it.
@@ -287,5 +295,62 @@ export async function submitSetSignerActive(
     };
   } catch (error) {
     return failure(active ? "activate_signer" : "deactivate_signer", error);
+  }
+}
+
+// ---- Declaration texts ------------------------------------------------------
+
+export async function submitCreateDeclaration(
+  deps: BillingDeps,
+  actor: BillingActor | null,
+  formData: FormData,
+): Promise<{ state: ActionState; id?: string }> {
+  try {
+    const { id } = await createDeclaration(
+      deps,
+      actor,
+      formToRaw(formData, DECLARATION_FIELDS),
+    );
+    return { state: { status: "success" }, id };
+  } catch (error) {
+    return { state: failure("create_declaration", error) };
+  }
+}
+
+export async function submitUpdateDeclaration(
+  deps: BillingDeps,
+  actor: BillingActor | null,
+  id: string,
+  formData: FormData,
+): Promise<ActionState> {
+  try {
+    await updateDeclaration(
+      deps,
+      actor,
+      id,
+      formToRaw(formData, DECLARATION_FIELDS),
+    );
+    return { status: "success", message: "Cambios guardados." };
+  } catch (error) {
+    return failure("update_declaration", error);
+  }
+}
+
+export async function submitSetDeclarationActive(
+  deps: BillingDeps,
+  actor: BillingActor | null,
+  id: string,
+  active: boolean,
+): Promise<ActionState> {
+  try {
+    await setDeclarationActive(deps, actor, id, active);
+    return {
+      status: "success",
+      message: active
+        ? "Declaración reactivada."
+        : "Declaración desactivada. Su texto se conserva.",
+    };
+  } catch (error) {
+    return failure("set_declaration_active", error);
   }
 }
