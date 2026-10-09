@@ -76,7 +76,16 @@ The owner's first useful business flow after clients: create a client, enter con
     - Mutations (supporting evidence, applied to a copy of `src` under `/tmp`, so this worktree was never mutated; each restored and the originals re-checked): `edit_draft` opened to staff → `refuses every operation to staff, no session and forged roles` fails; `draftContext` guarding `"settings"` instead of `"billing"` → `every exported Server Function checks the billing module first` fails; the editor dropping the issuer/currency account filter → `offers only bank accounts of the draft's issuer in its currency` fails.
     - Honest limits: the UI tests use `renderToStaticMarkup`, so they prove initial rendering, not interaction. Still unverified by any automated check: adding/removing rows in the browser, the live clearing of an incompatible bank selection, the real Server Function transport and redirects, and the discard navigation. `pnpm build`, the browser walk-through and the phone-width layout remain pending as in C1/C2/C3.
     - Commit `3eb65635cb6eb8d093b63228144d3dfcc0234ed7` (owner authorized it explicitly; local only, no push, no PR, no merge). The explorer's `.codegraph/` index was deliberately left untracked and out of the commit.
-    - Not reviewed yet: `3eb6563` has no native review. C4a `1cf94ba` and C4b `569357d` also remain unreviewed.
+    - Native review (2026-10-09): lineage `review-fe1e4a4c89be4b1e`, base `f74bf16` (the tree of `569357d`), `committedOnly`, risk tier **high** (hot path signal: `apps/web/tests/auth/route-guards.test.ts`), four lenses, 17 files, 1814 changed lines, correction budget 200. **Approved**, acknowledged, authority burned at `sha256:b9b0ec5f59e82192b3b75c83bb7cb59362ede8fcb534a94c24b57f50475aaaab`. No correction was opened. This is not delivery approval and does not replace the pending functional checks. No push.
+    - Scope note: the START route `inspect` offered used base `00ba6d9` (the merge of PR #6), which spans ~190 files across C1–C4b. Passing `baseRef=569357d` with `committedOnly: true` scoped the candidate to exactly the 17 C4c files. Use that for every per-unit review on this branch.
+    - Advisory findings, all non-blocking and explicitly informational (none opened a correction; they are separate later work, not a reason to re-review this candidate):
+      - WARNING `R2-line-limit-constants` (`src/billing/submit.ts:371-373`)
+      - WARNING `R3-blank-row-save-unproved` (`src/billing/DraftEditor.tsx:41-44`)
+      - WARNING `R3-stale-line-errors` (`src/billing/DraftEditor.tsx:268-269`)
+      - WARNING `R4-001` (`src/billing/submit.ts:363-369`)
+      - SUGGESTION `R2-duplicated-header-fields` (`src/billing/submit.ts:362-369`), `R2-duplicated-test-loader` (`tests/billing/drafts-ui.test.ts:7-29`), `R2-query-flag-coupling` (`src/billing/draft-actions.ts:45`), `R2-route-literals` (`app/(app)/billing/drafts/[id]/page.tsx:29`), `R3-action-redirects-untested` (`src/billing/draft-actions.ts:37-68`), `R3-row-index-parsing` (`src/billing/submit.ts:373-383`)
+      - The two `R3` stale-state and blank-row warnings line up with the honest limit above: `renderToStaticMarkup` cannot prove interactive behavior. A browser walk-through or an interactive test would settle both.
+    - C4a `1cf94ba` and C4b `569357d` still remain unreviewed.
     - Review workload warning: this commit is ~1800 inserted lines across 16 source and test files. That is well past the 400-line slice the chained-PR guidance protects, so it should be reviewed as its own slice and not folded into a larger PR.
 - [ ] **C5** Numbering cutover, issue with snapshots, annul.
 - [ ] **C6** Printable A4 view.
@@ -137,7 +146,9 @@ The owner's first useful business flow after clients: create a client, enter con
 
 ## Next step
 
-C4c is committed as `3eb6563` on `feat/b2-c4-drafts` (base `569357d`), local only. Next: the native review of C4a `1cf94ba`, C4b `569357d` and C4c `3eb6563`, and after that C5 (numbering cutover, issue with snapshots, annul).
+C4c is committed as `3eb6563` on `feat/b2-c4-drafts` (base `569357d`), local only, and its native review is approved and acknowledged. Next: the native review of C4a `1cf94ba` and C4b `569357d`, then C5 (numbering cutover, issue with snapshots, annul).
+
+Review routing note: the four review lenses in `~/.pi/gentle-ai/models.json` were pointed at `anthropic/claude-opus-5-5` thinking high on 2026-10-09, because `openai-codex/gpt-5.5` had its usage limit reached and the capture refused with `pi-host-relay-transport-failure`. The previous Codex config is kept as `models.json.codex-backup-20261009-143321`.
 
 Still open owner decisions, do not infer them from existing code: the C4 amount syntax and the field and line limits are writer assumptions (`.` thousands and `,` decimals, 50 lines, 200/1000/30 characters, 999.999.999.999 per line); whether a declaration is mandatory; the bank account number format from C1. No default declaration text and no issue block were added.
 
