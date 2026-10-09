@@ -1,4 +1,14 @@
-import { and, asc, count, desc, eq, sql } from "drizzle-orm";
+import {
+  type AnyColumn,
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  inArray,
+  or,
+  sql,
+} from "drizzle-orm";
 import * as schema from "../db/schema/index.ts";
 import { sumAmounts } from "./money.ts";
 import {
@@ -12,6 +22,8 @@ import {
   UUID,
 } from "./service.ts";
 import {
+  ACCOUNT_TYPE_LABEL,
+  type AccountType,
   type Currency,
   DRAFT_MESSAGES,
   type DraftFieldErrors,
@@ -82,6 +94,37 @@ export interface DraftSummary {
   lineCount: number;
   updatedAt: Date;
 }
+
+export interface DraftOption {
+  id: string;
+  label: string;
+  active: boolean;
+}
+
+// What the draft forms can choose from: active rows, plus the draft's own
+// choices when they became inactive (shown as such, so the admin sees why
+// saving asks to change them).
+export interface DraftOptions {
+  clients: DraftOption[];
+  issuers: (DraftOption & { isDefault: boolean })[];
+  bankAccounts: (DraftOption & {
+    issuerProfileId: string | null;
+    currency: Currency;
+  })[];
+  signers: DraftOption[];
+  declarations: DraftOption[];
+}
+
+type DraftSelection = Partial<
+  Pick<
+    DraftRecord,
+    | "clientId"
+    | "issuerProfileId"
+    | "bankAccountId"
+    | "signerProfileId"
+    | "declarationTextId"
+  >
+>;
 
 const HEADER_FIELDS = [
   "clientId",
@@ -380,4 +423,141 @@ export async function discardDraft(
     if (!deleted) throw new BillingRuleError("draft_not_found");
     await audit(tx, actor, "billing.draft_discard", { billingDocumentId: id });
   });
+}
+
+function activeOr(
+  active: AnyColumn,
+  id: AnyColumn,
+  selected: string | null | undefined,
+) {
+  return selected
+    ? or(eq(active, true), inArray(id, [selected]))
+    : eq(active, true);
+}
+
+// Only the last four digits of an account number are shown in pickers.
+function bankAccountLabel(row: {
+  bankName: string;
+  accountType: string;
+  accountNumber: string;
+  holderName: string;
+  currency: string;
+}): string {
+  const type = ACCOUNT_TYPE_LABEL[row.accountType as AccountType] ?? "";
+  return `${row.bankName} · ${type} ···${row.accountNumber.slice(-4)} · ${row.holderName} · ${row.currency}`;
+}
+
+export async function getDraftOptions(
+  deps: BillingDeps,
+  actorInput: BillingActor | null | undefined,
+  selected: DraftSelection = {},
+): Promise<DraftOptions> {
+  authorize(actorInput, "view_drafts");
+  const db = deps.db;
+  const [clients, issuers, accounts, signers, declarations] = await Promise.all(
+    [
+      db
+        .select({
+          id: client.id,
+          name: client.name,
+          identificationType: client.identificationType,
+          identificationNumber: client.identificationNumber,
+          active: client.active,
+        })
+        .from(client)
+        .where(activeOr(client.active, client.id, selected.clientId))
+        .orderBy(asc(client.name), asc(client.id)),
+      db
+        .select({
+          id: issuerProfile.id,
+          label: issuerProfile.legalName,
+          active: issuerProfile.active,
+          isDefault: issuerProfile.isDefault,
+        })
+        .from(issuerProfile)
+        .where(
+          activeOr(
+            issuerProfile.active,
+            issuerProfile.id,
+            selected.issuerProfileId,
+          ),
+        )
+        .orderBy(
+          desc(issuerProfile.isDefault),
+          asc(issuerProfile.legalName),
+          asc(issuerProfile.id),
+        ),
+      db
+        .select({
+          id: bankAccount.id,
+          bankName: bankAccount.bankName,
+          accountType: bankAccount.accountType,
+          accountNumber: bankAccount.accountNumber,
+          holderName: bankAccount.holderName,
+          currency: bankAccount.currency,
+          issuerProfileId: bankAccount.issuerProfileId,
+          active: bankAccount.active,
+        })
+        .from(bankAccount)
+        .where(
+          activeOr(bankAccount.active, bankAccount.id, selected.bankAccountId),
+        )
+        .orderBy(asc(bankAccount.bankName), asc(bankAccount.id)),
+      db
+        .select({
+          id: signerProfile.id,
+          fullName: signerProfile.fullName,
+          jobTitle: signerProfile.jobTitle,
+          active: signerProfile.active,
+        })
+        .from(signerProfile)
+        .where(
+          activeOr(
+            signerProfile.active,
+            signerProfile.id,
+            selected.signerProfileId,
+          ),
+        )
+        .orderBy(asc(signerProfile.fullName), asc(signerProfile.id)),
+      db
+        .select({
+          id: declarationText.id,
+          label: declarationText.label,
+          active: declarationText.active,
+        })
+        .from(declarationText)
+        .where(
+          activeOr(
+            declarationText.active,
+            declarationText.id,
+            selected.declarationTextId,
+          ),
+        )
+        .orderBy(
+          asc(sql`lower(${declarationText.label})`),
+          asc(declarationText.id),
+        ),
+    ],
+  );
+  return {
+    clients: clients.map((row) => ({
+      id: row.id,
+      label: `${row.name} · ${row.identificationType} ${row.identificationNumber}`,
+      active: row.active,
+    })),
+    issuers,
+    bankAccounts: accounts.map((row) => ({
+      id: row.id,
+      label: bankAccountLabel(row),
+      issuerProfileId: row.issuerProfileId,
+      currency: row.currency as Currency,
+      active: row.active,
+    })),
+    signers: signers.map((row) => ({
+      id: row.id,
+      label: `${row.fullName} · ${row.jobTitle}`,
+      active: row.active,
+    })),
+    declarations,
+  };
 }

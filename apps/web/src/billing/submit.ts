@@ -4,6 +4,7 @@ import {
   setDeclarationActive,
   updateDeclaration,
 } from "./declarations.ts";
+import { createDraft, discardDraft, updateDraft } from "./drafts.ts";
 import {
   createIssuer,
   setDefaultIssuer,
@@ -353,5 +354,85 @@ export async function submitSetDeclarationActive(
     };
   } catch (error) {
     return failure("set_declaration_active", error);
+  }
+}
+
+// ---- Drafts (cuentas de cobro) ----------------------------------------------
+
+const NEW_DRAFT_FIELDS = ["clientId", "issuerProfileId", "currency"] as const;
+const DRAFT_HEADER_FIELDS = [
+  ...NEW_DRAFT_FIELDS,
+  "bankAccountId",
+  "signerProfileId",
+  "declarationTextId",
+  "paymentTerms",
+] as const;
+const LINE_FIELDS = ["product", "description", "quantity", "amount"] as const;
+// Rows are numbered from 0; the form never sends more than 100 rows (the
+// service refuses more than 50 filled ones).
+const LINE_KEY = /^lines\.(\d{1,2})\.(product|description|quantity|amount)$/;
+
+// Line fields arrive as `lines.<row>.<field>`. Rows keep the number the form
+// gave them (gaps become empty rows) so errors point back at the right row.
+export function draftFormToRaw(formData: FormData): Record<string, unknown> {
+  const raw = formToRaw(formData, DRAFT_HEADER_FIELDS);
+  const lines: Record<string, unknown>[] = [];
+  for (const [key, value] of formData.entries()) {
+    const match = LINE_KEY.exec(key);
+    if (!match || typeof value !== "string") continue;
+    const row = Number(match[1]);
+    for (let index = lines.length; index <= row; index += 1) {
+      lines.push(
+        Object.fromEntries(LINE_FIELDS.map((field) => [field, undefined])),
+      );
+    }
+    const target = lines[row];
+    if (target) target[match[2] as string] = value;
+  }
+  raw.lines = lines;
+  return raw;
+}
+
+export async function submitCreateDraft(
+  deps: BillingDeps,
+  actor: BillingActor | null,
+  formData: FormData,
+): Promise<{ state: ActionState; id?: string }> {
+  try {
+    const { id } = await createDraft(
+      deps,
+      actor,
+      formToRaw(formData, NEW_DRAFT_FIELDS),
+    );
+    return { state: { status: "success" }, id };
+  } catch (error) {
+    return { state: failure("create_draft", error) };
+  }
+}
+
+export async function submitUpdateDraft(
+  deps: BillingDeps,
+  actor: BillingActor | null,
+  id: string,
+  formData: FormData,
+): Promise<ActionState> {
+  try {
+    await updateDraft(deps, actor, id, draftFormToRaw(formData));
+    return { status: "success", message: "Borrador guardado." };
+  } catch (error) {
+    return failure("update_draft", error);
+  }
+}
+
+export async function submitDiscardDraft(
+  deps: BillingDeps,
+  actor: BillingActor | null,
+  id: string,
+): Promise<ActionState> {
+  try {
+    await discardDraft(deps, actor, id);
+    return { status: "success", message: "Borrador descartado." };
+  } catch (error) {
+    return failure("discard_draft", error);
   }
 }

@@ -42,6 +42,9 @@ export const ACTION_LABEL: Record<string, string> = {
   "billing.declaration_update": "Editó una declaración",
   "billing.declaration_deactivate": "Desactivó una declaración",
   "billing.declaration_activate": "Reactivó una declaración",
+  "billing.draft_create": "Creó un borrador de cuenta de cobro",
+  "billing.draft_update": "Editó un borrador de cuenta de cobro",
+  "billing.draft_discard": "Descartó un borrador de cuenta de cobro",
 };
 
 // A `<action>.requested` row without its completion: the change was asked

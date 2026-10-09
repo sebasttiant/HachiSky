@@ -80,6 +80,8 @@ describe("page guards", () => {
       "/settings/declarations",
       "/settings/declarations/new",
       "/settings/declarations/[id]",
+      "/billing/drafts/new",
+      "/billing/drafts/[id]",
       "/account/password",
     ]) {
       assert.ok(routes.includes(expected), `missing ${expected} in ${routes}`);
@@ -391,5 +393,31 @@ describe("billing settings Server Functions", () => {
       );
     }
     assert.match(source, /await requireModule\("settings", /);
+  });
+});
+
+describe("billing document Server Functions", () => {
+  it("every exported Server Function checks the billing module first", () => {
+    const source = stripComments(
+      readFileSync(join(ROOT, "src/billing/draft-actions.ts"), "utf8"),
+    );
+    assert.match(source, /^\s*["']use server["'];?/m);
+    const exported = [
+      ...source.matchAll(/export async function (\w+)\([^)]*\)[^{]*\{/g),
+    ];
+    assert.equal(
+      exported.length,
+      3,
+      "create, update and discard draft actions",
+    );
+    for (const match of exported) {
+      const body = source.slice((match.index ?? 0) + match[0].length);
+      assert.match(
+        body.trimStart(),
+        /^const (\w+|\{[^}]*\}) = await draftContext\(/,
+        `${match[1]}: must start with await draftContext(...)`,
+      );
+    }
+    assert.match(source, /await requireModule\("billing", /);
   });
 });

@@ -27,6 +27,14 @@ export function declarationPath(id: string): string {
   return `${DECLARATIONS_PATH}/${encodeURIComponent(id)}`;
 }
 
+// Cuentas de cobro (module "billing", administrators only).
+export const BILLING_PATH = "/billing";
+export const NEW_DRAFT_PATH = `${BILLING_PATH}/drafts/new`;
+
+export function draftPath(id: string): string {
+  return `${BILLING_PATH}/drafts/${encodeURIComponent(id)}`;
+}
+
 // Upload route handlers (raw image body, admins only; see image-upload.ts).
 export function issuerLogoUploadPath(id: string): string {
   return `/api/billing/uploads/issuers/${encodeURIComponent(id)}/logo`;

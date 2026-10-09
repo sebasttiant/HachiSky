@@ -6,6 +6,7 @@ import {
   createDraft,
   discardDraft,
   getDraft,
+  getDraftOptions,
   listDrafts,
   updateDraft,
 } from "../../src/billing/drafts.ts";
@@ -582,6 +583,62 @@ describe("drafts", () => {
     }
     assert.equal(await count("billing_document"), 1);
     assert.equal((await auditRows()).length, 1);
+  });
+});
+
+describe("draft options", () => {
+  it("offers active rows only, with the details an admin needs to choose", async () => {
+    await setClientActive(deps, admin, ids.otherClient, false);
+    await setBankAccountActive(deps, admin, ids.usdAccount, false);
+    const options = await getDraftOptions(deps, admin);
+    assert.deepEqual(
+      options.clients.map((o) => o.id),
+      [ids.client],
+    );
+    assert.match(
+      options.clients[0]?.label ?? "",
+      /Cliente Demo S\.A\.S\. · NIT 9000000011/,
+    );
+    const [defaultIssuer] = options.issuers;
+    assert.equal(defaultIssuer?.id, ids.issuer);
+    assert.equal(defaultIssuer?.isDefault, true);
+    assert.deepEqual(
+      options.bankAccounts
+        .map((o) => [o.id, o.issuerProfileId, o.currency])
+        .sort(),
+      [
+        [ids.copAccount, ids.issuer, "COP"],
+        [ids.otherIssuerAccount, ids.otherIssuer, "COP"],
+      ].sort(),
+    );
+    const account = options.bankAccounts.find((o) => o.id === ids.copAccount);
+    // Holder and currency are shown; only the last digits of the number.
+    assert.match(account?.label ?? "", /Banco Demo/);
+    assert.match(account?.label ?? "", /Titular Demo/);
+    assert.match(account?.label ?? "", /1222/);
+    assert.doesNotMatch(account?.label ?? "", /000111222/);
+    assert.match(
+      options.signers[0]?.label ?? "",
+      /Firmante Demo · Representante legal/,
+    );
+    assert.equal(options.declarations[0]?.label, "Declaración de prueba");
+  });
+
+  it("keeps the draft's own choices even when they became inactive", async () => {
+    const { id } = await newDraft();
+    await updateDraft(deps, admin, id, fullDraft());
+    await setSignerActive(deps, admin, ids.signer, false);
+    const draft = await getDraft(deps, admin, id);
+    assert.ok(draft);
+    const options = await getDraftOptions(deps, admin, draft);
+    const signer = options.signers.find((o) => o.id === ids.signer);
+    assert.equal(signer?.active, false);
+    assert.equal((await getDraftOptions(deps, admin)).signers.length, 0);
+  });
+
+  it("is admin only", async () => {
+    assert.equal(await code(getDraftOptions(deps, staff)), "forbidden");
+    assert.equal(await code(getDraftOptions(deps, null)), "unauthenticated");
   });
 });
 
