@@ -16,6 +16,19 @@
   --color-sky-50: #f2f8fe;
   --color-sky-100: #dcedfc;
   --color-border: #d3dfe8;
+
+  /* IL Asesorias design language. These values were read from the published
+     site's own stylesheets, not approximated. The site and this app already
+     share the same ink and background, so these extend one identity instead
+     of introducing a second one. "Cada color es un mundo": one colour per
+     company world. */
+  --color-brand-deep: #004167;
+  --color-brand-deep-strong: #002f4b;
+  --color-brand-mid: #00659e;
+  --color-world-tic: #0099ff;
+  --color-world-quality: #ffdb00;
+  --color-world-environment: #00ae00;
+  --color-world-safety: #e20001;
   /* Control borders: 4.0:1 on #fff and 3.69:1 on --color-surface-alt (WCAG 1.4.11). */
   --color-border-strong: #6b8294;
   /* Focus ring: 5.53:1 on #fff and 5.10:1 on the body background. */
@@ -53,8 +66,43 @@
   --radius-sm: 0.375rem;
   --radius-md: 0.75rem;
   --radius-lg: 1.25rem;
-  --shadow-sm: 0 1px 2px rgb(11 58 110 / 8%);
-  --shadow-md: 0 6px 20px rgb(11 58 110 / 10%);
+  --radius-pill: 999px;
+
+  /* Layered elevation: a tight contact shadow plus a wide ambient one, so a
+     raised surface reads as lifted rather than merely outlined. Single-layer
+     shadows are what made these surfaces look flat. */
+  --shadow-sm: 0 1px 3px rgb(0 65 103 / 5%);
+  --shadow-md: 0 12px 40px rgb(0 65 103 / 10%);
+  --shadow-lg: 0 20px 60px rgb(0 65 103 / 12%), 0 4px 12px rgb(0 65 103 / 6%);
+  /* Coloured glow for a hovered or focused interactive surface. */
+  --shadow-glow-tic: 0 4px 12px rgb(0 153 255 / 18%);
+
+  /* Gradients */
+  --gradient-brand: linear-gradient(
+    135deg,
+    var(--color-brand-deep) 0%,
+    var(--color-brand-mid) 100%
+  );
+  /* The signature worlds bar: the four company colours in the site's order. */
+  --gradient-worlds: linear-gradient(
+    90deg,
+    var(--color-world-tic),
+    var(--color-world-environment),
+    var(--color-world-quality),
+    var(--color-world-safety)
+  );
+
+  /* Motion. Every transition built on these is disabled by the
+     prefers-reduced-motion block at the end of this file. */
+  --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-fast: 0.15s;
+  --duration-base: 0.25s;
+  --transition-interactive:
+    border-color var(--duration-base) var(--ease-out),
+    box-shadow var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out),
+    background-color var(--duration-fast) var(--ease-out);
 
   --container: 72rem;
 }
@@ -72,13 +120,18 @@ body {
 body {
   background: var(--color-surface-alt);
   color: var(--color-text);
+  /* --font-roboto is provided by next/font/local in app/layout.tsx; the stack
+     still degrades to the previous system fonts if it is unavailable. */
   font-family:
-    system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    var(--font-roboto), system-ui, -apple-system, "Segoe UI", Helvetica, Arial,
+    sans-serif;
   font-size: var(--text-base);
   line-height: 1.55;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  /* Keeps Roboto's shapes even at small sizes on low-DPI screens. */
+  -webkit-font-smoothing: antialiased;
 }
 
 h1,
@@ -87,6 +140,8 @@ h3 {
   color: var(--color-brand-navy);
   line-height: 1.2;
   margin: 0;
+  /* Roboto reads tighter than system-ui at display sizes. */
+  letter-spacing: -0.015em;
 }
 
 p {
