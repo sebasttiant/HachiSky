@@ -75,7 +75,9 @@ The owner's first useful business flow after clients: create a client, enter con
     - One real failure found and fixed: `biome check` reported 8 formatting errors (`DraftEditor.tsx`, `DraftList.tsx`, `drafts.ts`, `submit.ts`, `route-guards.test.ts`, `drafts-service.test.ts`, `drafts-submit.test.ts`, `drafts-ui.test.ts`) and zero lint-rule violations in source. Fixed with `biome format --write` on exactly those 8 files; afterwards `biome check src app tests proxy.ts next.config.ts drizzle.config.ts` reports only the 4 known pre-existing `globals.css` `noImportantStyles` warnings, and the full suite stayed **650/650**.
     - Mutations (supporting evidence, applied to a copy of `src` under `/tmp`, so this worktree was never mutated; each restored and the originals re-checked): `edit_draft` opened to staff → `refuses every operation to staff, no session and forged roles` fails; `draftContext` guarding `"settings"` instead of `"billing"` → `every exported Server Function checks the billing module first` fails; the editor dropping the issuer/currency account filter → `offers only bank accounts of the draft's issuer in its currency` fails.
     - Honest limits: the UI tests use `renderToStaticMarkup`, so they prove initial rendering, not interaction. Still unverified by any automated check: adding/removing rows in the browser, the live clearing of an incompatible bank selection, the real Server Function transport and redirects, and the discard navigation. `pnpm build`, the browser walk-through and the phone-width layout remain pending as in C1/C2/C3.
-    - Not reviewed yet: this delta has no native review and no commit identity recorded. C4a `1cf94ba` and C4b `569357d` also remain unreviewed.
+    - Commit `3eb65635cb6eb8d093b63228144d3dfcc0234ed7` (owner authorized it explicitly; local only, no push, no PR, no merge). The explorer's `.codegraph/` index was deliberately left untracked and out of the commit.
+    - Not reviewed yet: `3eb6563` has no native review. C4a `1cf94ba` and C4b `569357d` also remain unreviewed.
+    - Review workload warning: this commit is ~1800 inserted lines across 16 source and test files. That is well past the 400-line slice the chained-PR guidance protects, so it should be reviewed as its own slice and not folded into a larger PR.
 - [ ] **C5** Numbering cutover, issue with snapshots, annul.
 - [ ] **C6** Printable A4 view.
 - [ ] **C7** Integrated verification (+ browser check only if separately authorized).
@@ -135,7 +137,7 @@ The owner's first useful business flow after clients: create a client, enter con
 
 ## Next step
 
-C4c is verified and uncommitted on `feat/b2-c4-drafts` (base `569357d`). The owner decides the commit; then the native review of C4a `1cf94ba`, C4b `569357d` and C4c, and after that C5 (numbering cutover, issue with snapshots, annul).
+C4c is committed as `3eb6563` on `feat/b2-c4-drafts` (base `569357d`), local only. Next: the native review of C4a `1cf94ba`, C4b `569357d` and C4c `3eb6563`, and after that C5 (numbering cutover, issue with snapshots, annul).
 
 Still open owner decisions, do not infer them from existing code: the C4 amount syntax and the field and line limits are writer assumptions (`.` thousands and `,` decimals, 50 lines, 200/1000/30 characters, 999.999.999.999 per line); whether a declaration is mandatory; the bank account number format from C1. No default declaration text and no issue block were added.
 
