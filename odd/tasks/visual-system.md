@@ -56,15 +56,45 @@ worktree's `.env`, `secrets/` and running stack). Local commits only; no push, P
 
 ## Tasks
 
-- [ ] **V1a** Design tokens and type: extend `app/globals.css` with the worlds palette, layered
-  shadow scale, gradient and motion tokens and the pill radius; load Roboto through `next/font`
-  in `app/layout.tsx`. No component changes yet.
-- [ ] **V1b** Shell: translucent sticky header with blur, the worlds accent bar, navigation hover
-  and active states on the TIC colour, footer polish.
-- [ ] **V1c** Home module tiles: hover lift with coloured glow, per-module world colour, arrow
-  slide on hover, richer availability badges.
-- [ ] **V1d** Billing and draft screens: elevated cards, table depth, an elevated total panel in
-  the draft editor, status pills.
+- [x] **V1a** Design tokens and type. Commit `9a9ea7f`.
+  - `app/globals.css`: the four world colours, `--color-brand-deep/-strong/-mid`, a layered
+    elevation scale (`--shadow-sm/md/lg` plus `--shadow-glow-tic`), `--gradient-brand` and
+    `--gradient-worlds`, `--ease-out`/`--ease-spring`, `--duration-fast/base`,
+    `--transition-interactive` and `--radius-pill`.
+  - Roboto self-hosted through `next/font/local` (`app/fonts/roboto-latin.woff2` and
+    `roboto-latin-ext.woff2`, the official Google variable subsets, Apache-2.0, 72 KB together).
+    **`next/font/google` was rejected on purpose**: the runner builds with no network egress and
+    would fail to fetch it. The stack still degrades to the previous system fonts.
+  - GREEN: `pnpm build` exit 0 **with no network**, `pnpm typecheck` exit 0, biome clean apart
+    from the 4 known `globals.css` warnings, full suite exit 0.
+- [x] **V1b** Shell. Commit `d7d16b9`.
+  - `AppHeader.module.css`: the flat grey bottom rule is replaced by the worlds gradient as the
+    header's bottom edge; the bar is translucent and frosted only inside
+    `@supports (backdrop-filter: blur(1px))`, so unsupporting browsers keep the solid surface;
+    the wordmark scales on hover with the spring easing.
+  - `MainNav.module.css`: token transitions, a TIC glow on the toggle, deeper and rounded mobile
+    panel, and the active-page marker moved from `--color-link` to `--color-world-tic`.
+- [x] **V1c** Home tiles. Commit `d7d16b9`. Hover and focus lift of 2px with
+  `--shadow-lg, --shadow-glow-tic`, a brand accent that grows from the top edge (`scaleX`), the
+  icon tile filling with the brand gradient, and the arrow stepping `0.25rem` toward the reader —
+  the same affordance the site uses. The page header rule carries `--gradient-brand` via
+  `border-image`.
+  - **Decision, deliberate**: no per-module world colour. The four worlds name the company's
+    service lines (TIC, Calidad, Ambiente, SST), not this app's modules, so colouring "Clientes"
+    yellow would invent brand meaning. HachiSky lives in Mundo TIC, so the single TIC accent is
+    used throughout and the worlds palette appears once, as the header signature. Reversible if
+    the owner wants module colours.
+- [x] **V1d** Shared admin surfaces. Commit `d7d16b9`. `admin.module.css`: `.card` and
+  `.tableWrap` raised to ambient elevation (a flat `--shadow-sm` on a bordered box was the main
+  source of the flat look), hub tiles matching the home tiles, sticky table headers with a brand
+  hairline, hovered rows marked on the leading edge, token easings on controls, a TIC focus halo
+  over the unchanged `--color-focus` border (its documented 5.53:1 is preserved), and a lift on
+  primary and secondary buttons.
+- [ ] **V1e** Draft document feel: the draft editor's total panel and the `/billing` list still
+  read as a plain form and table rather than as a cuenta de cobro. Pending owner direction.
+- [ ] **V1f** Dark mode. The site ships a full dark palette (`--color-bg: #07141c`,
+  `--color-surface: #0d1e28`, `--color-ink: #e7f2f7`, dark border and link ramps). Not started;
+  it is a separate unit, not a token tweak.
 
 ## Verification per task
 
@@ -83,3 +113,15 @@ Then rebuild `hachisky-web:local` and restart the local stack so the owner can l
 ## Progress
 
 - 2026-10-09: branch created; site tokens extracted read-only; document created.
+- 2026-10-09: V1a `9a9ea7f`, then V1b+V1c+V1d `d7d16b9`. Combined GREEN in the `hv-c4` runner:
+  full suite **650/650**, `pnpm typecheck` exit 0, `biome check` exit 0 (4 known `globals.css`
+  warnings), `pnpm build` exit 0.
+- 2026-10-09: `hachisky-web:local` rebuilt and the local stack restarted for the owner. Verified
+  on the running app: `/api/health` ok with 9 migrations; the Roboto subset is served from
+  `/_next/static/media/roboto_latin-s.p.113jqrlu1v-_f.woff2` as **HTTP 200, `font/woff2`,
+  43136 bytes**, byte-identical in size to the committed file; the shipped CSS contains the
+  worlds gradient, `backdrop-filter`, `border-image`, the `scaleX(0)` accent, the row marker
+  `inset 3px 0 0 var(--color-world-tic)`, `--ease-spring: cubic-bezier(.34, 1.56, .64, 1)`,
+  `scale(1.04)` and the minified arrow `translate(.25rem)`.
+- Not verified by any automated check: how it actually looks. The owner's eyes are the gate for
+  this unit, exactly as for the C4 interaction findings.
