@@ -4,7 +4,9 @@
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  /* Ambient elevation, so a card reads as a sheet above the page instead of
+     an outlined rectangle. */
+  box-shadow: var(--shadow-md);
   padding: var(--space-5);
 }
 
@@ -63,16 +65,32 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
-  transition:
-    border-color 150ms ease,
-    box-shadow 150ms ease,
-    transform 150ms ease;
+  transition: var(--transition-interactive);
+  overflow: hidden;
 }
 
-.hubTile:hover {
-  border-color: var(--color-link);
-  box-shadow: var(--shadow-md);
-  transform: translateY(-1px);
+.hubTile::before {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 3px;
+  background: var(--gradient-brand);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--duration-base) var(--ease-out);
+}
+
+.hubTile:hover,
+.hubTile:focus-within {
+  border-color: var(--color-world-tic);
+  box-shadow: var(--shadow-lg), var(--shadow-glow-tic);
+  transform: translateY(-2px);
+}
+
+.hubTile:hover::before,
+.hubTile:focus-within::before {
+  transform: scaleX(1);
 }
 
 .hubTile h2 {
@@ -190,20 +208,22 @@
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-md);
   transition:
-    border-color 150ms ease,
-    box-shadow 150ms ease;
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
 }
 
 .input:hover:not(:disabled),
 .select:hover:not(:disabled) {
-  border-color: var(--color-primary);
+  border-color: var(--color-brand-mid);
 }
 
+/* The focus ring keeps --color-focus for its documented 5.53:1 contrast; the
+   halo is the TIC colour so focus reads as brand, not as a generic outline. */
 .input:focus-visible,
 .select:focus-visible {
   outline: none;
   border-color: var(--color-focus);
-  box-shadow: 0 0 0 4px rgb(0 107 184 / 18%);
+  box-shadow: 0 0 0 4px rgb(0 153 255 / 22%);
 }
 
 .input[aria-invalid="true"],
@@ -263,9 +283,11 @@
   border: 1px solid transparent;
   cursor: pointer;
   transition:
-    background-color 150ms ease,
-    border-color 150ms ease,
-    filter 150ms ease;
+    background-color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out),
+    filter var(--duration-fast) var(--ease-out);
 }
 
 .button:disabled {
@@ -275,13 +297,15 @@
 
 .primary {
   color: #fff;
-  background: linear-gradient(135deg, var(--color-primary), var(--color-link));
-  box-shadow: 0 6px 16px rgb(4 67 102 / 22%);
+  background: var(--gradient-brand);
+  box-shadow: 0 6px 20px rgb(0 65 103 / 28%);
 }
 
 .primary:hover:not(:disabled) {
   color: #fff;
   filter: brightness(1.08);
+  box-shadow: 0 10px 28px rgb(0 65 103 / 34%);
+  transform: translateY(-1px);
 }
 
 .secondary {
@@ -291,8 +315,10 @@
 }
 
 .secondary:hover:not(:disabled) {
-  border-color: var(--color-primary);
+  border-color: var(--color-world-tic);
   background: var(--color-sky-50);
+  box-shadow: var(--shadow-glow-tic);
+  transform: translateY(-1px);
 }
 
 .danger {
@@ -356,7 +382,7 @@
 .badge {
   display: inline-block;
   padding: 0.1rem 0.6rem;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   font-size: var(--text-sm);
   font-weight: 600;
   line-height: 1.5;
@@ -497,7 +523,7 @@
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
 }
 
 .table {
@@ -514,7 +540,11 @@
   text-transform: uppercase;
   color: var(--color-text-muted);
   background: var(--color-surface-alt);
-  border-bottom: 1px solid var(--color-border);
+  /* A hairline of brand colour anchors the header row to the sheet. */
+  border-bottom: 2px solid var(--color-sky-100);
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
 .table td {
@@ -527,8 +557,14 @@
   border-bottom: 0;
 }
 
+.table tbody tr {
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
 .table tbody tr:hover {
   background: var(--color-sky-50);
+  /* Marks the hovered row on its leading edge without shifting the layout. */
+  box-shadow: inset 3px 0 0 var(--color-world-tic);
 }
 
 .rowInactive {
