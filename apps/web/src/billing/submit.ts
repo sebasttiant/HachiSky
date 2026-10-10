@@ -11,6 +11,7 @@ import {
   setIssuerActive,
   updateIssuer,
 } from "./issuers.ts";
+import { configureNumbering } from "./numbering.ts";
 import {
   type BillingActor,
   type BillingDeps,
@@ -438,5 +439,28 @@ export async function submitDiscardDraft(
     return { status: "success", message: "Borrador descartado." };
   } catch (error) {
     return failure("discard_draft", error);
+  }
+}
+
+// ---- Numbering ---------------------------------------------------------------
+
+// Where an issuer's consecutive continues from. The service refuses to walk
+// the series backwards; the form only reports what it said.
+export async function submitConfigureNumbering(
+  deps: BillingDeps,
+  actor: BillingActor | null,
+  issuerProfileId: string,
+  formData: FormData,
+): Promise<ActionState> {
+  try {
+    await configureNumbering(
+      deps,
+      actor,
+      issuerProfileId,
+      formToRaw(formData, ["nextNumber"]),
+    );
+    return { status: "success", message: "Consecutivo actualizado." };
+  } catch (error) {
+    return failure("configure_numbering", error);
   }
 }

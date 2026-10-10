@@ -22,6 +22,7 @@ import {
 } from "./paths.ts";
 import type { BillingActor, BillingDeps } from "./service.ts";
 import {
+  submitConfigureNumbering,
   submitCreateBankAccount,
   submitCreateDeclaration,
   submitCreateIssuer,
@@ -200,5 +201,21 @@ export async function setDeclarationActiveAction(
   const { deps, actor } = await billingContext(declarationPath(id));
   const state = await submitSetDeclarationActive(deps, actor, id, active);
   if (state.status === "success") revalidatePath(DECLARATIONS_PATH, "layout");
+  return state;
+}
+
+export async function configureNumberingAction(
+  issuerProfileId: string,
+  _previous: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const { deps, actor } = await billingContext(issuerPath(issuerProfileId));
+  const state = await submitConfigureNumbering(
+    deps,
+    actor,
+    issuerProfileId,
+    formData,
+  );
+  if (state.status === "success") revalidatePath(ISSUERS_PATH, "layout");
   return state;
 }

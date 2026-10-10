@@ -5,7 +5,7 @@ Owner approved continuous per-issuer CC-0001-style numbering, independent of cli
 
 ## Tasks
 - [x] N1 (done, 681/681): Add per-issuer numbering configuration and advisory reads, with generated migration, authorization, transactional audit and focused tests. No allocation or document status change.
-- [ ] N2: Expose configuration and last/next display in admin UI, with functional checks.
+- [x] N2 (done, 686/686): Numbering card on the issuer page — last registered here, next suggested, and an editable starting number. Browser check still pending.
 - [ ] N3: Implement atomic issuance, immutable snapshots and uniqueness; preserve annulled numbers. Confirm whether manual issuance may skip forward before implementing that behavior.
 - [ ] N4: Connect issued/draft document rendering and verify browser/print behavior.
 
@@ -24,8 +24,13 @@ Table `billing_numbering` (migration 0009, additive only; no historical migratio
 
 Tests written before the implementation existed; the first observed run of the 14 focused cases was GREEN, so the RED step was only the missing module, not a behavioural failure. Checks: focused 14/14, full suite 681/681, typecheck 0, Biome 0 errors (9 pre-existing warnings), build ok. Not yet exercised in a browser: N1 has no UI.
 
+## N2 evidence
+`NumberingSection` on `/settings/issuers/<id>`: "Último registrado aquí" (never a carried-over number), "Siguiente sugerido" (or "Sin configurar") and the editable starting number. `submitConfigureNumbering` plus `configureNumberingAction`, which revalidates the issuers layout. The Server Function guard test counts exported actions on purpose, so it moved from 13 to 14.
+
+Checks: focused 5/5 UI, full suite 686/686, typecheck 0, Biome 0 errors (9 pre-existing warnings), build ok. Browser verification pending.
+
 ## Verification and evidence
-Pending for N2 onward. Use isolated hv-c4 test runner after confirming its configuration. Observe RED then GREEN for applicable tests, run typecheck, Biome and regression tests. Source is read-only in test containers; do not assume formatter writes persist. Production volumes and secrets are protected.
+Pending for N3 onward. Use isolated hv-c4 test runner after confirming its configuration. Observe RED then GREEN for applicable tests, run typecheck, Biome and regression tests. Source is read-only in test containers; do not assume formatter writes persist. Production volumes and secrets are protected.
 
 ## Other requested work
 Reports (general/follow-up/diagnostic), client sites, independent dashboard, billing duplication and reference-like document polish remain separately pending; this foundation does not complete them.

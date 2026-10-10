@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireModule } from "../../../../../src/auth/guard.ts";
 import {
+  configureNumberingAction,
   setDefaultIssuerAction,
   setIssuerActiveAction,
   updateIssuerAction,
@@ -14,6 +15,8 @@ import {
   countIssuerLogoVersions,
   getIssuer,
 } from "../../../../../src/billing/issuers.ts";
+import { NumberingSection } from "../../../../../src/billing/NumberingSection.tsx";
+import { getNumbering } from "../../../../../src/billing/numbering.ts";
 import { issuerLogoUploadPath } from "../../../../../src/billing/paths.ts";
 import { getDb } from "../../../../../src/db/client.ts";
 import { formatDateTime } from "../../../../../src/shared/format/date.ts";
@@ -41,6 +44,7 @@ export default async function IssuerDetailPage({
   const issuer = await getIssuer(deps, actor, id);
   if (!issuer) notFound();
   const versionCount = await countIssuerLogoVersions(deps, actor, issuer.id);
+  const numbering = await getNumbering(deps, actor, issuer.id);
   const query = await searchParams;
   const justCreated = query.creado === "1";
   const createdAsDefault = query.predeterminado === "1";
@@ -106,6 +110,10 @@ export default async function IssuerDetailPage({
           />
         </div>
         <div className={styles.stack}>
+          <NumberingSection
+            numbering={numbering}
+            action={configureNumberingAction.bind(null, issuer.id)}
+          />
           <section className={styles.card} aria-labelledby="facts-title">
             <h2 id="facts-title" className={styles.cardTitle}>
               Resumen
