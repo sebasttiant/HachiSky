@@ -1,4 +1,4 @@
-import { count, eq, sql } from "drizzle-orm";
+import { and, count, eq, isNull, sql } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import type { RoleName } from "../auth/session.ts";
 import type { Currency } from "../billing/validation.ts";
@@ -38,6 +38,14 @@ export interface CurrencyTotal {
 export interface DashboardMetrics {
   clients: { active: number; total: number };
   drafts: { count: number; totals: CurrencyTotal[] };
+  // What the drafts still lack. These are the same gaps the document itself
+  // reports as "Sin firmante", "Sin cuenta" and "Sin conceptos"; they are not a
+  // rule about issuing, which does not exist yet.
+  pending: {
+    draftsWithoutLines: number;
+    draftsWithoutSigner: number;
+    draftsWithoutBankAccount: number;
+  };
   team: { total: number };
   billingSetup: {
     issuers: number;
@@ -73,6 +81,9 @@ export async function getDashboardMetrics(
     bankAccounts,
     declarations,
     draftTotals,
+    withoutLines,
+    withoutSigner,
+    withoutBankAccount,
   ] = await Promise.all([
     db.select({ value: count() }).from(schema.client),
     db
@@ -114,6 +125,33 @@ export async function getDashboardMetrics(
       )
       .where(eq(schema.billingDocument.status, "draft"))
       .groupBy(schema.billingDocument.currency),
+    db
+      .select({ value: count() })
+      .from(schema.billingDocument)
+      .where(
+        and(
+          eq(schema.billingDocument.status, "draft"),
+          sql`not exists (select 1 from ${schema.billingDocumentLine} where ${schema.billingDocumentLine.documentId} = ${schema.billingDocument.id})`,
+        ),
+      ),
+    db
+      .select({ value: count() })
+      .from(schema.billingDocument)
+      .where(
+        and(
+          eq(schema.billingDocument.status, "draft"),
+          isNull(schema.billingDocument.signerProfileId),
+        ),
+      ),
+    db
+      .select({ value: count() })
+      .from(schema.billingDocument)
+      .where(
+        and(
+          eq(schema.billingDocument.status, "draft"),
+          isNull(schema.billingDocument.bankAccountId),
+        ),
+      ),
   ]);
 
   return {
@@ -127,6 +165,11 @@ export async function getDashboardMetrics(
         currency: row.currency as Currency,
         totalMinor: Number(row.totalMinor),
       })),
+    },
+    pending: {
+      draftsWithoutLines: withoutLines[0]?.value ?? 0,
+      draftsWithoutSigner: withoutSigner[0]?.value ?? 0,
+      draftsWithoutBankAccount: withoutBankAccount[0]?.value ?? 0,
     },
     team: { total: teamTotal[0]?.value ?? 0 },
     billingSetup: {

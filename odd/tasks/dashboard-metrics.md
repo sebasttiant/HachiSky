@@ -58,3 +58,23 @@ in minor units, formatted by the existing money helpers.
 
 Runner `hv-c4`; then rebuild `hachisky-web:local` and restart the local stack
 without `down -v`.
+
+## D5 — the side column stopped being a status light
+
+The owner's words: "estado del sistema, esto no me dice nada". "Base de datos
+conectada" never changes, so it carried no decision.
+
+For administrators the side column now answers *what still needs a decision*:
+drafts without concepts, without a signer or without a bank account, and billing
+settings that are not configured yet. Each item links to the screen that fixes
+it, and when nothing is pending it says so instead of padding the space. Below
+it sit the three actions an administrator starts from. Staff keep the system
+status, since they do not manage billing.
+
+The pending counts are real columns: `signer_profile_id IS NULL`,
+`bank_account_id IS NULL` and a `NOT EXISTS` over the document lines. They
+describe the same gaps the document already prints as "Sin firmante", "Sin
+cuenta" and "Sin conceptos"; they are not a rule about issuing, which does not
+exist yet.
+
+GREEN: focused **7/7**, full suite **667/667**, typecheck 0, biome 0 errors, build ok.

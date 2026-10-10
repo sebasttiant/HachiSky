@@ -3,6 +3,10 @@ import { Suspense } from "react";
 import { requireModule } from "../../src/auth/guard.ts";
 import { visibleModules } from "../../src/auth/permissions.ts";
 import {
+  DashboardAside,
+  DashboardAsideFallback,
+} from "../../src/dashboard/DashboardAside.tsx";
+import {
   DashboardMetrics,
   DashboardMetricsFallback,
 } from "../../src/dashboard/DashboardMetrics.tsx";
@@ -25,7 +29,11 @@ export default async function HomePage() {
     <div className="container">
       <header className={styles.header}>
         <h1>Inicio</h1>
-        <p>Accede a los módulos de HachiSky y revisa el estado del sistema.</p>
+        <p>
+          {isAdmin
+            ? "Resumen de tu operación y acceso a los módulos de HachiSky."
+            : "Accede a los módulos de HachiSky y revisa el estado del sistema."}
+        </p>
       </header>
 
       {isAdmin ? (
@@ -62,9 +70,15 @@ export default async function HomePage() {
           </ul>
         </section>
 
-        <Suspense fallback={<SystemStatusFallback />}>
-          <SystemStatus />
-        </Suspense>
+        {isAdmin ? (
+          <Suspense fallback={<DashboardAsideFallback />}>
+            <DashboardAside actor={{ id: user.id, role: user.role }} />
+          </Suspense>
+        ) : (
+          <Suspense fallback={<SystemStatusFallback />}>
+            <SystemStatus />
+          </Suspense>
+        )}
       </div>
     </div>
   );

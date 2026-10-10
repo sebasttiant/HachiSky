@@ -178,6 +178,29 @@ describe("dashboard metrics", () => {
     assert.deepEqual(metrics.drafts.totals, []);
   });
 
+  it("counts what the drafts are still missing", async () => {
+    // A bare draft: no lines, no signer and no bank account yet.
+    await createDraft(deps, admin, {
+      clientId: ids.client,
+      issuerProfileId: ids.issuer,
+      currency: "COP",
+    });
+    // This one has a line and a signer, but still no bank account.
+    await draftWorth("COP", "100.000");
+
+    const metrics = await getDashboardMetrics(deps, admin);
+    assert.equal(metrics.pending.draftsWithoutLines, 1);
+    assert.equal(metrics.pending.draftsWithoutSigner, 1);
+    assert.equal(metrics.pending.draftsWithoutBankAccount, 2);
+  });
+
+  it("reports nothing pending when there are no drafts", async () => {
+    const metrics = await getDashboardMetrics(deps, admin);
+    assert.equal(metrics.pending.draftsWithoutLines, 0);
+    assert.equal(metrics.pending.draftsWithoutSigner, 0);
+    assert.equal(metrics.pending.draftsWithoutBankAccount, 0);
+  });
+
   it("is admin only", async () => {
     await assert.rejects(() => getDashboardMetrics(deps, staff));
     await assert.rejects(() => getDashboardMetrics(deps, null));
