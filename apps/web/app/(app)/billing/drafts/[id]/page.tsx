@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireModule } from "../../../../../src/auth/guard.ts";
+import { CuentaDeCobroSheet } from "../../../../../src/billing/CuentaDeCobroSheet.tsx";
 import { DraftDiscardSection } from "../../../../../src/billing/DraftDiscardSection.tsx";
 import { DraftEditor } from "../../../../../src/billing/DraftEditor.tsx";
+import { getDocumentView } from "../../../../../src/billing/document.ts";
 import {
   discardDraftAction,
   updateDraftAction,
@@ -16,6 +18,7 @@ import { draftDocumentPath } from "../../../../../src/billing/paths.ts";
 import { getDb } from "../../../../../src/db/client.ts";
 import { formatDateTime } from "../../../../../src/shared/format/date.ts";
 import styles from "../../../../../src/users/admin.module.css";
+import page from "./page.module.css";
 
 export const metadata: Metadata = { title: "Borrador de cuenta de cobro" };
 
@@ -37,7 +40,10 @@ export default async function DraftPage({
   };
   const draft = await getDraft(deps, actor, id);
   if (!draft) notFound();
-  const options = await getDraftOptions(deps, actor, draft);
+  const [options, view] = await Promise.all([
+    getDraftOptions(deps, actor, draft),
+    getDocumentView(deps, actor, id),
+  ]);
   const justCreated = (await searchParams).creado === "1";
 
   return (
@@ -73,15 +79,44 @@ export default async function DraftPage({
         </p>
       ) : null}
 
-      <div className={styles.stack}>
-        <DraftEditor
-          action={updateDraftAction.bind(null, draft.id)}
-          draft={draft}
-          options={options}
-        />
-        <DraftDiscardSection
-          discard={discardDraftAction.bind(null, draft.id)}
-        />
+      <div className={page.workspace}>
+        <div className={page.editorColumn}>
+          <DraftEditor
+            action={updateDraftAction.bind(null, draft.id)}
+            draft={draft}
+            options={options}
+          />
+          <DraftDiscardSection
+            discard={discardDraftAction.bind(null, draft.id)}
+          />
+        </div>
+
+        <aside
+          className={page.previewColumn}
+          aria-label="Vista previa del documento"
+        >
+          <div className={page.previewPane}>
+            <div className={page.previewHeader}>
+              <span className={page.previewTitle}>Vista previa</span>
+              <span className={page.previewMeta}>
+                Última versión guardada · {formatDateTime(draft.updatedAt)}
+              </span>
+            </div>
+            <p className={page.previewHint}>
+              Refleja lo guardado. Guarda el borrador para ver aquí tus últimos
+              cambios.{" "}
+              <Link
+                href={draftDocumentPath(draft.id)}
+                className={page.printLink}
+              >
+                Abrir para imprimir o PDF
+              </Link>
+            </p>
+            <div className={page.previewFrame}>
+              <CuentaDeCobroSheet view={view} />
+            </div>
+          </div>
+        </aside>
       </div>
     </div>
   );

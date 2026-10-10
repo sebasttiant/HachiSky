@@ -116,6 +116,15 @@ worktree's `.env`, `secrets/` and running stack). Local commits only; no push, P
     `DraftEditor.module.css`, no change to the shared `admin.module.css` or the line logic), so the
     editor reads less like a plain form. Covered by the existing drafts-ui total assertion. Full
     suite **659/659**, typecheck 0, biome 0 errors.
+  - **Live side-by-side preview** (owner direction: "no solo sea como ver un archivo de llenar").
+    The draft page now renders the server-resolved `getDocumentView` through `CuentaDeCobroSheet`
+    beside the editor (`[id]/page.module.css`, sticky at >=72rem, stacked below on narrow). Chosen
+    over a live client preview on purpose: the declaration body, bank number and logo are
+    server-only and must not reach the client bundle, so the preview shows the last saved version
+    and refreshes on save (updateDraftAction revalidates the billing layout). The separate
+    `documento` page remains the print/PDF view, linked as "Abrir para imprimir o PDF". Uses the
+    corporate site tokens already in globals.css. Full suite **659/659**, typecheck 0, biome 0
+    errors. On-screen/responsive look still owner-gated.
 - [ ] **V1f** Dark mode. The site ships a full dark palette (`--color-bg: #07141c`,
   `--color-surface: #0d1e28`, `--color-ink: #e7f2f7`, dark border and link ramps). Not started;
   it is a separate unit, not a token tweak.
