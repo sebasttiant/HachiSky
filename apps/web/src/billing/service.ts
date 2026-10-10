@@ -54,7 +54,11 @@ export type BillingRuleCode =
   | "issuer_inactive"
   | "declaration_not_found"
   | "duplicate_declaration"
-  | "draft_not_found";
+  | "draft_not_found"
+  // The issuer has no consecutive configured yet.
+  | "numbering_not_configured"
+  // A consecutive may move forward, never back onto a number already passed.
+  | "numbering_backwards";
 
 export class BillingRuleError extends Error {
   readonly code: BillingRuleCode;

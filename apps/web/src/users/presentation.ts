@@ -38,6 +38,7 @@ export const ACTION_LABEL: Record<string, string> = {
   "billing.signer_activate": "Reactivó un firmante",
   "billing.signer_signature_upload": "Subió una firma",
   "billing.issuer_logo_upload": "Subió el logo del emisor",
+  "billing.numbering_configure": "Configuró el consecutivo de un emisor",
   "billing.declaration_create": "Creó una declaración",
   "billing.declaration_update": "Editó una declaración",
   "billing.declaration_deactivate": "Desactivó una declaración",

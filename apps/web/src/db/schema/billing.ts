@@ -445,3 +445,45 @@ export const billingDocumentLine = pgTable(
     ),
   ],
 );
+
+// Where each issuer's consecutive stands. One continuous series per issuer,
+// independent of the client or the site (owner, 2026-10-10). There is no row
+// until an administrator says where the series continues from: an absent row
+// means "sin configurar", never an implicit start at one. `next_number` is
+// the consecutive the next issued document will take; `last_registered` is
+// the last one this platform actually assigned, so a series carried over
+// from outside is never mistaken for documents issued here. Drafts and
+// copies touch neither. RESTRICT keeps the issuer and the authors.
+export const billingNumbering = pgTable(
+  "billing_numbering",
+  {
+    issuerProfileId: uuid("issuer_profile_id")
+      .primaryKey()
+      .references(() => issuerProfile.id, { onDelete: "restrict" }),
+    nextNumber: integer("next_number").notNull(),
+    lastRegistered: integer("last_registered"),
+    createdAt: timestamptz("created_at").defaultNow().notNull(),
+    updatedAt: timestamptz("updated_at").defaultNow().notNull(),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    updatedBy: text("updated_by")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+  },
+  (table) => [
+    check(
+      "billing_numbering_next_number_check",
+      sql`${table.nextNumber} between 1 and 99999999`,
+    ),
+    check(
+      "billing_numbering_last_registered_check",
+      sql`${table.lastRegistered} is null or ${table.lastRegistered} between 1 and 99999999`,
+    ),
+    // The series may never point back into numbers it already handed out.
+    check(
+      "billing_numbering_forward_check",
+      sql`${table.lastRegistered} is null or ${table.nextNumber} > ${table.lastRegistered}`,
+    ),
+  ],
+);

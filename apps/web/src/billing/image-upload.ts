@@ -78,6 +78,8 @@ const RULE_STATUS: Record<BillingRuleCode, number> = {
   declaration_not_found: 404,
   duplicate_declaration: 409,
   draft_not_found: 404,
+  numbering_not_configured: 409,
+  numbering_backwards: 409,
 };
 
 function json(status: number, body: Record<string, unknown>): Response {

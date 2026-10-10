@@ -53,6 +53,10 @@ export const RULE_MESSAGES: Record<BillingRuleCode, string> = {
   duplicate_declaration:
     "Ya existe una declaración con ese nombre (puede estar inactiva).",
   draft_not_found: "Ese borrador ya no existe.",
+  numbering_not_configured:
+    "Primero indica desde qué número continúa el consecutivo de este emisor.",
+  numbering_backwards:
+    "El consecutivo solo puede avanzar: elige un número mayor.",
 };
 
 const GENERIC_ERROR = "No se pudo completar la acción. Intenta de nuevo.";

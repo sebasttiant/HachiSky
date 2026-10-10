@@ -91,6 +91,7 @@ describe("migration 0001 on a fresh database", () => {
           "billing_document",
           "billing_document_line",
           "billing_image",
+          "billing_numbering",
           "client",
           "declaration_text",
           "issuer_logo",
