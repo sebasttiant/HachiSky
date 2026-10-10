@@ -125,9 +125,17 @@ worktree's `.env`, `secrets/` and running stack). Local commits only; no push, P
     `documento` page remains the print/PDF view, linked as "Abrir para imprimir o PDF". Uses the
     corporate site tokens already in globals.css. Full suite **659/659**, typecheck 0, biome 0
     errors. On-screen/responsive look still owner-gated.
-- [ ] **V1f** Dark mode. The site ships a full dark palette (`--color-bg: #07141c`,
-  `--color-surface: #0d1e28`, `--color-ink: #e7f2f7`, dark border and link ramps). Not started;
-  it is a separate unit, not a token tweak.
+- [x] **V1f** Dark mode, app-wide. A `[data-theme="dark"]` block in `globals.css` flips the
+  semantic tokens (text, surfaces, borders, status pairs, shadows) to the IL site's dark palette,
+  so every token-driven surface follows automatically; brand colours (navy, worlds, accent,
+  gradients) are kept. Added `--color-heading` and `--color-link-hover` tokens so headings and link
+  hover flip without touching `--color-brand-navy` (which paints white-on-navy brand panels) — this
+  also removed the only new lint warnings. The cuenta de cobro sheet is pinned to light tokens on
+  `.sheet`: a printed document is always white paper, and in dark mode the white sheet reads like
+  real paper against the dark frame. No-FOUC inline script in `layout.tsx` applies the saved or
+  system theme before paint; `ThemeToggle` in the header persists the choice to `localStorage`.
+  GREEN: full suite **660/660**, typecheck 0, biome 0 errors (9 pre-existing warnings), build ok.
+  On-screen look still owner-gated.
 
 ## Verification per task
 

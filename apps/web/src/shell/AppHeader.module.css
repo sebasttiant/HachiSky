@@ -36,6 +36,13 @@
   gap: var(--space-4);
 }
 
+.actions {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
 .brand {
   flex: none;
   display: inline-flex;

@@ -5,6 +5,19 @@
 .sheet {
   --sheet-width: 21cm;
 
+  /* The sheet is paper: it stays light even when the app is in dark mode, so
+     the tokens it uses are pinned to their light values here. */
+  --color-text: #102733;
+  --color-text-muted: #4b626e;
+  --color-border: #d3dfe8;
+  --color-border-strong: #6b8294;
+  --color-sky-50: #f2f8fe;
+  --color-sky-100: #dcedfc;
+  --color-warn-text: #7a4300;
+  --color-warn-surface: #fff1d0;
+  --color-surface-alt: #f3f6f8;
+  color-scheme: light;
+
   position: relative;
   max-width: var(--sheet-width);
   margin-inline: auto;

@@ -3,6 +3,7 @@ import type { RoleName } from "../auth/session.ts";
 import styles from "./AppHeader.module.css";
 import { MainNav } from "./MainNav.tsx";
 import type { ModuleId } from "./navigation.ts";
+import { ThemeToggle } from "./ThemeToggle.tsx";
 import { UserArea } from "./UserArea.tsx";
 import { Wordmark } from "./Wordmark.tsx";
 
@@ -33,13 +34,16 @@ export function AppHeader({
           <Wordmark />
         </Link>
         <MainNav allowed={modules} />
-        {user ? (
-          <UserArea
-            name={user.name}
-            role={user.role}
-            jobTitle={user.jobTitle}
-          />
-        ) : null}
+        <div className={styles.actions}>
+          <ThemeToggle />
+          {user ? (
+            <UserArea
+              name={user.name}
+              role={user.role}
+              jobTitle={user.jobTitle}
+            />
+          ) : null}
+        </div>
       </div>
     </header>
   );

@@ -10,6 +10,11 @@
   --color-text-muted: #4b626e;
   --color-surface: #ffffff;
   --color-surface-alt: #f3f6f8;
+  /* Heading ink and link hover are separate tokens so dark mode can flip them
+     without touching --color-brand-navy, which also paints brand panels that
+     carry white text. */
+  --color-heading: #0b3a6e;
+  --color-link-hover: #044366;
 
   /* Brand (sampled from the HachiSky logo palette) */
   --color-brand-navy: #0b3a6e;
@@ -107,6 +112,45 @@
   --container: 72rem;
 }
 
+/* Dark theme. The same token names flip to a dark palette read from the IL
+   Asesorías site's own dark mode, so every surface, border and status that
+   already uses a token follows automatically. Brand colours (navy, worlds,
+   accent, gradients) are intentionally kept: identity does not invert. The
+   cuenta de cobro sheet is excluded on purpose — a printed document is always
+   white paper — by re-declaring light tokens on .sheet. */
+[data-theme="dark"] {
+  color-scheme: dark;
+  --color-text: #e7f2f7;
+  --color-text-muted: #b7c9d4;
+  --color-surface: #0d1e28;
+  --color-surface-alt: #07141c;
+  --color-border: #234555;
+  --color-border-strong: #4a7488;
+  --color-sky-50: #0f2731;
+  --color-sky-100: #163847;
+  --color-info-surface: #0f2731;
+  --color-link: #79d0ff;
+  --color-accent: #46baf9;
+  --color-focus: #79d0ff;
+
+  --color-ok-text: #7fe0a3;
+  --color-ok-surface: rgb(0 174 0 / 16%);
+  --color-warn-text: #ffcf7a;
+  --color-warn-surface: rgb(255 219 0 / 12%);
+  --color-neutral-text: #c2d2dc;
+  --color-neutral-surface: #16303c;
+  --color-error-text: #ff9b9b;
+  --color-error-surface: rgb(226 0 1 / 16%);
+
+  --shadow-sm: 0 1px 3px rgb(0 0 0 / 30%);
+  --shadow-md: 0 12px 40px rgb(0 0 0 / 42%);
+  --shadow-lg: 0 20px 60px rgb(0 0 0 / 48%), 0 4px 12px rgb(0 0 0 / 32%);
+
+  /* Headings become light ink; the navy brand panels keep their own colour. */
+  --color-heading: #f4fafc;
+  --color-link-hover: #b3e4ff;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -137,7 +181,7 @@ body {
 h1,
 h2,
 h3 {
-  color: var(--color-brand-navy);
+  color: var(--color-heading);
   line-height: 1.2;
   margin: 0;
   /* Roboto reads tighter than system-ui at display sizes. */
@@ -161,7 +205,7 @@ a {
 }
 
 a:hover {
-  color: var(--color-primary);
+  color: var(--color-link-hover);
 }
 
 :focus-visible {

@@ -31,10 +31,20 @@ export const metadata: Metadata = {
     "HachiSky by IL Asesorías: gestión empresarial inteligente. Vista previa de clientes, trabajo, informes y facturación.",
 };
 
+// Applies the saved (or system) theme before first paint, so dark mode never
+// flashes light on load. Kept tiny and dependency-free on purpose.
+const themeScript = `(function(){try{var t=localStorage.getItem('hachisky-theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.dataset.theme=t;}catch(e){}})();`;
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang={APP_LOCALE} className={roboto.variable}>
+    <html
+      lang={APP_LOCALE}
+      className={roboto.variable}
+      suppressHydrationWarning
+    >
       <body>
+        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: a fixed, author-controlled no-FOUC theme snippet with no interpolated input */}
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <a className="skip-link" href="#contenido">
           Saltar al contenido
         </a>

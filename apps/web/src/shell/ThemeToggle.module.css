@@ -1,0 +1,35 @@
+/* Sits in the deep navy header bar, so the control reads in a light ink and
+   lifts slightly on hover like the other header affordances. */
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid rgb(255 255 255 / 0.22);
+  border-radius: var(--radius-pill);
+  background: rgb(255 255 255 / 0.08);
+  color: #fff;
+  font-size: var(--text-lg);
+  line-height: 1;
+  cursor: pointer;
+  transition: var(--transition-interactive);
+}
+
+.toggle:hover {
+  background: rgb(255 255 255 / 0.16);
+  border-color: rgb(255 255 255 / 0.4);
+  transform: translateY(-1px);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
