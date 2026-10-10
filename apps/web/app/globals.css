@@ -109,7 +109,10 @@
     transform var(--duration-base) var(--ease-out),
     background-color var(--duration-fast) var(--ease-out);
 
-  --container: 72rem;
+  /* This is a working application, not a reading site: the shell, tables and
+     dashboards earn the extra width instead of leaving half the screen empty
+     on a desktop monitor. */
+  --container: 110rem;
 }
 
 /* Dark theme. The same token names flip to a dark palette read from the IL
@@ -219,7 +222,9 @@ a:hover {
   width: 100%;
   max-width: var(--container);
   margin-inline: auto;
-  padding-inline: var(--space-4);
+  /* Breathing room that grows with the viewport, so the shell fills a desktop
+     screen instead of sitting in a narrow column. */
+  padding-inline: clamp(var(--space-4), 3vw, var(--space-7));
 }
 
 main {

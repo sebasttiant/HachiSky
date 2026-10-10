@@ -146,3 +146,11 @@
     grid-template-columns: minmax(0, 1fr) 20rem;
   }
 }
+
+/* On a desktop the module grid takes a third column, so the tiles fill the
+   width instead of leaving a gap beside the status column. */
+@media (min-width: 80rem) {
+  .grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}

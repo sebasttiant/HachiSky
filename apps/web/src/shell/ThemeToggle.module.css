@@ -1,15 +1,15 @@
-/* Sits in the deep navy header bar, so the control reads in a light ink and
-   lifts slightly on hover like the other header affordances. */
+/* The header surface is light in light mode and dark in dark mode, so this
+   control is built from tokens rather than fixed white. */
 .toggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 2.25rem;
   height: 2.25rem;
-  border: 1px solid rgb(255 255 255 / 0.22);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-pill);
-  background: rgb(255 255 255 / 0.08);
-  color: #fff;
+  background: var(--color-surface-alt);
+  color: var(--color-text);
   font-size: var(--text-lg);
   line-height: 1;
   cursor: pointer;
@@ -17,8 +17,8 @@
 }
 
 .toggle:hover {
-  background: rgb(255 255 255 / 0.16);
-  border-color: rgb(255 255 255 / 0.4);
+  border-color: var(--color-border-strong);
+  color: var(--color-link);
   transform: translateY(-1px);
 }
 

@@ -1,4 +1,17 @@
 .sheet {
+  /* The report sheet is paper: it stays light even when the app is in dark
+     mode, so the tokens it uses are pinned to their light values here. */
+  --color-text: #102733;
+  --color-text-muted: #4b626e;
+  --color-border: #d3dfe8;
+  --color-border-strong: #6b8294;
+  --color-sky-50: #f2f8fe;
+  --color-sky-100: #dcedfc;
+  --color-surface: #ffffff;
+  --color-surface-alt: #f3f6f8;
+  color-scheme: light;
+  color: var(--color-text);
+
   max-width: 50rem;
   margin-inline: auto;
   padding: var(--space-5);

@@ -58,6 +58,15 @@
   transition: transform var(--duration-base) var(--ease-spring);
 }
 
+/* The mark is drawn in brand navy on a transparent background, so on the dark
+   header it needs a light disc behind it to stay readable. This keeps the
+   brand colours instead of recolouring the logo. */
+:global([data-theme="dark"]) .mark {
+  padding: 0.2rem;
+  border-radius: var(--radius-pill);
+  background: rgb(255 255 255 / 0.92);
+}
+
 .brand:hover .mark {
   transform: scale(1.04);
 }
