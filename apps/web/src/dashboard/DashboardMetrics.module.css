@@ -1,0 +1,118 @@
+/* The admin summary that opens the home page. Built from the shared tokens, so
+   it follows the light and dark themes without any fixed colour. */
+
+.panel {
+  margin-bottom: var(--space-6);
+}
+
+.title {
+  font-size: var(--text-lg);
+  margin-bottom: var(--space-3);
+}
+
+.pending {
+  color: var(--color-text-muted);
+}
+
+.grid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: 1fr;
+}
+
+.metric {
+  display: grid;
+  gap: var(--space-1);
+  align-content: start;
+  padding: var(--space-5);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  /* The brand hairline that marks a card as a figure, not a form. */
+  border-top: 3px solid transparent;
+  border-image: var(--gradient-brand) 1;
+  border-image-width: 3px 0 0 0;
+}
+
+.metricLabel {
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.metricValue {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--color-brand-ink);
+}
+
+.metricHint {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.totals {
+  margin-top: var(--space-4);
+  padding: var(--space-5);
+  background: var(--color-sky-50);
+  border: 1px solid var(--color-sky-100);
+  border-radius: var(--radius-lg);
+}
+
+.totalsTitle {
+  font-size: var(--text-base);
+  margin-bottom: var(--space-3);
+}
+
+.totalsList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+}
+
+.total {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.totalCurrency {
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.totalValue {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--color-brand-ink);
+}
+
+.empty {
+  color: var(--color-text-muted);
+}
+
+.note {
+  margin-top: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+@media (min-width: 48rem) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 80rem) {
+  .grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
