@@ -47,31 +47,37 @@ export default async function DraftPage({
   const justCreated = (await searchParams).creado === "1";
 
   return (
-    <div className="container">
+    <div className={page.pageWide}>
       <Link href="/billing" className={styles.breadcrumb}>
         ← Cuentas de cobro
       </Link>
 
-      <div className={styles.profile}>
-        <div className={styles.identity}>
-          <h1>Borrador para {draft.client.name}</h1>
-          <span className={styles.muted}>
+      <header className={page.head}>
+        <div className={page.headMain}>
+          <div className={page.headTitle}>
+            <h1>Borrador para {draft.client.name}</h1>
+            <span className={page.statusChip}>Borrador</span>
+          </div>
+          <p className={page.headMeta}>
             {draft.issuer.legalName} · Sin número hasta emitirla · Última
             modificación {formatDateTime(draft.updatedAt)}
-          </span>
+          </p>
         </div>
-        <div className={styles.badges}>
-          <span className={`${styles.badge} ${styles.badgePending}`}>
-            Borrador
-          </span>
+        <div className={page.headActions}>
           <Link
             href={draftDocumentPath(draft.id)}
             className={`${styles.button} ${styles.secondary}`}
           >
             Ver documento
           </Link>
+          <Link
+            href={draftDocumentPath(draft.id)}
+            className={`${styles.button} ${styles.primary}`}
+          >
+            Exportar a PDF
+          </Link>
         </div>
-      </div>
+      </header>
 
       {justCreated ? (
         <p role="status" className={`${styles.alert} ${styles.alertSuccess}`}>

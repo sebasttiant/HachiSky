@@ -4,9 +4,11 @@ import { notFound } from "next/navigation";
 import { requireModule } from "../../../../../../src/auth/guard.ts";
 import { CuentaDeCobroSheet } from "../../../../../../src/billing/CuentaDeCobroSheet.tsx";
 import { getDocumentView } from "../../../../../../src/billing/document.ts";
+import { PrintButton } from "../../../../../../src/billing/PrintButton.tsx";
 import { draftPath } from "../../../../../../src/billing/paths.ts";
 import { BillingRuleError } from "../../../../../../src/billing/service.ts";
 import { getDb } from "../../../../../../src/db/client.ts";
+import ui from "../../../../../../src/users/admin.module.css";
 import styles from "./page.module.css";
 
 export const metadata: Metadata = { title: "Documento del borrador" };
@@ -39,12 +41,18 @@ export default async function DraftDocumentPage({
     <div className="container">
       {/* Hidden when printing, so the sheet is the whole page. */}
       <div className={styles.toolbar}>
-        <Link href={draftPath(id)} className={styles.back}>
-          ← Volver al borrador
-        </Link>
+        <div className={styles.toolbarRow}>
+          <Link href={draftPath(id)} className={styles.back}>
+            ← Volver al borrador
+          </Link>
+          <PrintButton className={`${ui.button} ${ui.primary}`}>
+            Exportar a PDF
+          </PrintButton>
+        </div>
         <p className={styles.hint}>
           Así se verá la cuenta de cobro. Todavía no tiene número: se asigna al
-          emitirla. Para guardarla en PDF usa la impresión del navegador.
+          emitirla. “Exportar a PDF” abre la impresión del navegador; elegí
+          “Guardar como PDF”.
         </p>
       </div>
 

@@ -4,6 +4,14 @@
   margin-bottom: var(--space-5);
 }
 
+.toolbarRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
 .back {
   justify-self: start;
   font-weight: 600;
