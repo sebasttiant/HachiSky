@@ -78,7 +78,7 @@
 }
 
 .reveal:hover:not(:disabled) {
-  color: var(--color-primary);
+  color: var(--color-brand-ink);
   background: var(--color-sky-50);
 }
 

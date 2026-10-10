@@ -117,7 +117,7 @@
 .hubStat {
   font-size: var(--text-2xl);
   font-weight: 700;
-  color: var(--color-primary);
+  color: var(--color-brand-ink);
 }
 
 .hubIcon {
@@ -127,7 +127,7 @@
   height: 2.75rem;
   border-radius: var(--radius-md);
   background: var(--color-sky-100);
-  color: var(--color-brand-navy);
+  color: var(--color-brand-ink);
 }
 
 /* ---- Toolbar and filters -------------------------------------------- */
@@ -309,7 +309,7 @@
 }
 
 .secondary {
-  color: var(--color-primary);
+  color: var(--color-brand-ink);
   background: var(--color-surface);
   border-color: var(--color-border-strong);
 }
@@ -368,7 +368,7 @@
 
 .alertInfo {
   background: var(--color-info-surface);
-  color: var(--color-primary);
+  color: var(--color-brand-ink);
 }
 
 /* ---- Badges ----------------------------------------------------------- */
@@ -391,7 +391,7 @@
 
 .badgeAdmin {
   background: var(--color-sky-100);
-  color: var(--color-brand-navy);
+  color: var(--color-brand-ink);
 }
 
 .badgeStaff,
@@ -426,7 +426,7 @@
   min-height: 3.25rem;
   padding: 0 var(--space-5);
   font-weight: 700;
-  color: var(--color-primary);
+  color: var(--color-brand-ink);
   cursor: pointer;
   list-style: none;
   border-radius: inherit;

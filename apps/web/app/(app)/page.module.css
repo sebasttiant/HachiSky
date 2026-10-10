@@ -83,7 +83,7 @@
   height: 3rem;
   border-radius: var(--radius-md);
   background: var(--color-sky-100);
-  color: var(--color-brand-navy);
+  color: var(--color-brand-ink);
   transition:
     background-color var(--duration-base) var(--ease-out),
     color var(--duration-base) var(--ease-out);
@@ -124,7 +124,7 @@
 
 /* Stretch the title link over the whole tile. */
 .tileLink {
-  color: var(--color-brand-navy);
+  color: var(--color-brand-ink);
   text-decoration: none;
 }
 

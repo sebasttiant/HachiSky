@@ -9,6 +9,7 @@
   --color-sky-100: #dcedfc;
   --color-surface: #ffffff;
   --color-surface-alt: #f3f6f8;
+  --color-brand-ink: #0b3a6e;
   color-scheme: light;
   color: var(--color-text);
 

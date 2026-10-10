@@ -15,6 +15,10 @@
      carry white text. */
   --color-heading: #0b3a6e;
   --color-link-hover: #044366;
+  /* Brand-coloured TEXT on a surface. --color-brand-navy cannot be used for
+     this because it also paints navy panels that carry white text, so it must
+     stay dark in both themes; this ink flips instead. */
+  --color-brand-ink: #0b3a6e;
 
   /* Brand (sampled from the HachiSky logo palette) */
   --color-brand-navy: #0b3a6e;
@@ -152,6 +156,7 @@
   /* Headings become light ink; the navy brand panels keep their own colour. */
   --color-heading: #f4fafc;
   --color-link-hover: #b3e4ff;
+  --color-brand-ink: #9ed6fb;
 }
 
 * {
