@@ -1,0 +1,321 @@
+/* The document sheet. On screen it is a raised page; on paper it is the page.
+   The owner's written decision is A4, while the reference PDFs are US letter —
+   the size lives in one place so switching is a single edit. */
+
+.sheet {
+  --sheet-width: 21cm;
+
+  position: relative;
+  max-width: var(--sheet-width);
+  margin-inline: auto;
+  padding: var(--space-7) var(--space-6) var(--space-6);
+  background: #fff;
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+/* The company signature, the same four worlds as the app header. */
+.worlds {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 6px;
+  background: var(--gradient-worlds);
+}
+
+.top {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.logo {
+  width: 5rem;
+  height: auto;
+  flex: none;
+}
+
+.issuer {
+  min-width: 0;
+}
+
+.issuerName {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--color-brand-navy);
+}
+
+.issuerLine {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.greeting {
+  margin-top: var(--space-5);
+}
+
+.recipient {
+  margin-top: var(--space-3);
+  line-height: 1.5;
+}
+
+/* The boxed block of the references: the number on the left, the recipient's
+   registered data on the right. */
+.identity {
+  display: grid;
+  gap: var(--space-4);
+  margin-top: var(--space-5);
+  padding: var(--space-4);
+  background: var(--color-sky-50);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.numberBox {
+  display: grid;
+  gap: var(--space-1);
+  align-content: start;
+}
+
+.numberLabel {
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  font-weight: 700;
+}
+
+.number {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--color-brand-navy);
+  line-height: 1.1;
+}
+
+.statusPill {
+  justify-self: start;
+  padding: 0.1rem 0.6rem;
+  border-radius: var(--radius-pill);
+  background: var(--color-neutral-surface);
+  color: var(--color-neutral-text);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.partyGrid {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.partyGrid dt {
+  color: var(--color-text-muted);
+}
+
+.partyGrid dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.items {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: var(--space-5);
+  font-size: var(--text-sm);
+}
+
+.items th,
+.items td {
+  padding: var(--space-2) var(--space-3);
+  text-align: start;
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: top;
+}
+
+.items thead th {
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  background: var(--color-surface-alt);
+  border-bottom: 2px solid var(--color-sky-100);
+}
+
+.amountCol {
+  text-align: end;
+  white-space: nowrap;
+}
+
+.items tfoot th {
+  text-align: end;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  border-bottom: 0;
+}
+
+.total {
+  text-align: end;
+  white-space: nowrap;
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--color-brand-navy);
+  border-bottom: 0;
+}
+
+.empty {
+  text-align: center;
+  padding-block: var(--space-5);
+}
+
+.note {
+  margin-top: var(--space-4);
+  padding: var(--space-3);
+  background: var(--color-warn-surface);
+  color: var(--color-warn-text);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+}
+
+.closing {
+  margin-top: var(--space-7);
+  text-align: center;
+}
+
+.cordially {
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.signature {
+  margin-top: var(--space-6);
+}
+
+.signatureImage {
+  display: block;
+  margin-inline: auto;
+  max-height: 4.5rem;
+  width: auto;
+}
+
+.signatureLine {
+  margin-inline: auto;
+  width: min(18rem, 100%);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border-strong);
+}
+
+.signerName {
+  margin-top: var(--space-2);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.signerLine {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.bank {
+  margin-top: var(--space-4);
+  font-size: var(--text-sm);
+}
+
+.declaration {
+  margin-top: var(--space-6);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  text-align: justify;
+}
+
+/* The maker's mark: logo then name, bottom-right, muted grey so it reads as a
+   signature and not a second header. */
+.madeWith {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+  color: var(--color-text-muted);
+}
+
+.madeWithMark {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex: none;
+  opacity: 0.75;
+  filter: grayscale(1);
+}
+
+.madeWithText {
+  display: grid;
+  line-height: 1.15;
+  text-align: end;
+}
+
+.madeWithName {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.madeWithBy {
+  font-size: 0.65rem;
+  letter-spacing: 0.02em;
+}
+
+/* A missing choice is named rather than left as a silent blank, so the admin
+   sees what the document still needs before issuing. */
+.missing {
+  color: var(--color-warn-text);
+  font-style: italic;
+  font-weight: 600;
+}
+
+@media (min-width: 40rem) {
+  .identity {
+    grid-template-columns: 14rem minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+/* Printing: the sheet becomes the page. The app shell is hidden by the page
+   that renders this sheet, not here. */
+@media print {
+  .sheet {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .identity,
+  .note {
+    /* Keep the tinted blocks legible when the browser drops backgrounds. */
+    border: 1px solid #999;
+    background: transparent;
+    color: var(--color-text);
+  }
+
+  .items thead th {
+    background: transparent;
+  }
+
+  .items tr,
+  .closing,
+  .declaration {
+    break-inside: avoid;
+  }
+}

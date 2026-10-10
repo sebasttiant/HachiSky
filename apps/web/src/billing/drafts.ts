@@ -196,7 +196,9 @@ async function checkReferences(
   if (Object.keys(errors).length > 0) invalid(errors);
 }
 
-async function selectLines(
+// Exported for the document view, which reads the same lines in the same
+// order rather than repeating the query.
+export async function selectDocumentLines(
   db: BillingDeps["db"] | Tx,
   documentId: string,
 ): Promise<DraftLine[]> {
@@ -300,7 +302,7 @@ export async function getDraft(
     .where(and(eq(billingDocument.id, id), eq(billingDocument.status, "draft")))
     .limit(1);
   if (!row) return null;
-  const lines = await selectLines(deps.db, id);
+  const lines = await selectDocumentLines(deps.db, id);
   return {
     ...row.document,
     status: "draft",
@@ -371,7 +373,10 @@ export async function updateDraft(
     if (!current) throw new BillingRuleError("draft_not_found");
     await checkReferences(tx, data);
 
-    const linesChanged = !sameLines(await selectLines(tx, id), data.lines);
+    const linesChanged = !sameLines(
+      await selectDocumentLines(tx, id),
+      data.lines,
+    );
     const changedFields: string[] = HEADER_FIELDS.filter(
       (field) => current[field] !== data[field],
     );

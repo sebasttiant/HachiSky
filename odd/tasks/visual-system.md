@@ -90,8 +90,28 @@ worktree's `.env`, `secrets/` and running stack). Local commits only; no push, P
   hairline, hovered rows marked on the leading edge, token easings on controls, a TIC focus halo
   over the unchanged `--color-focus` border (its documented 5.53:1 is preserved), and a lift on
   primary and secondary buttons.
-- [ ] **V1e** Draft document feel: the draft editor's total panel and the `/billing` list still
-  read as a plain form and table rather than as a cuenta de cobro. Pending owner direction.
+- [ ] **V1e** Corporate draft workspace and saved-document preview — owner authorized, in progress.
+  - Exploration complete: use configured issuer identity/logo, existing design tokens and discreet
+    "Hecho con HachiSky" attribution. The supplied delivery manual is a read-only structural
+    reference; never copy client content, embedded assets or operational details.
+  - Preserve existing uncommitted preview work. One bounded writer will organize the editor and
+    saved preview, explicitly label persisted values, add regression coverage and fix print CSS
+    that currently hides the document's own header and signature footer.
+  - No issuance, numbering, schema changes, invented logo, default declaration or generic document
+    builder. Manuals and reports remain separate future work.
+  - GREEN (hv-c4 runner): full suite **659/659**, `pnpm typecheck` exit 0, `biome check` exit 0
+    (9 pre-existing warnings on this branch, no errors), `pnpm build` compiled successfully.
+  - Print defect fixed: `documento/page.module.css` no longer hides every `header`/`footer`/`nav`.
+    The shell `AppHeader`/`AppFooter` now carry `data-app-chrome`, and only `[data-app-chrome]` is
+    hidden on paper, so the sheet's own issuer header and signature footer survive the print. Added
+    `@page { size: A4; margin: 1.5cm }`.
+  - Maker's mark added bottom-right of the sheet: small greyscale HachiSky mark then **HachiSky**
+    with smaller **by IL Asesorías**, muted so it stays subordinate to the issuer identity. Covered
+    by a new document-ui regression test.
+  - Diagnosed the previously-undiagnosed lint error: a Biome formatter break in
+    `tests/billing/document-service.test.ts`; fixed.
+  - **Not yet verified by any automated check: actual on-screen appearance, responsive layout and
+    real browser print-to-PDF.** The owner's eyes remain the gate. Local stack rebuild pending.
 - [ ] **V1f** Dark mode. The site ships a full dark palette (`--color-bg: #07141c`,
   `--color-surface: #0d1e28`, `--color-ink: #e7f2f7`, dark border and link ramps). Not started;
   it is a separate unit, not a token tweak.

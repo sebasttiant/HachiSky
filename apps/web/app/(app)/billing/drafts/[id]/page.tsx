@@ -12,6 +12,7 @@ import {
   getDraft,
   getDraftOptions,
 } from "../../../../../src/billing/drafts.ts";
+import { draftDocumentPath } from "../../../../../src/billing/paths.ts";
 import { getDb } from "../../../../../src/db/client.ts";
 import { formatDateTime } from "../../../../../src/shared/format/date.ts";
 import styles from "../../../../../src/users/admin.module.css";
@@ -57,6 +58,12 @@ export default async function DraftPage({
           <span className={`${styles.badge} ${styles.badgePending}`}>
             Borrador
           </span>
+          <Link
+            href={draftDocumentPath(draft.id)}
+            className={`${styles.button} ${styles.secondary}`}
+          >
+            Ver documento
+          </Link>
         </div>
       </div>
 

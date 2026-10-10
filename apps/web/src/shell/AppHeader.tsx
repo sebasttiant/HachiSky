@@ -14,7 +14,7 @@ export function AppHeader({
   modules?: readonly ModuleId[];
 }) {
   return (
-    <header className={styles.header}>
+    <header className={styles.header} data-app-chrome="">
       <div className={`container ${styles.bar}`}>
         <Link href="/" className={styles.brand}>
           {/* Decorative: the visible wordmark already names the link. Plain <img>

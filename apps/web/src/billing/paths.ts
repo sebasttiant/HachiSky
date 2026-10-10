@@ -35,6 +35,11 @@ export function draftPath(id: string): string {
   return `${BILLING_PATH}/drafts/${encodeURIComponent(id)}`;
 }
 
+// Read-only preview of the printed document, for the browser's print to PDF.
+export function draftDocumentPath(id: string): string {
+  return `${draftPath(id)}/documento`;
+}
+
 // Upload route handlers (raw image body, admins only; see image-upload.ts).
 export function issuerLogoUploadPath(id: string): string {
   return `/api/billing/uploads/issuers/${encodeURIComponent(id)}/logo`;
