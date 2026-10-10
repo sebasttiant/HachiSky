@@ -8,13 +8,16 @@
   position: relative;
   max-width: var(--sheet-width);
   margin-inline: auto;
-  padding: var(--space-7) var(--space-6) var(--space-6);
+  padding: var(--space-8) var(--space-7) var(--space-6);
   background: #fff;
   color: var(--color-text);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
   overflow: hidden;
+  /* Keep the brand accents when the browser drops backgrounds for print. */
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
 }
 
 /* The company signature, the same four worlds as the app header. */
@@ -24,6 +27,8 @@
   top: 0;
   height: 6px;
   background: var(--gradient-worlds);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
 }
 
 .top {
@@ -45,8 +50,9 @@
 }
 
 .issuerName {
-  font-size: var(--text-lg);
+  font-size: var(--text-xl);
   font-weight: 700;
+  letter-spacing: -0.01em;
   color: var(--color-brand-navy);
 }
 
@@ -72,39 +78,50 @@
   margin-top: var(--space-5);
   padding: var(--space-4);
   background: var(--color-sky-50);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-sky-100);
   border-radius: var(--radius-md);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
 }
 
 .numberBox {
   display: grid;
   gap: var(--space-1);
   align-content: start;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-brand-navy);
+  border-radius: var(--radius-sm);
+  color: #fff;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
 }
 
 .numberLabel {
   font-size: 0.75rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--color-text-muted);
+  color: var(--color-sky-100);
   font-weight: 700;
 }
 
 .number {
   font-size: var(--text-xl);
   font-weight: 700;
-  color: var(--color-brand-navy);
+  color: #fff;
   line-height: 1.1;
 }
 
 .statusPill {
   justify-self: start;
+  margin-top: var(--space-1);
   padding: 0.1rem 0.6rem;
   border-radius: var(--radius-pill);
-  background: var(--color-neutral-surface);
-  color: var(--color-neutral-text);
+  background: rgb(255 255 255 / 0.18);
+  color: #fff;
   font-size: var(--text-sm);
   font-weight: 600;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
 }
 
 .partyGrid {
@@ -143,9 +160,17 @@
   font-size: 0.7rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--color-text-muted);
-  background: var(--color-surface-alt);
-  border-bottom: 2px solid var(--color-sky-100);
+  color: #fff;
+  background: var(--color-brand-navy);
+  border-bottom: 0;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.items tbody tr:nth-child(even) td {
+  background: var(--color-sky-50);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
 }
 
 .amountCol {
@@ -156,18 +181,22 @@
 .items tfoot th {
   text-align: end;
   text-transform: uppercase;
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   letter-spacing: 0.06em;
+  font-weight: 700;
+  color: var(--color-brand-navy);
   border-bottom: 0;
+  border-top: 2px solid var(--color-brand-navy);
 }
 
 .total {
   text-align: end;
   white-space: nowrap;
-  font-size: var(--text-lg);
+  font-size: var(--text-xl);
   font-weight: 700;
   color: var(--color-brand-navy);
   border-bottom: 0;
+  border-top: 2px solid var(--color-brand-navy);
 }
 
 .empty {
@@ -301,16 +330,11 @@
     box-shadow: none;
   }
 
-  .identity,
   .note {
-    /* Keep the tinted blocks legible when the browser drops backgrounds. */
+    /* Keep the tinted note legible when the browser drops backgrounds. */
     border: 1px solid #999;
     background: transparent;
     color: var(--color-text);
-  }
-
-  .items thead th {
-    background: transparent;
   }
 
   .items tr,
