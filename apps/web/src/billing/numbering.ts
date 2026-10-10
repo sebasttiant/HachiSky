@@ -63,7 +63,8 @@ export interface NumberingState {
 export type PreviewReason =
   | "numbering_not_configured"
   | "invalid_number"
-  | "numbering_backwards";
+  | "numbering_backwards"
+  | "numbering_skips_ahead";
 
 export interface ConsecutivePreview {
   issuerProfileId: string;
@@ -72,7 +73,8 @@ export interface ConsecutivePreview {
   // The consecutive that would be used, once it is known to be usable.
   consecutive: number | null;
   formatted: string | null;
-  // True when the proposed number leaves a gap in the series.
+  // True when the proposed number would leave a gap. Configuration may jump
+  // the series forward; a document may not.
   skipsAhead: boolean;
   nextNumber: number | null;
   lastRegistered: number | null;
@@ -266,11 +268,16 @@ export async function previewConsecutive(
   if (consecutive < state.nextNumber) {
     return { ...base, reason: "numbering_backwards" };
   }
+  // The series runs without gaps (owner, 2026-10-10): a document takes the
+  // next number, nothing further along. Carrying a series over or correcting
+  // one is done in settings, where jumping forward is allowed.
+  if (consecutive > state.nextNumber) {
+    return { ...base, reason: "numbering_skips_ahead", skipsAhead: true };
+  }
   return {
     ...base,
     valid: true,
     consecutive,
     formatted: formatConsecutive(consecutive),
-    skipsAhead: consecutive > state.nextNumber,
   };
 }

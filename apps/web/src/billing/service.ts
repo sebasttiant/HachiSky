@@ -58,7 +58,9 @@ export type BillingRuleCode =
   // The issuer has no consecutive configured yet.
   | "numbering_not_configured"
   // A consecutive may move forward, never back onto a number already passed.
-  | "numbering_backwards";
+  | "numbering_backwards"
+  // A document takes the next number; the series runs without gaps.
+  | "numbering_skips_ahead";
 
 export class BillingRuleError extends Error {
   readonly code: BillingRuleCode;

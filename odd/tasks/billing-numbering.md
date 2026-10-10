@@ -6,7 +6,7 @@ Owner approved continuous per-issuer CC-0001-style numbering, independent of cli
 ## Tasks
 - [x] N1 (done, 681/681): Add per-issuer numbering configuration and advisory reads, with generated migration, authorization, transactional audit and focused tests. No allocation or document status change.
 - [x] N2 (done, 686/686): Numbering card on the issuer page — last registered here, next suggested, and an editable starting number. Browser check still pending.
-- [ ] N3: Implement atomic issuance, immutable snapshots and uniqueness; preserve annulled numbers. Confirm whether manual issuance may skip forward before implementing that behavior.
+- [ ] N3: Implement atomic issuance, immutable snapshots and uniqueness; preserve annulled numbers. Decided (owner, 2026-10-10): a document takes exactly the next number — issuance never leaves gaps. Jumping the series forward stays a settings operation.
 - [ ] N4: Connect issued/draft document rendering and verify browser/print behavior.
 
 ## N1 acceptance

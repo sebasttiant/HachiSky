@@ -27,7 +27,9 @@ export function NumberingSection({
       <p className={styles.cardHint}>
         Una sola numeración por emisor, igual para todos los clientes y sedes.
         Indica desde qué número continúa y la plataforma propone el siguiente.
-        El consecutivo solo avanza: no vuelve sobre un número ya usado.
+        El consecutivo solo avanza: no vuelve sobre un número ya usado. Cada
+        cuenta de cobro toma el siguiente de la serie, sin dejar huecos; si
+        necesitas saltar a otro número, cámbialo aquí.
       </p>
 
       <dl className={styles.summary}>

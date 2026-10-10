@@ -58,6 +58,8 @@ export const RULE_MESSAGES: Record<BillingRuleCode, string> = {
     "Primero indica desde qué número continúa el consecutivo de este emisor.",
   numbering_backwards:
     "El consecutivo solo puede avanzar: elige un número mayor.",
+  numbering_skips_ahead:
+    "La numeración no deja huecos: usa el siguiente número de la serie.",
 };
 
 const GENERIC_ERROR = "No se pudo completar la acción. Intenta de nuevo.";

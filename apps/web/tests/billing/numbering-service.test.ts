@@ -224,15 +224,35 @@ describe("billing numbering", () => {
     assert.equal((await getNumbering(deps, admin, issuerId)).nextNumber, 45);
   });
 
-  it("accepts a manual number ahead of the series and flags the skip", async () => {
+  it("refuses a manual number that would leave a gap", async () => {
     await configureNumbering(deps, admin, issuerId, { nextNumber: 45 });
     const preview = await previewConsecutive(deps, admin, issuerId, "80");
-    assert.equal(preview.valid, true);
-    assert.equal(preview.consecutive, 80);
-    assert.equal(preview.formatted, "CC-0080");
+    assert.equal(preview.valid, false);
+    assert.equal(preview.reason, "numbering_skips_ahead");
+    assert.equal(preview.consecutive, null);
     assert.equal(preview.skipsAhead, true);
+    assert.equal((await getNumbering(deps, admin, issuerId)).nextNumber, 45);
+  });
+
+  it("accepts the exact next number when it is typed by hand", async () => {
+    await configureNumbering(deps, admin, issuerId, { nextNumber: 45 });
+    const preview = await previewConsecutive(deps, admin, issuerId, "45");
+    assert.equal(preview.valid, true);
+    assert.equal(preview.consecutive, 45);
+    assert.equal(preview.formatted, "CC-0045");
+    assert.equal(preview.skipsAhead, false);
     // Checking a number is not choosing it.
     assert.equal((await getNumbering(deps, admin, issuerId)).nextNumber, 45);
+  });
+
+  it("still lets configuration jump the series forward", async () => {
+    // Settings is how an owner corrects or carries over a series; issuance
+    // is what may not leave gaps.
+    await configureNumbering(deps, admin, issuerId, { nextNumber: 45 });
+    await configureNumbering(deps, admin, issuerId, { nextNumber: 80 });
+    const preview = await previewConsecutive(deps, admin, issuerId, null);
+    assert.equal(preview.valid, true);
+    assert.equal(preview.consecutive, 80);
   });
 
   it("rejects a manual number behind the series", async () => {
