@@ -223,7 +223,7 @@ describe("draft editor", () => {
     assert.match(html, /name="lines\.0\.product"[^>]*value="Asesoría"/);
     assert.match(html, /name="lines\.0\.amount"[^>]*value="1\.200\.000"/);
     assert.match(html, /name="lines\.1\.product"[^>]*value="Soporte"/);
-    assert.match(html, /Total[\s\S]*\$ 1\.500\.000/);
+    assert.match(html, /Valor total[\s\S]*\$ 1\.500\.000/);
     // Quantity is informative; the form says so.
     assert.match(html, /no multiplica/);
     assert.match(html, /Agregar línea/);

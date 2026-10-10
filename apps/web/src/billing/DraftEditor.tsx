@@ -5,6 +5,7 @@ import type { ActionState } from "../users/action-state.ts";
 import styles from "../users/admin.module.css";
 import { FieldError, FormMessage, fieldProps } from "../users/FormMessage.tsx";
 import { useFormAction } from "../users/useFormAction.ts";
+import editor from "./DraftEditor.module.css";
 import type { DraftOption, DraftOptions, DraftRecord } from "./drafts.ts";
 import { formatAmount, formatAmountInput, parseAmount } from "./money.ts";
 import {
@@ -366,10 +367,17 @@ export function DraftEditor({
             Agregar línea
           </button>
         </div>
-        <p aria-live="polite">
-          Total: <strong>{formatAmount(total, currency)}</strong>
-          {unreadable ? " (sin contar los valores que no se pueden leer)" : ""}
-        </p>
+        <div className={editor.totalPanel} aria-live="polite">
+          <span className={editor.totalLabel}>Valor total</span>
+          <span className={editor.totalValue}>
+            {formatAmount(total, currency)}
+          </span>
+          {unreadable ? (
+            <p className={editor.totalNote}>
+              Sin contar los valores que no se pueden leer todavía.
+            </p>
+          ) : null}
+        </div>
       </section>
 
       <FormMessage state={state} />

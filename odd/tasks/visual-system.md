@@ -111,7 +111,11 @@ worktree's `.env`, `secrets/` and running stack). Local commits only; no push, P
   - Diagnosed the previously-undiagnosed lint error: a Biome formatter break in
     `tests/billing/document-service.test.ts`; fixed.
   - **Not yet verified by any automated check: actual on-screen appearance, responsive layout and
-    real browser print-to-PDF.** The owner's eyes remain the gate. Local stack rebuild pending.
+    real browser print-to-PDF.** The owner's eyes remain the gate.
+  - Editor total panel: the running total is now a document-style figure (scoped
+    `DraftEditor.module.css`, no change to the shared `admin.module.css` or the line logic), so the
+    editor reads less like a plain form. Covered by the existing drafts-ui total assertion. Full
+    suite **659/659**, typecheck 0, biome 0 errors.
 - [ ] **V1f** Dark mode. The site ships a full dark palette (`--color-bg: #07141c`,
   `--color-surface: #0d1e28`, `--color-ink: #e7f2f7`, dark border and link ramps). Not started;
   it is a separate unit, not a token tweak.
