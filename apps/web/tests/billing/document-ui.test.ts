@@ -162,6 +162,25 @@ describe("cuenta de cobro sheet", () => {
     assert.match(html, /Sin conceptos/i);
   });
 
+  it("shows the quantity column only when a line carries a quantity", async () => {
+    // Some cuentas list quantities (hours, units); others do not. The column
+    // follows the data instead of being a fixed choice.
+    const withQuantity = await render(FULL);
+    assert.match(withQuantity, /CANTIDAD/i);
+
+    const noQuantity = {
+      ...FULL,
+      lines: FULL.lines.map((line) => ({ ...line, quantity: null })),
+    };
+    const html = await render(noQuantity);
+    assert.doesNotMatch(html, /CANTIDAD/i);
+    // The other columns and the total stay intact.
+    assert.match(html, /PRODUCTO/i);
+    assert.match(html, /PRECIO TOTAL/i);
+    assert.match(html, /Valor Total/i);
+    assert.match(html, /2\.000\.000/);
+  });
+
   it("signs the document with a discreet maker's mark", async () => {
     const html = await render(FULL);
     // The software signature names HachiSky by IL Asesorías, kept subordinate

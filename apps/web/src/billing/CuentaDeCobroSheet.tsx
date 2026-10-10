@@ -27,6 +27,14 @@ function accountTail(accountNumber: string): string {
 
 export function CuentaDeCobroSheet({ view }: { view: DocumentView }) {
   const { client, issuer, signer, bankAccount, declaration } = view;
+  // Some cuentas list quantities (hours, units) and some do not. The column
+  // follows the data: it appears only when a line actually carries a quantity,
+  // so a document without quantities reads as a clean three-column sheet.
+  const showQuantity = view.lines.some(
+    (line) => (line.quantity ?? "").trim() !== "",
+  );
+  const totalLabelSpan = showQuantity ? 3 : 2;
+  const columnCount = showQuantity ? 4 : 3;
   return (
     <article className={styles.sheet} aria-label="Cuenta de cobro">
       <div className={styles.worlds} aria-hidden="true" />
@@ -87,7 +95,7 @@ export function CuentaDeCobroSheet({ view }: { view: DocumentView }) {
           <tr>
             <th scope="col">Producto</th>
             <th scope="col">Descripción</th>
-            <th scope="col">Cantidad</th>
+            {showQuantity ? <th scope="col">Cantidad</th> : null}
             <th scope="col" className={styles.amountCol}>
               Precio total
             </th>
@@ -96,7 +104,7 @@ export function CuentaDeCobroSheet({ view }: { view: DocumentView }) {
         <tbody>
           {view.lines.length === 0 ? (
             <tr>
-              <td colSpan={4} className={styles.empty}>
+              <td colSpan={columnCount} className={styles.empty}>
                 <Missing>Sin conceptos todavía</Missing>
               </td>
             </tr>
@@ -105,7 +113,7 @@ export function CuentaDeCobroSheet({ view }: { view: DocumentView }) {
               <tr key={line.position}>
                 <td>{line.product}</td>
                 <td>{line.description ?? ""}</td>
-                <td>{line.quantity ?? ""}</td>
+                {showQuantity ? <td>{line.quantity ?? ""}</td> : null}
                 <td className={styles.amountCol}>
                   {formatAmount(line.amountMinor, view.currency)}
                 </td>
@@ -115,7 +123,7 @@ export function CuentaDeCobroSheet({ view }: { view: DocumentView }) {
         </tbody>
         <tfoot>
           <tr>
-            <th scope="row" colSpan={3}>
+            <th scope="row" colSpan={totalLabelSpan}>
               Valor Total
             </th>
             <td className={styles.total}>
