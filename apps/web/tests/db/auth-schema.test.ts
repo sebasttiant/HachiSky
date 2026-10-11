@@ -101,6 +101,7 @@ describe("migration 0001 on a fresh database", () => {
           "user",
           "user_security",
           "verification",
+          "work_activity",
         ],
       );
       const columns = await fresh.query<{

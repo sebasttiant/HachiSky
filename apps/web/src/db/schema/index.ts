@@ -4,3 +4,4 @@ export * from "./app-instance.ts";
 export * from "./auth.ts";
 export * from "./billing.ts";
 export * from "./client.ts";
+export * from "./work.ts";

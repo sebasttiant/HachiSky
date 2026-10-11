@@ -71,6 +71,13 @@
       "when": 1791669603429,
       "tag": "0009_billing_numbering",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791685216772,
+      "tag": "0010_work_activities",
+      "breakpoints": true
     }
   ]
 }
