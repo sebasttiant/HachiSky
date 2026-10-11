@@ -4,9 +4,14 @@ import { formatAmount } from "./money.ts";
 import { billingImagePath } from "./paths.ts";
 
 // The printed cuenta de cobro, laid out after the owner's reference documents:
-// greeting, recipient, the boxed number and recipient block, the item table,
-// the total, the payment note, the signature block with the bank line, and the
-// tax declaration last.
+// the issuer's letterhead, a title row carrying the document's own identity
+// (number and date), one recipient block, the item table, the total, the
+// payment note, the signature block with the bank line, and the tax
+// declaration last.
+//
+// The recipient is stated once. An earlier version greeted the client and
+// then repeated its name and identification inside a boxed grid, which read
+// as two different blocks saying the same thing.
 //
 // Items carry no unit price on purpose. The owner fixed the columns as
 // PRODUCTO | DESCRIPCIÓN | CANTIDAD | PRECIO TOTAL, with the total entered per
@@ -64,29 +69,54 @@ export function CuentaDeCobroSheet({ view }: { view: DocumentView }) {
         </div>
       </header>
 
+      {/* The document's own identity: what it is, and which one it is. A
+          draft has neither a number nor an issue date, and says so quietly
+          instead of filling the space with a provisional one. */}
+      <section className={styles.identity}>
+        <h1 className={styles.title}>Cuenta de cobro</h1>
+        <dl className={styles.identityFacts}>
+          <div>
+            <dt>N.º</dt>
+            <dd>
+              <Missing>Sin número</Missing>
+            </dd>
+          </div>
+          <div>
+            <dt>Fecha</dt>
+            <dd>
+              <Missing>Sin emitir</Missing>
+            </dd>
+          </div>
+          <div>
+            <dt>Estado</dt>
+            <dd>
+              <span className={styles.statusPill}>Borrador</span>
+            </dd>
+          </div>
+        </dl>
+      </section>
+
       <p className={styles.greeting}>Saludos Cordiales,</p>
 
-      <p className={styles.recipient}>
-        <strong>{client.name}</strong>
-        <br />
-        {client.identificationType}: {client.identificationNumber}
-      </p>
-
-      <section className={styles.identity}>
-        <div className={styles.numberBox}>
-          <p className={styles.numberLabel}>CUENTA DE COBRO</p>
-          <p className={styles.number}>Sin número</p>
-          <p className={styles.statusPill}>Borrador</p>
-        </div>
+      <section className={styles.party} aria-label="Cliente">
+        <p className={styles.partyLabel}>Debe a</p>
         <dl className={styles.partyGrid}>
-          <dt>Razón social</dt>
-          <dd>{client.name}</dd>
-          <dt>Dirección</dt>
-          <dd>{client.address ?? <Missing>Sin dirección</Missing>}</dd>
-          <dt>Ciudad</dt>
-          <dd>{client.city ?? <Missing>Sin ciudad</Missing>}</dd>
-          <dt>{client.identificationType}</dt>
-          <dd>{client.identificationNumber}</dd>
+          <div className={styles.partyWide}>
+            <dt>Razón social</dt>
+            <dd className={styles.partyName}>{client.name}</dd>
+          </div>
+          <div>
+            <dt>{client.identificationType}</dt>
+            <dd>{client.identificationNumber}</dd>
+          </div>
+          <div>
+            <dt>Ciudad</dt>
+            <dd>{client.city ?? <Missing>Sin ciudad</Missing>}</dd>
+          </div>
+          <div className={styles.partyWide}>
+            <dt>Dirección</dt>
+            <dd>{client.address ?? <Missing>Sin dirección</Missing>}</dd>
+          </div>
         </dl>
       </section>
 

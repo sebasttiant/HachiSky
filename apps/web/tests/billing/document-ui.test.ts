@@ -135,6 +135,15 @@ describe("cuenta de cobro sheet", () => {
     assert.match(html, /Declaración demo para pruebas\./);
   });
 
+  it("names the recipient once instead of repeating the block", async () => {
+    const html = await render(FULL);
+    const count = (needle: string) => html.split(needle).length - 1;
+    // The recipient used to appear twice: once under the greeting and again
+    // in the boxed party grid. One block, one place to read it.
+    assert.equal(count("Compradora Demo S.A.S"), 1);
+    assert.equal(count("900000001-1"), 1);
+  });
+
   it("marks a draft as having no number instead of inventing one", async () => {
     const html = await render(FULL);
     assert.match(html, /Borrador/i);

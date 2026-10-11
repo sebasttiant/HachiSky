@@ -79,17 +79,74 @@
   margin-top: var(--space-5);
 }
 
-.recipient {
-  margin-top: var(--space-3);
-  line-height: 1.5;
+/* The title row: what this document is, and which one it is. The facts sit
+   next to the title rather than inside a filled box, so a draft without a
+   number does not become the loudest thing on the page. */
+.identity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-5);
+  margin-top: var(--space-6);
+  padding-bottom: var(--space-3);
+  border-bottom: 2px solid var(--color-brand-navy);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
 }
 
-/* The boxed block of the references: the number on the left, the recipient's
-   registered data on the right. */
-.identity {
-  display: grid;
-  gap: var(--space-4);
-  margin-top: var(--space-5);
+.title {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-brand-navy);
+  line-height: 1.1;
+}
+
+.identityFacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.identityFacts div {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.identityFacts dt {
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+}
+
+.identityFacts dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.statusPill {
+  display: inline-block;
+  padding: 0.1rem 0.6rem;
+  border-radius: var(--radius-pill);
+  background: var(--color-brand-navy);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+/* One block for the recipient, stated once. */
+.party {
+  margin-top: var(--space-4);
   padding: var(--space-4);
   background: var(--color-sky-50);
   border: 1px solid var(--color-sky-100);
@@ -98,61 +155,44 @@
   -webkit-print-color-adjust: exact;
 }
 
-.numberBox {
-  display: grid;
-  gap: var(--space-1);
-  align-content: start;
-  padding: var(--space-3) var(--space-4);
-  background: var(--color-brand-navy);
-  border-radius: var(--radius-sm);
-  color: #fff;
-  print-color-adjust: exact;
-  -webkit-print-color-adjust: exact;
-}
-
-.numberLabel {
-  font-size: 0.75rem;
+.partyLabel {
+  margin: 0 0 var(--space-3);
+  font-size: 0.7rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--color-sky-100);
   font-weight: 700;
-}
-
-.number {
-  font-size: var(--text-xl);
-  font-weight: 700;
-  color: #fff;
-  line-height: 1.1;
-}
-
-.statusPill {
-  justify-self: start;
-  margin-top: var(--space-1);
-  padding: 0.1rem 0.6rem;
-  border-radius: var(--radius-pill);
-  background: rgb(255 255 255 / 0.18);
-  color: #fff;
-  font-size: var(--text-sm);
-  font-weight: 600;
-  print-color-adjust: exact;
-  -webkit-print-color-adjust: exact;
+  color: var(--color-text-muted);
 }
 
 .partyGrid {
   display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
-  gap: var(--space-1) var(--space-4);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-5);
   margin: 0;
   font-size: var(--text-sm);
 }
 
+.partyWide {
+  grid-column: 1 / -1;
+}
+
 .partyGrid dt {
   color: var(--color-text-muted);
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  font-weight: 700;
 }
 
 .partyGrid dd {
-  margin: 0;
+  margin: var(--space-1) 0 0;
   font-weight: 600;
+}
+
+.partyName {
+  font-size: var(--text-lg);
+  color: var(--color-brand-navy);
+  line-height: 1.2;
 }
 
 .items {
