@@ -40,29 +40,30 @@ describe("shell navigation", () => {
     }
   });
 
-  it("marks Clientes available, Facturación unavailable, Trabajo and Informes preview", () => {
+  it("marks Clientes and Facturación available, Trabajo and Informes preview", () => {
     assert.equal(byId("clients")?.availability, "available");
-    assert.equal(byId("billing")?.availability, "unavailable");
+    // Drafts are stored, edited and printed for real, so announcing the
+    // module as unavailable while it works contradicts the page itself.
+    assert.equal(byId("billing")?.availability, "available");
     assert.equal(byId("work")?.availability, "preview");
     assert.equal(byId("reports")?.availability, "preview");
   });
 
   it("never presents a non-implemented module as available", () => {
     const notAvailable = MODULES.filter((m) => m.availability !== "available");
-    assert.ok(notAvailable.length >= 3);
-    // Only Inicio, Clientes and Configuración are implemented in this delivery.
+    assert.ok(notAvailable.length >= 2);
     const available = MODULES.filter((m) => m.availability === "available");
     assert.deepEqual(
       available.map((m) => m.id),
-      ["home", "clients", "settings"],
+      ["home", "clients", "billing", "settings"],
     );
   });
 
-  it("describes Facturación with Colombian billing terms", () => {
-    assert.equal(
-      byId("billing")?.description,
-      "Cuentas de cobro, pagos y saldos",
-    );
+  it("promises only the billing that exists", () => {
+    // Payments and balances are not built, so the module must not offer them.
+    const description = byId("billing")?.description ?? "";
+    assert.match(description, /[Cc]uentas de cobro/);
+    assert.doesNotMatch(description, /pagos|saldos/i);
   });
 
   it("has a Spanish label for every status", () => {

@@ -61,8 +61,11 @@ export const MODULES: readonly AppModule[] = [
     id: "billing",
     label: "Facturación",
     href: "/billing",
-    availability: "unavailable",
-    description: "Cuentas de cobro, pagos y saldos",
+    // Drafts are stored, edited, previewed and printed for real. Issuing a
+    // numbered document is not built yet, and payments and balances do not
+    // exist, so the description promises neither.
+    availability: "available",
+    description: "Cuentas de cobro: borradores, numeración e impresión.",
   },
   {
     id: "settings",
