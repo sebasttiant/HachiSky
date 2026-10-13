@@ -56,10 +56,21 @@
   list-style: none;
 }
 
+/* Three to a row divides the hub evenly, so the last row is never a single
+   tile stranded beside empty columns. */
+@media (min-width: 64rem) {
+  .hubGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
 .hubTile {
   position: relative;
   display: grid;
   gap: var(--space-2);
+  /* Without this the grid stretches its rows to fill the tallest tile in the
+     row, and every heading lands at a different height. */
+  align-content: start;
   padding: var(--space-5);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -114,8 +125,10 @@
   border-radius: inherit;
 }
 
+/* A figure inside a navigation tile: it supports the heading, so it must not
+   be set larger than the heading it sits under. */
 .hubStat {
-  font-size: var(--text-2xl);
+  font-size: var(--text-xl);
   font-weight: 700;
   color: var(--color-brand-ink);
 }
