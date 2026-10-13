@@ -22,17 +22,15 @@ interface PendingItem {
 
 export function DashboardAsideFallback() {
   return (
-    <section
-      className={styles.panel}
-      aria-labelledby="aside-title"
-      aria-busy="true"
-    >
-      <h2 id="aside-title" className={styles.title}>
+    <section aria-labelledby="aside-title" aria-busy="true">
+      <h2 id="aside-title" className={styles.heading}>
         Pendientes
       </h2>
-      <p role="status" className={styles.muted}>
-        Consultando…
-      </p>
+      <div className={styles.panel}>
+        <p role="status" className={styles.muted}>
+          Consultando…
+        </p>
+      </div>
     </section>
   );
 }
@@ -78,38 +76,41 @@ export async function DashboardAside({ actor }: { actor: DashboardActor }) {
   }
 
   return (
-    <section className={styles.panel} aria-labelledby="aside-title">
-      <h2 id="aside-title" className={styles.title}>
+    <section aria-labelledby="aside-title">
+      {/* The heading sits outside the card so this column starts on the same
+          line as the modules grid beside it. */}
+      <h2 id="aside-title" className={styles.heading}>
         Pendientes
       </h2>
+      <div className={styles.panel}>
+        {items.length === 0 ? (
+          <p className={styles.clear}>
+            Nada pendiente. Tus borradores tienen conceptos, firmante y cuenta.
+          </p>
+        ) : (
+          <ul className={styles.list}>
+            {items.map((item) => (
+              <li key={item.label} className={styles.item}>
+                <Link href={item.href} className={styles.itemLink}>
+                  {item.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
 
-      {items.length === 0 ? (
-        <p className={styles.clear}>
-          Nada pendiente. Tus borradores tienen conceptos, firmante y cuenta.
-        </p>
-      ) : (
-        <ul className={styles.list}>
-          {items.map((item) => (
-            <li key={item.label} className={styles.item}>
-              <Link href={item.href} className={styles.itemLink}>
-                {item.label}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <h3 className={styles.subtitle}>Accesos rápidos</h3>
-      <div className={styles.actions}>
-        <Link href={NEW_DRAFT_PATH} className={styles.action}>
-          Nueva cuenta de cobro
-        </Link>
-        <Link href="/clients/new" className={styles.action}>
-          Nuevo cliente
-        </Link>
-        <Link href={SETTINGS_PATH} className={styles.action}>
-          Configuración
-        </Link>
+        <h3 className={styles.subtitle}>Accesos rápidos</h3>
+        <div className={styles.actions}>
+          <Link href={NEW_DRAFT_PATH} className={styles.action}>
+            Nueva cuenta de cobro
+          </Link>
+          <Link href="/clients/new" className={styles.action}>
+            Nuevo cliente
+          </Link>
+          <Link href={SETTINGS_PATH} className={styles.action}>
+            Configuración
+          </Link>
+        </div>
       </div>
     </section>
   );

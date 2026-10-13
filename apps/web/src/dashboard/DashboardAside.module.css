@@ -12,9 +12,11 @@
   box-shadow: var(--shadow-sm);
 }
 
-.title {
+/* Matches the modules section title next to it, so both columns of the home
+   layout start on the same line. */
+.heading {
   font-size: var(--text-lg);
-  margin: 0;
+  margin: 0 0 var(--space-3);
 }
 
 .subtitle {

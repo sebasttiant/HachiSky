@@ -212,6 +212,18 @@
     box-shadow var(--duration-fast) var(--ease-out);
 }
 
+/* Without this the browser keeps drawing its own dropdown, which never
+   matches the text inputs standing next to it. */
+.select {
+  appearance: none;
+  padding-right: 2.25rem;
+  background-image: var(--select-arrow);
+  background-repeat: no-repeat;
+  background-position: right 0.85rem center;
+  background-size: 0.75rem auto;
+  cursor: pointer;
+}
+
 .input:hover:not(:disabled),
 .select:hover:not(:disabled) {
   border-color: var(--color-brand-mid);

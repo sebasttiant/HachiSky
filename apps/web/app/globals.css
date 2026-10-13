@@ -86,6 +86,12 @@
   /* Coloured glow for a hovered or focused interactive surface. */
   --shadow-glow-tic: 0 4px 12px rgb(0 153 255 / 18%);
 
+  /* A dropdown drawn by the operating system never matches the inputs beside
+     it, so every select suppresses the native chrome and paints this arrow
+     instead. The colour is baked into the data URI, which cannot read
+     currentColor, so the whole url() flips with the theme. */
+  --select-arrow: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8' fill='none' stroke='%234b626e' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 1.5 6 6.5l5-5'/%3E%3C/svg%3E");
+
   /* Gradients */
   --gradient-brand: linear-gradient(
     135deg,
@@ -127,6 +133,7 @@
    white paper — by re-declaring light tokens on .sheet. */
 [data-theme="dark"] {
   color-scheme: dark;
+  --select-arrow: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8' fill='none' stroke='%23b7c9d4' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 1.5 6 6.5l5-5'/%3E%3C/svg%3E");
   --color-text: #e7f2f7;
   --color-text-muted: #b7c9d4;
   --color-surface: #0d1e28;

@@ -153,4 +153,10 @@
   .grid {
     grid-template-columns: repeat(3, 1fr);
   }
+
+  /* A trailing tile in a three-column row would leave a visible hole beside
+     it, so it stretches across the space instead. */
+  .grid > li:last-child:nth-child(3n + 2) {
+    grid-column: span 2;
+  }
 }

@@ -85,30 +85,36 @@ export async function DashboardMetrics({ actor }: { actor: DashboardActor }) {
           value={setupMissing === 0 ? "Completa" : `Faltan ${setupMissing}`}
           hint={`${billingSetup.issuers} emisor(es) · ${billingSetup.signers} firmante(s) · ${billingSetup.bankAccounts} cuenta(s) · ${billingSetup.declarations} declaración(es)`}
         />
-      </div>
 
-      <div className={styles.totals}>
-        <h3 className={styles.totalsTitle}>Valor en borradores</h3>
-        {drafts.totals.length === 0 ? (
-          <p className={styles.empty}>
-            Todavía no hay borradores con valores cargados.
-          </p>
-        ) : (
-          <ul className={styles.totalsList}>
-            {drafts.totals.map((total) => (
-              <li key={total.currency} className={styles.total}>
-                <span className={styles.totalCurrency}>{total.currency}</span>
-                <span className={styles.totalValue}>
-                  {formatAmount(total.totalMinor, total.currency)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-        <p className={styles.note}>
-          Cada moneda se informa por separado: los valores no se convierten ni
-          se suman entre monedas.
-        </p>
+        {/* One more figure in the same row. It used to be a panel of its own,
+            which reserved a block of empty page to say "$ 0". */}
+        <div className={styles.metric}>
+          <span className={styles.metricLabel}>Valor en borradores</span>
+          {drafts.totals.length === 0 ? (
+            <>
+              <span className={styles.metricValue}>—</span>
+              <span className={styles.metricHint}>Sin valores cargados</span>
+            </>
+          ) : (
+            <>
+              <ul className={styles.totalsList}>
+                {drafts.totals.map((total) => (
+                  <li key={total.currency} className={styles.total}>
+                    <span className={styles.totalValue}>
+                      {formatAmount(total.totalMinor, total.currency)}
+                    </span>
+                    <span className={styles.totalCurrency}>
+                      {total.currency}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <span className={styles.metricHint}>
+                Cada moneda por separado; nunca se suman entre sí.
+              </span>
+            </>
+          )}
+        </div>
       </div>
     </section>
   );

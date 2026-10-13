@@ -14,17 +14,19 @@
   color: var(--color-text-muted);
 }
 
+/* Let the figures flow and fill the row instead of locking a column count:
+   a fixed four-column grid left a hole whenever the number of cards changed. */
 .grid {
   display: grid;
   gap: var(--space-4);
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr));
 }
 
 .metric {
   display: grid;
   gap: var(--space-1);
   align-content: start;
-  padding: var(--space-5);
+  padding: var(--space-4);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
@@ -55,64 +57,31 @@
   color: var(--color-text-muted);
 }
 
-.totals {
-  margin-top: var(--space-4);
-  padding: var(--space-5);
-  background: var(--color-sky-50);
-  border: 1px solid var(--color-sky-100);
-  border-radius: var(--radius-lg);
-}
-
-.totalsTitle {
-  font-size: var(--text-base);
-  margin-bottom: var(--space-3);
-}
-
+/* Several currencies stack inside the one figure; they are never added up. */
 .totalsList {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-5);
-}
-
-.total {
   display: grid;
   gap: var(--space-1);
 }
 
+.total {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
 .totalCurrency {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   letter-spacing: 0.06em;
   font-weight: 700;
   color: var(--color-text-muted);
 }
 
 .totalValue {
-  font-size: var(--text-xl);
+  font-size: var(--text-2xl);
   font-weight: 700;
+  line-height: 1.1;
   color: var(--color-brand-ink);
-}
-
-.empty {
-  color: var(--color-text-muted);
-}
-
-.note {
-  margin-top: var(--space-3);
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-}
-
-@media (min-width: 48rem) {
-  .grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (min-width: 80rem) {
-  .grid {
-    grid-template-columns: repeat(4, 1fr);
-  }
 }
