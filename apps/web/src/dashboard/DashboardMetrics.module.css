@@ -5,8 +5,9 @@
   margin-bottom: var(--space-6);
 }
 
+/* A section heading, one step above the card headings it introduces. */
 .title {
-  font-size: var(--text-lg);
+  font-size: var(--text-xl);
   margin-bottom: var(--space-3);
 }
 
