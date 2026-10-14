@@ -56,8 +56,10 @@ export const MODULES: readonly AppModule[] = [
     id: "reports",
     label: "Informes",
     href: "/reports",
-    availability: "preview",
-    description: "Informes de actividad listos para compartir con el cliente.",
+    // Reports are written and saved now; the fixed sample is gone.
+    availability: "available",
+    description:
+      "Diagnósticos, seguimientos, informes de gestión, infraestructura y manuales.",
   },
   {
     id: "billing",

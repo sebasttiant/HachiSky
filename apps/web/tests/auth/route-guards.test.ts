@@ -396,6 +396,32 @@ describe("billing settings Server Functions", () => {
   });
 });
 
+describe("reports Server Functions", () => {
+  it("every exported Server Function checks the reports module first", () => {
+    const source = stripComments(
+      readFileSync(join(ROOT, "src/reports/actions.ts"), "utf8"),
+    );
+    assert.match(source, /^\s*["']use server["'];?/m);
+    const exported = [
+      ...source.matchAll(/export async function (\w+)\([^)]*\)[^{]*\{/g),
+    ];
+    assert.equal(
+      exported.length,
+      6,
+      "create, update, section, items, activities and delete",
+    );
+    for (const match of exported) {
+      const body = source.slice((match.index ?? 0) + match[0].length);
+      assert.match(
+        body.trimStart(),
+        /^const (\w+|\{[^}]*\}) = await reportContext\(/,
+        `${match[1]}: must start with await reportContext(...)`,
+      );
+    }
+    assert.match(source, /await requireModule\("reports", /);
+  });
+});
+
 describe("work Server Functions", () => {
   it("every exported Server Function checks the work module first", () => {
     const source = stripComments(

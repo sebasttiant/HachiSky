@@ -40,24 +40,22 @@ describe("shell navigation", () => {
     }
   });
 
-  it("marks everything that stores real data available, Informes preview", () => {
+  it("marks every module that stores real data available", () => {
     assert.equal(byId("clients")?.availability, "available");
     // Drafts are stored, edited and printed for real, so announcing the
     // module as unavailable while it works contradicts the page itself.
     assert.equal(byId("billing")?.availability, "available");
     // Activities are rows now, not a preview that discarded what was typed.
     assert.equal(byId("work")?.availability, "available");
-    // Informes still renders a sample; it is the last one left.
-    assert.equal(byId("reports")?.availability, "preview");
+    // Reports are written and saved; the sample is gone.
+    assert.equal(byId("reports")?.availability, "available");
   });
 
   it("never presents a non-implemented module as available", () => {
-    const notAvailable = MODULES.filter((m) => m.availability !== "available");
-    assert.ok(notAvailable.length >= 1);
     const available = MODULES.filter((m) => m.availability === "available");
     assert.deepEqual(
       available.map((m) => m.id),
-      ["home", "clients", "work", "billing", "settings"],
+      ["home", "clients", "work", "reports", "billing", "settings"],
     );
   });
 
