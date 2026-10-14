@@ -63,8 +63,11 @@
   min-width: 0;
 }
 
+/* The letterhead says who issues the document. It is read first because it
+   is at the top, so it does not also need to be the largest thing on the
+   page: the title below carries what the document IS. */
 .issuerName {
-  font-size: var(--text-xl);
+  font-size: var(--text-lg);
   font-weight: 700;
   letter-spacing: -0.01em;
   color: var(--color-brand-navy);
@@ -95,11 +98,13 @@
   -webkit-print-color-adjust: exact;
 }
 
+/* What this piece of paper is. On a cuenta de cobro this is the headline:
+   the recipient has to know at a glance what they are being handed. */
 .title {
   margin: 0;
-  font-size: var(--text-xl);
+  font-size: var(--text-3xl);
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--color-brand-navy);
   line-height: 1.1;
