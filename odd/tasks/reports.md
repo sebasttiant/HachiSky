@@ -9,8 +9,8 @@ first; the templates are built on top of them, and AI assistance last.
 ## Tasks
 - [x] R1 (done, 703/703): persist work activities — schema, validation, record-level authorization, service, audit and tests. No UI.
 - [x] R2 (done, 699/699): record, list, edit and delete activities from Trabajo, replacing the preview. Verified in the browser: create, reload, edit, delete and an unreachable detail afterwards.
-- [ ] R3: seguimiento template built from recorded activities, saved as a draft.
-- [ ] R4: diagnóstico and informe general templates.
+- [~] R3: storage and service done; the fill-in screens are the remaining half.
+- [ ] R4: screens for diagnóstico, general, infraestructura and manual.
 - [ ] R5: attachments and images with title and description.
 - [ ] R6: issued report with a preserved version and author snapshot.
 - [ ] R7: AI assistance with the user's own model. Blocked on a product decision, see below.
@@ -26,6 +26,34 @@ first; the templates are built on top of them, and AI assistance last.
 - Native review was unavailable (missing package-local binary), so the
   risk-gated plan ran with the independent verifier only. Review never
   authorizes delivery anyway.
+
+## R3 storage, as built
+`0011_reports.sql`, additive only: four new tables, no drop.
+
+- `report` — type, client, optional open-ended period, title, author separate
+  from creator, status `draft`, audit columns.
+- `report_section` — one row per section: position, stable `key`, `kind`,
+  heading and body. Rows and not columns, so a new kind or a renamed heading
+  is data, never a migration.
+- `report_item` — one table for every structured section, because a finding,
+  a domain in the semáforo, a piece of equipment and a step are all "a
+  labelled line with optional detail and an optional classification".
+  `ITEM_FIELDS` decides which of status, priority and impact each kind
+  accepts; the service refuses the rest instead of storing them silently.
+- `report_activity` — the recorded activities the report is built from.
+
+Rules the service enforces, none of which a screen may relax:
+- An activity the author could not open is refused with the same answer as
+  one that does not exist. Otherwise a report would be a side door into a
+  colleague's work.
+- A draft links activities live and the link is dropped when the activity is
+  deleted: a report must not keep asserting work whose record is gone. R6
+  freezes the issued copy.
+- The type cannot change after creation, because the type is what decided
+  which sections exist.
+- Audit rows carry ids and the section keys that changed, never the text.
+
+Verified: 26 focused tests, full suite green, typecheck and Biome clean.
 
 ## Owner decisions held
 - Record access: staff read and edit only their own activities and reports; admin reaches all (2026-10-10).
