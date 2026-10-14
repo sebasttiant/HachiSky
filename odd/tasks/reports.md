@@ -181,3 +181,16 @@ Dropped with `ALTER TABLE audit_log DROP CONSTRAINT IF EXISTS audit_block`, and
 the test now uses the established trigger-based `withAuditFault` helper from
 tests/clients/clients-service.test.ts. Lesson: set up injected faults inside the
 `try`, and reuse the existing helper instead of inventing one.
+
+## R3 screens evidence
+Commit a0b4f80. The static `ReportSheet` preview and `sample-report` are gone.
+In their place: `ReportList` (module index), `/reports/new` and `/reports/[id]`,
+with `actions.ts` and `submit.ts` between the form and the service.
+
+`SectionEditor` renders each section from its template `kind` rather than from
+the report type, so the same editor serves all five seeded templates. The
+activity picker attaches `work_activity` rows to a report.
+
+Route guards and shell navigation cover the new paths. Checks: full suite
+passed, typecheck 0, Biome 0, image rebuilt and `/api/health` reports ok with
+12 migrations.
