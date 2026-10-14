@@ -1,32 +1,48 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { requireModule } from "../../../src/auth/guard.ts";
+import { getDb } from "../../../src/db/client.ts";
 import { PageHeader } from "../../../src/shell/PageHeader.tsx";
-import { WorkdayPreview } from "../../../src/work/WorkdayPreview.tsx";
-import styles from "./page.module.css";
+import styles from "../../../src/users/admin.module.css";
+import { ActivityList } from "../../../src/work/ActivityList.tsx";
+import { NEW_ACTIVITY_PATH } from "../../../src/work/paths.ts";
+import { listActivities } from "../../../src/work/service.ts";
 
 export const metadata: Metadata = { title: "Trabajo" };
 
+// Always current: an activity recorded a moment ago has to be in this list.
+export const dynamic = "force-dynamic";
+
 export default async function WorkPage() {
-  await requireModule("work", "/work");
+  const { user } = await requireModule("work", "/work");
+  // The service scopes the list by itself: staff see only what they recorded,
+  // administrators see every entry.
+  const activities = await listActivities(
+    { db: getDb() },
+    { id: user.id, role: user.role, ipAddress: null, userAgent: null },
+  );
+
   return (
     <div className="container">
       <PageHeader
         moduleId="work"
-        title="Registro de jornada"
-        description="Así se registrará cada jornada: cliente, horario y actividades realizadas."
+        title="Trabajo"
+        description="Lo que se hizo para cada cliente: fecha, horario, resultado y lo que queda pendiente."
+        actions={
+          <Link
+            href={NEW_ACTIVITY_PATH}
+            className={`${styles.button} ${styles.primary}`}
+          >
+            Nueva actividad
+          </Link>
+        }
       />
-      <div className={styles.layout}>
-        <WorkdayPreview />
-        <aside className={styles.tips} aria-labelledby="tips-title">
-          <h2 id="tips-title">Cómo completar la jornada</h2>
-          <ol>
-            <li>Elige el cliente y la fecha de la jornada.</li>
-            <li>Indica el horario de inicio y de término.</li>
-            <li>Agrega cada actividad con su duración en minutos.</li>
-            <li>Usa las notas para observaciones internas.</li>
-          </ol>
-        </aside>
-      </div>
+      <section aria-labelledby="activities-title" className={styles.stack}>
+        <h2 id="activities-title" className="sr-only">
+          Actividades registradas
+        </h2>
+        <ActivityList items={activities} />
+      </section>
     </div>
   );
 }

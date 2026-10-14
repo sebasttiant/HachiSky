@@ -47,8 +47,10 @@ export const MODULES: readonly AppModule[] = [
     id: "work",
     label: "Trabajo",
     href: "/work",
-    availability: "preview",
-    description: "Registro de jornadas y actividades realizadas.",
+    // Activities are stored rows now. Reports are built from them, so a
+    // preview here would have meant reports describing invented work.
+    availability: "available",
+    description: "Actividades realizadas para cada cliente, con su resultado.",
   },
   {
     id: "reports",

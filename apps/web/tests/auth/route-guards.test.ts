@@ -396,6 +396,32 @@ describe("billing settings Server Functions", () => {
   });
 });
 
+describe("work Server Functions", () => {
+  it("every exported Server Function checks the work module first", () => {
+    const source = stripComments(
+      readFileSync(join(ROOT, "src/work/actions.ts"), "utf8"),
+    );
+    assert.match(source, /^\s*["']use server["'];?/m);
+    const exported = [
+      ...source.matchAll(/export async function (\w+)\([^)]*\)[^{]*\{/g),
+    ];
+    assert.equal(
+      exported.length,
+      3,
+      "activity create, update and delete actions",
+    );
+    for (const match of exported) {
+      const body = source.slice((match.index ?? 0) + match[0].length);
+      assert.match(
+        body.trimStart(),
+        /^const (\w+|\{[^}]*\}) = await workContext\(/,
+        `${match[1]}: must start with await workContext(...)`,
+      );
+    }
+    assert.match(source, /await requireModule\("work", /);
+  });
+});
+
 describe("billing document Server Functions", () => {
   it("every exported Server Function checks the billing module first", () => {
     const source = stripComments(
