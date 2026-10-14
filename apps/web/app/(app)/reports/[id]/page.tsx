@@ -12,6 +12,7 @@ import {
   updateReportAction,
   updateSectionAction,
 } from "../../../../src/reports/actions.ts";
+import { reportPath } from "../../../../src/reports/paths.ts";
 import { ReportForm } from "../../../../src/reports/ReportForm.tsx";
 import { SectionEditor } from "../../../../src/reports/SectionEditor.tsx";
 import {
@@ -76,6 +77,14 @@ export default async function ReportDetailPage({
         moduleId="reports"
         title={report.title}
         description={`${REPORT_TYPE_LABEL[report.type]} · ${report.clientName}`}
+        actions={
+          <Link
+            href={`${reportPath(report.id)}/documento`}
+            className={`${styles.button} ${styles.secondary}`}
+          >
+            Ver documento
+          </Link>
+        }
       />
       <div className={styles.stack}>
         <section className={styles.card} aria-labelledby="data-title">

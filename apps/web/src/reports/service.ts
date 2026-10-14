@@ -26,6 +26,7 @@ const {
   reportActivity,
   reportItem,
   reportSection,
+  user,
   workActivity,
 } = schema;
 
@@ -121,6 +122,11 @@ export interface LinkedActivity {
 export interface ReportRecord extends ReportSummary {
   createdBy: string;
   updatedBy: string;
+  // Who signs the document. Read live while the report is a draft; R6
+  // freezes a snapshot so an issued report keeps the title its author held
+  // on the day it went out.
+  authorName: string;
+  authorJobTitle: string | null;
   sections: SectionRecord[];
   activities: LinkedActivity[];
 }
@@ -302,9 +308,12 @@ export async function getReport(
       updatedAt: report.updatedAt,
       createdBy: report.createdBy,
       updatedBy: report.updatedBy,
+      authorName: user.name,
+      authorJobTitle: user.jobTitle,
     })
     .from(report)
     .innerJoin(client, eq(client.id, report.clientId))
+    .innerJoin(user, eq(user.id, report.authorUserId))
     .where(eq(report.id, id));
 
   // Null for both absent and unreachable: the caller cannot tell them apart.

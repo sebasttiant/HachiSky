@@ -1,0 +1,271 @@
+/* The report as paper. Same rules as the cuenta de cobro: A4, and the sheet
+   stays light even when the app is in dark mode, because paper is paper. */
+
+.sheet {
+  --sheet-width: 21cm;
+
+  --color-text: #102733;
+  --color-text-muted: #4b626e;
+  --color-border: #d3dfe8;
+  --color-surface-alt: #f3f6f8;
+  --color-brand-ink: #0b3a6e;
+  color-scheme: light;
+
+  position: relative;
+  max-width: var(--sheet-width);
+  margin-inline: auto;
+  padding: var(--space-8) var(--space-7) var(--space-6);
+  background: #fff;
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.worlds {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 6px;
+  background: var(--gradient-worlds);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.top {
+  padding-bottom: var(--space-4);
+  margin-bottom: var(--space-5);
+  border-bottom: 2px solid var(--color-brand-ink);
+}
+
+.kind {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+/* What this document is about. The reader sees it first. */
+.title {
+  margin: var(--space-1) 0 var(--space-4);
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--color-brand-ink);
+}
+
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-6);
+  margin: 0;
+}
+
+.facts dt {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.facts dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* A draft says so. It must never be mistaken for a delivered report. */
+.draft {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: var(--radius-sm);
+  background: #fff1d0;
+  color: #7a4300;
+  font-size: var(--text-sm);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.section {
+  margin-bottom: var(--space-6);
+  /* Keep a heading with the content it introduces. */
+  break-inside: avoid;
+}
+
+.sectionHeading {
+  margin: 0 0 var(--space-3);
+  padding-bottom: var(--space-1);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--color-brand-ink);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* Whatever the author typed, line breaks included. */
+.body {
+  margin: 0 0 var(--space-2);
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
+.empty {
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.table th {
+  text-align: left;
+  padding: var(--space-2);
+  background: var(--color-brand-ink);
+  color: #fff;
+  font-size: var(--text-sm);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.table td {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: top;
+}
+
+.findings {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.finding {
+  padding: var(--space-3);
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-sm);
+  break-inside: avoid;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.findingHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.impact {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.impactLabel {
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.steps {
+  margin: 0;
+  padding-left: var(--space-5);
+  display: grid;
+  gap: var(--space-3);
+  line-height: 1.6;
+}
+
+/* A status is read at a glance, so it carries colour as well as a word —
+   never colour alone, which would vanish on a black-and-white print. */
+.chip {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.status_ok {
+  background: #d8f3e3;
+  color: #0f5132;
+}
+
+.status_watch {
+  background: #fff1d0;
+  color: #7a4300;
+}
+
+.status_risk {
+  background: #fcdcdc;
+  color: #842029;
+}
+
+.priority_low {
+  background: #e4eaf0;
+  color: #40535f;
+}
+
+.priority_medium {
+  background: #fff1d0;
+  color: #7a4300;
+}
+
+.priority_high {
+  background: #fcdcdc;
+  color: #842029;
+}
+
+.bottom {
+  margin-top: var(--space-8);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+  break-inside: avoid;
+}
+
+.signature {
+  text-align: center;
+  margin-bottom: var(--space-5);
+}
+
+.signatureName {
+  margin: 0;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.signatureRole {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.generated {
+  margin: 0;
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+@media print {
+  .sheet {
+    max-width: none;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0;
+  }
+}

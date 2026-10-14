@@ -194,3 +194,27 @@ activity picker attaches `work_activity` rows to a report.
 Route guards and shell navigation cover the new paths. Checks: full suite
 passed, typecheck 0, Biome 0, image rebuilt and `/api/health` reports ok with
 12 migrations.
+
+## R4 document evidence
+`ReportSheet` plus `/reports/[id]/documento`. One view serves all five
+templates because it renders each section from its `kind`, the same decision
+the editor makes: prose as paragraphs, findings with priority and impact, the
+semáforo and the inventory as tables, the manual as numbered steps.
+
+Three rules the document holds to:
+- A section with no content is left out. A document handed to a client does
+  not show hollow headings; the gaps belong on the editing screen.
+- A status carries its word as well as its colour, so a black-and-white print
+  still says "En riesgo".
+- A draft says it is a draft, exactly like the cuenta de cobro.
+
+`getReport` now carries `authorName` and `authorJobTitle` so the document can
+say who signs it. Read live while it is a draft; R6 freezes the snapshot.
+
+Test-first: both author-field tests observed RED (26 pass, 2 fail) before the
+join existed, then GREEN. Checks: 10 document tests, 28 service tests,
+745/745 overall, typecheck 0, Biome 0 errors.
+
+Biome warnings went from 9 to 14: the five added are the print-override
+`!important` rules copied from the billing document route, where beating the
+app chrome is the point. Weakening them would break the printed page.

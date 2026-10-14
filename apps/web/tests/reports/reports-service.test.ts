@@ -204,6 +204,31 @@ describe("reaching a report", () => {
     assert.equal((await listReports(deps, otherStaff)).length, 1);
   });
 
+  it("carries who signs it, so the document can say so", async () => {
+    const signer = await createTestUser(auth, "firma@example.test", {
+      role: "staff",
+      name: "Sebasti\u00e1n Amaya Rivera",
+      jobTitle: "Director TIC",
+    });
+    const actor: ReportActor = {
+      id: signer.id,
+      role: "staff",
+      ipAddress: null,
+      userAgent: null,
+    };
+    const id = await createReport(deps, actor, form());
+    const saved = await getReport(deps, actor, id);
+    assert.equal(saved?.authorName, "Sebasti\u00e1n Amaya Rivera");
+    assert.equal(saved?.authorJobTitle, "Director TIC");
+  });
+
+  it("still carries the author when there is no job title", async () => {
+    const id = await createReport(deps, staff, form());
+    const saved = await getReport(deps, staff, id);
+    assert.equal(saved?.authorName, "Test User");
+    assert.equal(saved?.authorJobTitle, null);
+  });
+
   it("answers null for an id that does not exist", async () => {
     assert.equal(
       await getReport(deps, admin, "11111111-1111-4111-8111-111111111111"),
