@@ -84,13 +84,20 @@ export function SectionEditor({
     );
   }
 
-  const filled =
-    section.body !== null ||
-    section.items.length > 0 ||
-    section.heading !== section.heading.trim();
+  const filled = section.body !== null || section.items.length > 0;
+  // Whether the section is open belongs to the reader, not to the content.
+  // Deriving `open` from `filled` on every render closed the section in the
+  // author's face the moment they saved it, hiding the confirmation with it:
+  // saving refreshes the server data, `filled` flips, and React re-applies
+  // the attribute. The content only decides where it starts.
+  const [open, setOpen] = useState(!filled);
 
   return (
-    <details className={sheet.section} open={!filled}>
+    <details
+      className={sheet.section}
+      open={open}
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+    >
       <summary className={sheet.summary}>
         <span className={sheet.heading}>{section.heading}</span>
         <span className={sheet.state}>

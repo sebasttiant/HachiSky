@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     template: "%s · HachiSky",
   },
   description:
-    "HachiSky by IL Asesorías: gestión empresarial inteligente. Vista previa de clientes, trabajo, informes y facturación.",
+    "HachiSky by IL Asesorías: gestión empresarial inteligente. Clientes, trabajo realizado, informes y cuentas de cobro.",
 };
 
 // Applies the saved (or system) theme before first paint, so dark mode never
