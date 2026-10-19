@@ -23,6 +23,12 @@ export const REPORT_LIMITS = {
   impact: 500,
   items: 200,
   activities: 500,
+  imageTitle: 200,
+  imageCaption: 500,
+  // Per section, not per report: a manual with ten steps may legitimately
+  // carry a screenshot in each one, while twenty figures under a single
+  // heading is somebody pasting a folder in.
+  imagesPerSection: 20,
 } as const;
 
 export type ReportFieldErrors = Record<string, string>;
@@ -46,6 +52,11 @@ export interface ItemInput {
   status: "ok" | "watch" | "risk" | null;
   priority: "low" | "medium" | "high" | null;
   impact: string | null;
+}
+
+export interface ImageTextInput {
+  title: string;
+  caption: string | null;
 }
 
 export type Validated<T> =
@@ -130,6 +141,26 @@ export function validateSection(raw: unknown): Validated<SectionInput> {
 
   if (Object.keys(fieldErrors).length > 0) return { ok: false, fieldErrors };
   return { ok: true, data: { heading, body } };
+}
+
+// The title is required because the document prints it above the figure: an
+// untitled screenshot in a client document is noise. The caption is the
+// optional sentence that explains what the reader is looking at.
+export function validateImageText(raw: unknown): Validated<ImageTextInput> {
+  const input = record(raw);
+  const fieldErrors: ReportFieldErrors = {};
+
+  const title = text(input.title);
+  if (title === "") fieldErrors.title = "La imagen necesita un título.";
+  else if (title.length > REPORT_LIMITS.imageTitle)
+    fieldErrors.title = `El título no puede superar ${REPORT_LIMITS.imageTitle} caracteres.`;
+
+  const caption = optionalText(input.caption);
+  if (caption !== null && caption.length > REPORT_LIMITS.imageCaption)
+    fieldErrors.caption = `La descripción no puede superar ${REPORT_LIMITS.imageCaption} caracteres.`;
+
+  if (Object.keys(fieldErrors).length > 0) return { ok: false, fieldErrors };
+  return { ok: true, data: { title, caption } };
 }
 
 const STATUSES = ["ok", "watch", "risk"];

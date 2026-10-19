@@ -4,7 +4,6 @@ import {
   bigint,
   boolean,
   check,
-  customType,
   foreignKey,
   index,
   integer,
@@ -18,14 +17,10 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { user } from "./auth.ts";
+import { bytea } from "./bytea.ts";
 import { client } from "./client.ts";
 
 const timestamptz = (name: string) => timestamp(name, { withTimezone: true });
-
-// node-postgres reads and writes bytea as a Buffer.
-const bytea = customType<{ data: Buffer; driverData: Buffer }>({
-  dataType: () => "bytea",
-});
 
 // Issuer profiles: the entities billing documents are issued for (HachiSky
 // is the platform, not necessarily the issuer). Deactivated, never deleted,

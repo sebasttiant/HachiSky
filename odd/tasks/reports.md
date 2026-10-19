@@ -9,11 +9,42 @@ first; the templates are built on top of them, and AI assistance last.
 ## Tasks
 - [x] R1 (done, 703/703): persist work activities — schema, validation, record-level authorization, service, audit and tests. No UI.
 - [x] R2 (done, 699/699): record, list, edit and delete activities from Trabajo, replacing the preview. Verified in the browser: create, reload, edit, delete and an unreachable detail afterwards.
-- [~] R3: storage and service done; the fill-in screens are the remaining half.
-- [ ] R4: screens for diagnóstico, general, infraestructura and manual.
-- [ ] R5: attachments and images with title and description.
+- [x] R3 (done, 745/745): storage, service and the fill-in screens. `SectionEditor` renders each section from its template `kind`, so one editor serves all five templates.
+- [x] R4 (done, 745/745): `ReportSheet` and `/reports/[id]/documento`. One document view serves all five templates, rendering each section from its `kind`. See "R4 document evidence" below.
+- [ ] R5: images with title and description. General attachments are NOT included — see the open question below.
+  - [x] R5-S1: extract the shared sanitized-image pipeline from Billing. Commit `56a6d41`.
+  - [x] R5-S2: additive `report_image` storage and the authorization-preserving service. Complete: full suite 770/770; independent high-risk verifier PASS. Commit: this S2 work unit.
+  - [ ] R5-S3: authenticated upload/serve routes and the editing UI.
+  - [ ] R5-S4: section-local figures in `ReportSheet` and print.
 - [ ] R6: issued report with a preserved version and author snapshot.
 - [ ] R7: AI assistance with the user's own model. Blocked on a product decision, see below.
+
+## R5-S2 evidence
+
+Migration `0012_report_images.sql` is additive. Images belong to seeded report
+sections, retain a bounded contiguous order, and cascade with their report.
+The service reuses report ownership rules for every read and mutation; private
+bytes are selected only after ownership metadata authorizes the actor. Audit
+rows contain ids and section keys, never title, caption or bytes.
+
+Test-first evidence: the new test module was observed RED before the migration
+and service existed. Final checks: typecheck clean, Biome clean, focused schema
+and image service tests 26/26 under the independent verifier, and the complete
+suite 770/770 across 201 suites. The verifier returned PASS for authorization,
+data exposure, transaction/order integrity, audit minimization and slice
+boundaries. Native assessment was unavailable because its package-local binary
+was missing, so the risk-gated independent verifier supplied the outside view.
+Risk: item 2 — authenticated image bytes and mutations cross staff/admin
+ownership boundaries.
+
+## R5 delivery slices
+
+The feature branch already contains the earlier visual-system work and is far
+past the preferred review size as a whole. R5 therefore continues as separate
+local work-unit commits: S1 is the pipeline-only boundary, S2 is storage and
+service with its migration/tests, S3 is routes and editing UI, and S4 is the
+document/print renderer. Tests and documentation stay in the same commit as
+the behavior they prove. No push, PR, merge or deployment is part of R5.
 
 ## R2 evidence
 - Full suite 699/699, typecheck and Biome clean (9 known `noImportantStyles` warnings). The total fell from 703 because the preview's own tests went with it.

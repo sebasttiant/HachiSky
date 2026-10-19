@@ -5,7 +5,7 @@
 // Separate from pipeline.ts so a browser bundle can state the rules without
 // pulling sharp in with them.
 
-export type ImagePurpose = "signature" | "issuer_logo";
+export type ImagePurpose = "signature" | "issuer_logo" | "report_figure";
 
 export const IMAGE_LIMITS = {
   // Raw upload. Enforced by the upload route handlers from Content-Length
@@ -21,6 +21,13 @@ export const IMAGE_LIMITS = {
     signature: { maxWidth: 2000, maxHeight: 1000 },
     // A logo may be square; 2000 x 2000 is exactly the pixel limit.
     issuer_logo: { maxWidth: 2000, maxHeight: 2000 },
+    // A figure in a report: a screenshot of a console, a rack, a diagram.
+    // Held to the same proven envelope as the logo on purpose. The pipeline
+    // always re-encodes to PNG, which is right for the flat colours of a UI
+    // screenshot and wasteful for a photograph, so a photograph may well hit
+    // output_too_large. Raising that means storing JPEG for photographs,
+    // which is a storage-format decision, not a number to nudge here.
+    report_figure: { maxWidth: 2000, maxHeight: 2000 },
   },
 } as const;
 

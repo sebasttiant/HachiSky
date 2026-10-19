@@ -98,6 +98,7 @@ describe("migration 0001 on a fresh database", () => {
           "issuer_profile",
           "report",
           "report_activity",
+          "report_image",
           "report_item",
           "report_section",
           "session",

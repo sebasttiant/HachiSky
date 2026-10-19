@@ -60,7 +60,9 @@ export type ReportRuleCode =
   | "not_found"
   | "client_not_found"
   | "section_not_found"
-  | "activity_not_found";
+  | "activity_not_found"
+  | "image_not_found"
+  | "image_limit_reached";
 
 export class ReportRuleError extends Error {
   readonly code: ReportRuleCode;
@@ -179,7 +181,11 @@ async function assertClientExists(tx: Tx, clientId: string) {
 // Locks the report and refuses it unless the actor may reach it. Everything
 // that writes goes through here first, so ownership is never assumed from
 // what a screen displayed earlier.
-async function lockReachable(tx: Tx, actor: ReportActor, id: string) {
+//
+// Exported for images.ts, the sibling that writes the figures of a section:
+// it has to answer ownership the same way, and a second implementation of
+// this check is exactly how the two would drift apart.
+export async function lockReachable(tx: Tx, actor: ReportActor, id: string) {
   const [row] = await tx
     .select()
     .from(report)
@@ -193,7 +199,7 @@ async function lockReachable(tx: Tx, actor: ReportActor, id: string) {
   return row;
 }
 
-async function touch(tx: Tx, actor: ReportActor, id: string) {
+export async function touch(tx: Tx, actor: ReportActor, id: string) {
   await tx
     .update(report)
     .set({ updatedAt: new Date(), updatedBy: actor.id })

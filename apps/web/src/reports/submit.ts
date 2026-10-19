@@ -26,6 +26,8 @@ export const REPORT_RULE_MESSAGES: Record<ReportRuleCode, string> = {
   // Unreachable and missing give the same answer here too, so the message
   // cannot tell one apart from the other.
   activity_not_found: "Una de las actividades ya no está disponible.",
+  image_not_found: "Esa imagen ya no está disponible.",
+  image_limit_reached: "Esa sección ya alcanzó el límite de imágenes.",
 };
 
 const GENERIC_ERROR = "No se pudo completar la acción. Intenta de nuevo.";

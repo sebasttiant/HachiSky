@@ -12,6 +12,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { user } from "./auth.ts";
+import { bytea } from "./bytea.ts";
 import { client } from "./client.ts";
 import { workActivity } from "./work.ts";
 
@@ -163,6 +164,67 @@ export const reportItem = pgTable(
       sql`char_length(${table.impact}) <= 500`,
     ),
     check("report_item_position_check", sql`${table.position} >= 0`),
+  ],
+);
+
+// A figure inside a section.
+//
+// It hangs off the SECTION and not off the report, because where an image
+// sits is the whole point: a step of a manual carries its own screenshot,
+// and "evidencia de entrega" carries its own. Hanging them off the report
+// would leave the document guessing where each one belongs.
+//
+// Deliberately unlike billing_image, which is an immutable version a trigger
+// refuses to update or delete: a logo has history worth keeping, while a
+// figure in a draft is content being written. The author must be able to
+// remove the wrong screenshot and reorder the right ones, so these rows are
+// ordinary mutable rows. R6 freezes its own copy into the issued report.
+//
+// The bytes are what src/images/pipeline.ts produced: a re-encoded PNG with
+// no metadata, never the raw upload. No public URL; they are served only
+// through the application, to somebody who may reach the report.
+export const reportImage = pgTable(
+  "report_image",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    sectionId: uuid("section_id")
+      .notNull()
+      .references(() => reportSection.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+    // The title is what the document prints above the figure, so it is
+    // required: an untitled screenshot in a client document is noise.
+    title: text("title").notNull(),
+    caption: text("caption"),
+    data: bytea("data").notNull(),
+    sha256: text("sha256").notNull(),
+    byteSize: integer("byte_size").notNull(),
+    width: integer("width").notNull(),
+    height: integer("height").notNull(),
+    createdAt: timestamptz("created_at").defaultNow().notNull(),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+  },
+  (table) => [
+    index("report_image_section_idx").on(table.sectionId, table.position),
+    check(
+      "report_image_title_check",
+      sql`btrim(${table.title}) <> '' and char_length(${table.title}) <= 200`,
+    ),
+    check(
+      "report_image_caption_length",
+      sql`char_length(${table.caption}) <= 500`,
+    ),
+    check("report_image_position_check", sql`${table.position} >= 0`),
+    check("report_image_sha256_hex", sql`${table.sha256} ~ '^[0-9a-f]{64}$'`),
+    check(
+      "report_image_byte_size_check",
+      sql`${table.byteSize} = octet_length(${table.data}) and ${table.byteSize} between 1 and 524288`,
+    ),
+    check(
+      "report_image_dimensions_check",
+      sql`${table.width} between 1 and 2000 and ${table.height} between 1 and 2000`,
+    ),
   ],
 );
 
