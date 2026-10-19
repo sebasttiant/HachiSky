@@ -16,7 +16,48 @@ first; the templates are built on top of them, and AI assistance last.
   - [x] R5-S2: additive `report_image` storage and the authorization-preserving service. Complete: full suite 770/770; independent high-risk verifier PASS. Commit `8159e80`.
   - [ ] R5-S3: authenticated upload/serve routes and the editing UI.
     - [x] R5-S3a: the HTTP boundary — guarded upload and private serving. Focused 74/74 plus a billing differential 54/54.
-    - [ ] R5-S3b: section-local editing UI (title, description, delete, reorder).
+    - [x] R5-S3b: section-local editing UI (title, description, delete, reorder). Full suite 834/834.
+
+## R5-S3b evidence: the editing screen
+
+`ReportImagesEditor` sits inside each section's accordion as a SIBLING of the
+section form, never nested: a form inside a form is invalid HTML and the
+browser drops the inner one, which would silently break whichever control it
+held. Each figure carries three sibling forms of its own — its text, its
+order, its removal — and the move buttons name their direction on the button
+itself, so one form serves both and the ends are simply disabled.
+
+A figure now counts as section content: a step whose screenshot is the whole
+explanation is not an empty section, so the summary says "Con contenido".
+
+### Why there is a refresh action
+
+The upload is the only report mutation that does not go through a Server
+Function, so nothing revalidates the page for it. The first version called
+`useRouter().refresh()`, which throws "invariant expected app router to be
+mounted" under `renderToStaticMarkup` — how every UI test here renders — and
+no other client component in this app uses the router. Rather than mount
+Next's internal router context in the tests to keep one hook, the component
+dispatches `refreshReportAction` through `useActionState`. That action runs
+the same session and module guard as the rest, confirms the actor may still
+reach the report, and writes nothing.
+
+The form states the limits itself (1024 KB, 2000 × 2000, re-encoded to PNG
+without the original metadata) instead of letting the server be the first to
+mention them, and it says out loud when a section is full rather than only
+greying the button out.
+
+The preview reads the authenticated route like the rest: no public URL, no
+object URL. `next/image` is deliberately not used — it would proxy private
+bytes through the public optimizer — which is the same call, with the same
+`biome-ignore`, that billing already made.
+
+Checks: typecheck 0, Biome 0 errors and 14 warnings (the documented
+baseline, unchanged), full suite 834/834 across 213 suites. An independent
+verifier reviewed S3a and S3b together and returned PASS on authorization,
+byte exposure, bounded bodies, audit minimization, guarded actions, UI form
+nesting and slice boundaries; its one FAIL was the ordering text corrected
+above. It did not rerun the suite itself.
   - [ ] R5-S4: section-local figures in `ReportSheet` and print.
 - [ ] R6: issued report with a preserved version and author snapshot.
 - [ ] R7: AI assistance with the user's own model. Blocked on a product decision, see below.
@@ -68,10 +109,22 @@ decoding the upload".
 
 ### What the boundary refuses, in order
 
-Origin and `Sec-Fetch-Site`, then session, then role, then media type, then
-the declared length, then the streamed bound — and only then is anything
-parsed. The declared part type and the filename are never trusted: the
-shared pipeline decides from the bytes, so an SVG named `captura.png` with
+Inside the handler: Origin and `Sec-Fetch-Site`, then session, then role,
+then media type, then the declared length, then the streamed bound — and
+only then is anything parsed.
+
+At the public surface the route resolves the session first, because calling
+the guard first is what `tests/auth/route-guards.test.ts` requires of a route
+file. So a cross-origin request costs one session lookup before Origin
+refuses it. An independent verifier raised this as a mismatch with an earlier
+version of this section, and it was the text that was wrong, not the code:
+resolving a session reads and never writes, and the body, the pipeline and
+the service all stay behind the Origin check. The billing upload route has
+the same shape, and its own comment still describes the handler order as if
+it were the public order — worth correcting when billing is next touched.
+
+The declared part type and the filename are never trusted: the shared
+pipeline decides from the bytes, so an SVG named `captura.png` with
 `image/png` is refused. Nothing is written for any refusal.
 
 Figure text is never echoed back in an error, and the served response

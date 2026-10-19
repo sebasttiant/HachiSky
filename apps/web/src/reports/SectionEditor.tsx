@@ -5,6 +5,8 @@ import type { ActionState } from "../users/action-state.ts";
 import styles from "../users/admin.module.css";
 import { FieldError, FormMessage, fieldProps } from "../users/FormMessage.tsx";
 import { useFormAction } from "../users/useFormAction.ts";
+import type { ReportImageRecord } from "./images.ts";
+import { ReportImagesEditor } from "./ReportImagesEditor.tsx";
 import sheet from "./SectionEditor.module.css";
 import type { ItemRecord, SectionRecord } from "./service.ts";
 import {
@@ -57,6 +59,12 @@ export function SectionEditor({
   hint,
   saveSection,
   saveItems,
+  reportId,
+  images,
+  updateImageText,
+  removeImage,
+  moveImage,
+  refreshImages,
 }: {
   section: SectionRecord;
   hint: string;
@@ -68,6 +76,21 @@ export function SectionEditor({
     previous: ActionState,
     formData: FormData,
   ) => Promise<ActionState>;
+  reportId: string;
+  images: ReportImageRecord[];
+  updateImageText: (
+    previous: ActionState,
+    formData: FormData,
+  ) => Promise<ActionState>;
+  removeImage: (
+    previous: ActionState,
+    formData: FormData,
+  ) => Promise<ActionState>;
+  moveImage: (
+    previous: ActionState,
+    formData: FormData,
+  ) => Promise<ActionState>;
+  refreshImages: (previous: ActionState) => Promise<ActionState>;
 }) {
   const structured = section.kind !== "prose";
   const action = structured ? saveItems : saveSection;
@@ -84,7 +107,10 @@ export function SectionEditor({
     );
   }
 
-  const filled = section.body !== null || section.items.length > 0;
+  // A figure is content too: a step whose screenshot is the whole
+  // explanation is not an empty section.
+  const filled =
+    section.body !== null || section.items.length > 0 || images.length > 0;
   // Whether the section is open belongs to the reader, not to the content.
   // Deriving `open` from `filled` on every render closed the section in the
   // author's face the moment they saved it, hiding the confirmation with it:
@@ -101,9 +127,7 @@ export function SectionEditor({
       <summary className={sheet.summary}>
         <span className={sheet.heading}>{section.heading}</span>
         <span className={sheet.state}>
-          {section.body !== null || section.items.length > 0
-            ? "Con contenido"
-            : "Vacía"}
+          {filled ? "Con contenido" : "Vacía"}
         </span>
       </summary>
 
@@ -299,6 +323,19 @@ export function SectionEditor({
           </button>
         </div>
       </form>
+
+      {/* A sibling of the section form, never inside it: a form within a
+          form is invalid HTML and the browser drops the inner one. */}
+      <ReportImagesEditor
+        reportId={reportId}
+        sectionKey={section.key}
+        images={images}
+        updateText={updateImageText}
+        remove={removeImage}
+        move={moveImage}
+        refresh={refreshImages}
+        limit={REPORT_LIMITS.imagesPerSection}
+      />
     </details>
   );
 }

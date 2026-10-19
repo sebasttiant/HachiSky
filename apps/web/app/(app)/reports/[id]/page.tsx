@@ -7,11 +7,19 @@ import { getDb } from "../../../../src/db/client.ts";
 import { ActivityPicker } from "../../../../src/reports/ActivityPicker.tsx";
 import {
   deleteReportAction,
+  moveImageAction,
+  refreshReportAction,
+  removeImageAction,
   replaceItemsAction,
   setActivitiesAction,
+  updateImageTextAction,
   updateReportAction,
   updateSectionAction,
 } from "../../../../src/reports/actions.ts";
+import {
+  listImages,
+  type ReportImageRecord,
+} from "../../../../src/reports/images.ts";
 import { reportPath } from "../../../../src/reports/paths.ts";
 import { ReportForm } from "../../../../src/reports/ReportForm.tsx";
 import { SectionEditor } from "../../../../src/reports/SectionEditor.tsx";
@@ -68,6 +76,15 @@ export default async function ReportDetailPage({
     templateFor(report.type).map((section) => [section.key, section.hint]),
   );
 
+  // Figures hang off their section, so they are handed to the editor of the
+  // section they belong to and nowhere else.
+  const bySection = new Map<string, ReportImageRecord[]>();
+  for (const image of await listImages(deps, actor, report.id)) {
+    const current = bySection.get(image.sectionKey);
+    if (current) current.push(image);
+    else bySection.set(image.sectionKey, [image]);
+  }
+
   return (
     <div className="container">
       <Link href="/reports" className={styles.breadcrumb}>
@@ -123,6 +140,12 @@ export default async function ReportDetailPage({
               hint={hints.get(section.key) ?? ""}
               saveSection={updateSectionAction.bind(null, report.id)}
               saveItems={replaceItemsAction.bind(null, report.id)}
+              reportId={report.id}
+              images={bySection.get(section.key) ?? []}
+              updateImageText={updateImageTextAction.bind(null, report.id)}
+              removeImage={removeImageAction.bind(null, report.id)}
+              moveImage={moveImageAction.bind(null, report.id)}
+              refreshImages={refreshReportAction.bind(null, report.id)}
             />
           ))}
         </section>

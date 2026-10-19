@@ -1,4 +1,5 @@
 import type { ActionState } from "../users/action-state.ts";
+import { moveImage, removeImage, updateImageText } from "./images.ts";
 import {
   createReport,
   deleteReport,
@@ -39,6 +40,8 @@ const REPORT_FIELDS = [
   "title",
 ] as const;
 const SECTION_FIELDS = ["heading", "body"] as const;
+const IMAGE_FIELDS = ["title", "caption"] as const;
+const DIRECTIONS = new Set(["up", "down"]);
 
 function formToRaw(
   formData: FormData,
@@ -117,6 +120,84 @@ export async function submitUpdateReport(
     return { status: "success", message: "Informe guardado." };
   } catch (error) {
     return failure("update_report", error);
+  }
+}
+
+// The figures of a section. The image itself never comes through here: it is
+// uploaded to its own route, which can bound the body (see image-upload.ts).
+// What is left is the text, the order and the removal.
+//
+// An imageId that is absent, malformed or belonging to another report all
+// answer the same way, which is the rule the service holds.
+function imageIdOf(formData: FormData): string | null {
+  const imageId = formData.get("imageId");
+  return typeof imageId === "string" && imageId !== "" ? imageId : null;
+}
+
+export async function submitUpdateImageText(
+  deps: ReportDeps,
+  actor: ReportActor | null,
+  reportId: string,
+  formData: FormData,
+): Promise<ActionState> {
+  const imageId = imageIdOf(formData);
+  if (!imageId) {
+    return { status: "error", message: REPORT_RULE_MESSAGES.image_not_found };
+  }
+  try {
+    await updateImageText(
+      deps,
+      actor,
+      reportId,
+      imageId,
+      formToRaw(formData, IMAGE_FIELDS),
+    );
+    return { status: "success", message: "Imagen guardada." };
+  } catch (error) {
+    return failure("update_image_text", error);
+  }
+}
+
+export async function submitRemoveImage(
+  deps: ReportDeps,
+  actor: ReportActor | null,
+  reportId: string,
+  formData: FormData,
+): Promise<ActionState> {
+  const imageId = imageIdOf(formData);
+  if (!imageId) {
+    return { status: "error", message: REPORT_RULE_MESSAGES.image_not_found };
+  }
+  try {
+    await removeImage(deps, actor, reportId, imageId);
+    return { status: "success", message: "Imagen eliminada." };
+  } catch (error) {
+    return failure("remove_image", error);
+  }
+}
+
+export async function submitMoveImage(
+  deps: ReportDeps,
+  actor: ReportActor | null,
+  reportId: string,
+  formData: FormData,
+): Promise<ActionState> {
+  const imageId = imageIdOf(formData);
+  if (!imageId) {
+    return { status: "error", message: REPORT_RULE_MESSAGES.image_not_found };
+  }
+  const direction = formData.get("direction");
+  // Only the two the service accepts. Anything else is a request that did
+  // not come from these buttons, and guessing a direction for it would move
+  // somebody's figure somewhere they never asked for.
+  if (typeof direction !== "string" || !DIRECTIONS.has(direction)) {
+    return { status: "error", message: GENERIC_ERROR };
+  }
+  try {
+    await moveImage(deps, actor, reportId, imageId, direction as "up" | "down");
+    return { status: "success" };
+  } catch (error) {
+    return failure("move_image", error);
   }
 }
 

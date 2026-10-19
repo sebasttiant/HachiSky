@@ -30,7 +30,7 @@ import { REPORT_RULE_MESSAGES } from "./submit.ts";
 // free of framework imports so it is tested against a real database; the
 // route only adds the session lookup.
 //
-// Order, cheapest first, nothing read from the body until every header
+// Order inside this handler, nothing read from the body until every header
 // check passed:
 //   1. Origin must equal the configured app origin and Sec-Fetch-Site, when
 //      sent, must be same-origin (CSRF);
@@ -42,6 +42,14 @@ import { REPORT_RULE_MESSAGES } from "./submit.ts";
 //      (413), and only then parsed;
 //   6. exactly one file part, then the shared pipeline, then the service
 //      (ownership, validation, the per-section limit and audit).
+//
+// At the public surface the route resolves the session BEFORE this runs,
+// because the guard call is what the route is required to do first (see
+// tests/auth/route-guards.test.ts). So a cross-origin request costs one
+// session lookup before step 1 refuses it. That is deliberate and safe:
+// resolving a session reads, it never writes, and everything that acts on
+// the request — the body, the pipeline, the service — is still behind the
+// Origin check. The same shape is used by the billing upload route.
 
 export type ReportUploadAccess =
   | { status: "authenticated"; actor: ReportActor }

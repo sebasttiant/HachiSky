@@ -3,6 +3,7 @@ import { register } from "node:module";
 import { describe, it } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import type { ReportImageRecord } from "../../src/reports/images.ts";
 import type { SectionRecord } from "../../src/reports/service.ts";
 
 // Same loader as the other UI tests.
@@ -44,7 +45,7 @@ function section(overrides: Partial<SectionRecord> = {}): SectionRecord {
   };
 }
 
-async function render(value: SectionRecord) {
+async function render(value: SectionRecord, images: ReportImageRecord[] = []) {
   const { SectionEditor } = await import("../../src/reports/SectionEditor.tsx");
   return renderToStaticMarkup(
     createElement(SectionEditor, {
@@ -52,8 +53,28 @@ async function render(value: SectionRecord) {
       hint: "Qué va acá.",
       saveSection: noop as never,
       saveItems: noop as never,
+      reportId: "r1",
+      images,
+      updateImageText: noop as never,
+      removeImage: noop as never,
+      moveImage: noop as never,
+      refreshImages: noop as never,
     }),
   );
+}
+
+function figure(overrides: Partial<ReportImageRecord> = {}): ReportImageRecord {
+  return {
+    id: "11111111-1111-4111-8111-111111111111",
+    sectionKey: "results",
+    position: 0,
+    title: "Pantalla de ingreso",
+    caption: null,
+    width: 800,
+    height: 600,
+    byteSize: 1024,
+    ...overrides,
+  };
 }
 
 describe("section editor", () => {
@@ -67,6 +88,12 @@ describe("section editor", () => {
     const html = await render(section({ body: "Todo operativo." }));
     assert.doesNotMatch(html, /<details[^>]*\sopen/);
     assert.match(html, /Con contenido/);
+  });
+
+  it("counts a figure as content, with no body and no rows", async () => {
+    const html = await render(section(), [figure()]);
+    assert.match(html, /Con contenido/);
+    assert.doesNotMatch(html, /<details[^>]*\sopen/);
   });
 
   it("starts a structured section with rows collapsed", async () => {
