@@ -11,7 +11,7 @@ first; the templates are built on top of them, and AI assistance last.
 - [x] R2 (done, 699/699): record, list, edit and delete activities from Trabajo, replacing the preview. Verified in the browser: create, reload, edit, delete and an unreachable detail afterwards.
 - [x] R3 (done, 745/745): storage, service and the fill-in screens. `SectionEditor` renders each section from its template `kind`, so one editor serves all five templates.
 - [x] R4 (done, 745/745): `ReportSheet` and `/reports/[id]/documento`. One document view serves all five templates, rendering each section from its `kind`. See "R4 document evidence" below.
-- [ ] R5: images with title and description. General attachments are NOT included — see the open question below.
+- [x] R5 (done, 840/840): images with title and description, stored per section, uploaded and served through guarded routes, editable in place and printed in the document. General attachments are NOT included — see the open question below.
   - [x] R5-S1: extract the shared sanitized-image pipeline from Billing. Commit `56a6d41`.
   - [x] R5-S2: additive `report_image` storage and the authorization-preserving service. Complete: full suite 770/770; independent high-risk verifier PASS. Commit `8159e80`.
   - [ ] R5-S3: authenticated upload/serve routes and the editing UI.
