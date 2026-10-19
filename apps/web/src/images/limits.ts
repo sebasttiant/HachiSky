@@ -1,13 +1,16 @@
-// Client-safe limits and messages of the billing image pipeline (image.ts,
-// which imports sharp and must stay server-only). The upload form shows
-// these; the server enforces them.
+// Client-safe limits and messages of the image pipeline (pipeline.ts, which
+// imports sharp and must stay server-only). Upload forms show these; the
+// server enforces them.
+//
+// Separate from pipeline.ts so a browser bundle can state the rules without
+// pulling sharp in with them.
 
 export type ImagePurpose = "signature" | "issuer_logo";
 
 export const IMAGE_LIMITS = {
-  // Raw upload. Enforced by the upload route handlers (image-upload.ts) from
-  // Content-Length and while streaming, and again by the pipeline; the
-  // global Server Function body limit is left at its default.
+  // Raw upload. Enforced by the upload route handlers from Content-Length
+  // and while streaming, and again by the pipeline; the global Server
+  // Function body limit is left at its default.
   maxInputBytes: 1024 * 1024,
   // Passed to sharp as limitInputPixels: refuses decompression bombs.
   maxInputPixels: 4_000_000,

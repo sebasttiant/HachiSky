@@ -1,5 +1,5 @@
+import { IMAGE_LIMITS, IMAGE_REJECTION_MESSAGES } from "../images/limits.ts";
 import type { ActionState } from "../users/action-state.ts";
-import { IMAGE_LIMITS, IMAGE_REJECTION_MESSAGES } from "./image-limits.ts";
 
 // Browser side of the upload route handlers (src/billing/image-upload.ts):
 // sends the raw file same-origin with the session cookie and turns the JSON

@@ -1,12 +1,12 @@
 import type { ModuleAccess } from "../auth/module-access.ts";
 import {
-  BillingImageError,
   IMAGE_LIMITS,
   IMAGE_REJECTION_MESSAGES,
   type ImageDecoder,
   type ImageRejection,
+  ImageValidationError,
   sharpDecoder,
-} from "./image.ts";
+} from "../images/pipeline.ts";
 import { uploadIssuerLogo } from "./issuers.ts";
 import { canPerformBillingSettingsOperation } from "./permissions.ts";
 import {
@@ -238,7 +238,8 @@ export async function handleBillingImageUpload(
       message: SUCCESS_MESSAGES[target.kind],
     });
   } catch (error) {
-    if (error instanceof BillingImageError) return imageRefusal(error.reason);
+    if (error instanceof ImageValidationError)
+      return imageRefusal(error.reason);
     if (error instanceof BillingRuleError) {
       return refuse(
         RULE_STATUS[error.code],

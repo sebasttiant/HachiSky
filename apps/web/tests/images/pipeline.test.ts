@@ -8,7 +8,7 @@ import {
   IMAGE_REJECTION_MESSAGES,
   type ImagePurpose,
   processImage,
-} from "../../src/billing/image.ts";
+} from "../../src/images/pipeline.ts";
 import {
   animatedGif,
   animatedPng,
@@ -21,7 +21,7 @@ import {
   solidJpeg,
   solidPng,
   spyDecoder,
-} from "./image-fixtures.ts";
+} from "./fixtures.ts";
 
 async function rejection(input: Buffer, purpose: ImagePurpose = "signature") {
   const result = await processImage(input, purpose);

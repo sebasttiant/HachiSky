@@ -1,6 +1,6 @@
 import { crc32 } from "node:zlib";
 import sharp from "sharp";
-import { type ImageDecoder, sharpDecoder } from "../../src/billing/image.ts";
+import { type ImageDecoder, sharpDecoder } from "../../src/images/pipeline.ts";
 
 // Synthetic images only, generated on the fly: never a real signature or logo.
 

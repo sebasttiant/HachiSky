@@ -1,14 +1,14 @@
 import { asc, count, desc, eq, sql } from "drizzle-orm";
 import * as schema from "../db/schema/index.ts";
 import {
-  BillingImageError,
   IMAGE_LIMITS,
   type ImageDecoder,
   type ImagePurpose,
+  ImageValidationError,
   type ProcessedImage,
   processImage,
   sharpDecoder,
-} from "./image.ts";
+} from "../images/pipeline.ts";
 import {
   audit,
   authorize,
@@ -97,11 +97,11 @@ export async function readUpload(
 ): Promise<ProcessedImage> {
   // Size first: an oversized upload is refused before it is read.
   if (upload.size > IMAGE_LIMITS.maxInputBytes) {
-    throw new BillingImageError("too_large");
+    throw new ImageValidationError("too_large");
   }
   const bytes = Buffer.from(await upload.arrayBuffer());
   const result = await processImage(bytes, purpose, decoder);
-  if (!result.ok) throw new BillingImageError(result.reason);
+  if (!result.ok) throw new ImageValidationError(result.reason);
   return result.image;
 }
 

@@ -3,11 +3,11 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
-import { processImage } from "../../src/billing/image.ts";
+import { processImage } from "../../src/images/pipeline.ts";
 import {
   inspectPngStructure,
   MAX_PNG_CHUNKS,
-} from "../../src/billing/png-structure.ts";
+} from "../../src/images/png-structure.ts";
 import {
   animatedPng,
   chunk,
@@ -16,7 +16,7 @@ import {
   readChunks,
   solidPng,
   spyDecoder,
-} from "./image-fixtures.ts";
+} from "./fixtures.ts";
 
 // The PNG chunk detector: a structure walk (not a decoder) that refuses
 // animation chunks and any malformed chunk stream before sharp sees it.

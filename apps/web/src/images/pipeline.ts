@@ -4,13 +4,18 @@ import {
   IMAGE_LIMITS,
   type ImagePurpose,
   type ImageRejection,
-} from "./image-limits.ts";
+} from "./limits.ts";
 import { inspectPngStructure } from "./png-structure.ts";
 
-// Validation pipeline for the images stored with billing settings: a signer's
-// graphic signature and the issuer logo. Every accepted upload is fully
-// decoded and re-encoded to a fresh PNG; only that PNG is stored (in the
-// database, as an immutable version) and served.
+// Validation pipeline for every image the application stores, whatever asked
+// for it: a signer's graphic signature, the issuer logo, and the figures of a
+// report. Every accepted upload is fully decoded and re-encoded to a fresh
+// PNG; only that PNG is stored in the database and served.
+//
+// This module knows nothing about the modules that call it. What differs
+// between them is the purpose and its dimension limits (limits.ts); the
+// checks below are the same for all of them, because a malicious PNG does
+// not care which screen uploaded it.
 //
 // Order (cheapest and most restrictive first):
 //   1. byte limit on the raw upload, before anything else;
@@ -28,13 +33,13 @@ export {
   IMAGE_REJECTION_MESSAGES,
   type ImagePurpose,
   type ImageRejection,
-} from "./image-limits.ts";
+} from "./limits.ts";
 
-export class BillingImageError extends Error {
+export class ImageValidationError extends Error {
   readonly reason: ImageRejection;
   constructor(reason: ImageRejection) {
     super(reason);
-    this.name = "BillingImageError";
+    this.name = "ImageValidationError";
     this.reason = reason;
   }
 }
