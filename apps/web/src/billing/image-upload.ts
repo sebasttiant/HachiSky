@@ -1,4 +1,5 @@
 import type { ModuleAccess } from "../auth/module-access.ts";
+import { readLimitedBody } from "../images/body.ts";
 import {
   IMAGE_LIMITS,
   IMAGE_REJECTION_MESSAGES,
@@ -134,33 +135,6 @@ function isSameOrigin(headers: Headers, appOrigin: string): boolean {
 
 function mediaType(headers: Headers): string {
   return (headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
-}
-
-type BodyResult =
-  | { ok: true; bytes: Buffer }
-  | { ok: false; reason: "too_large" };
-
-// Reads the body counting bytes; cancels the stream as soon as the count
-// passes the limit, so at most one chunk beyond the limit is ever held.
-export async function readLimitedBody(
-  body: ReadableStream<Uint8Array> | null,
-  limit: number,
-): Promise<BodyResult> {
-  if (!body) return { ok: true, bytes: Buffer.alloc(0) };
-  const reader = body.getReader();
-  const parts: Uint8Array[] = [];
-  let total = 0;
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    total += value.byteLength;
-    if (total > limit) {
-      await reader.cancel().catch(() => {});
-      return { ok: false, reason: "too_large" };
-    }
-    parts.push(value);
-  }
-  return { ok: true, bytes: Buffer.concat(parts, total) };
 }
 
 export async function handleBillingImageUpload(

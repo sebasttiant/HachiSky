@@ -243,6 +243,54 @@ describe("data entry points", () => {
     assert.doesNotMatch(source, /export const (dynamic|revalidate)\b/);
   });
 
+  it("serves stored report figures only through the reports guard", () => {
+    const file = routeHandlers.find(
+      (handler) => routeOf(handler) === "/api/reports/images/[id]",
+    );
+    assert.ok(file, "app/api/reports/images/[id]/route.ts must exist");
+    const source = stripComments(readFileSync(file, "utf8"));
+    const exported = [...source.matchAll(/export async function (\w+)/g)].map(
+      (match) => match[1],
+    );
+    assert.deepEqual(exported, ["GET"], "only GET is exported");
+    const guard = source.indexOf(
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: the literal source text of the guard call
+      'await requireModule("reports", `/api/reports/images/${id}`)',
+    );
+    assert.ok(
+      guard > 0,
+      'must await requireModule("reports", ...) with its own path',
+    );
+    const serve = source.indexOf("reportImageResponse(");
+    assert.ok(serve > guard, "the response is built only after the guard");
+    assert.doesNotMatch(source, /export const (dynamic|revalidate)\b/);
+  });
+
+  it("uploads report figures only through a dedicated, guarded POST route", () => {
+    const route = "/api/reports/[id]/sections/[key]/images";
+    const file = routeHandlers.find((handler) => routeOf(handler) === route);
+    assert.ok(file, `${route}: route handler must exist`);
+    const source = stripComments(readFileSync(file, "utf8"));
+    const exported = [...source.matchAll(/export async function (\w+)/g)].map(
+      (match) => match[1],
+    );
+    assert.deepEqual(exported, ["POST"], `${route}: only POST is exported`);
+    const guard = source.indexOf(
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: the literal source text of the guard call
+      'await checkModuleAccess("reports", `/api/reports/${id}/sections/${key}/images`)',
+    );
+    assert.ok(guard > 0, `${route}: must check the reports module first`);
+    const handle = source.indexOf("handleReportImageUpload(");
+    assert.ok(handle > guard, `${route}: handled only after the guard`);
+    // The bound lives in the handler; a route that read the body itself
+    // would be reading it without one.
+    assert.doesNotMatch(
+      source,
+      /request\.(formData|arrayBuffer|blob|json|text|body)\b/,
+      `${route}: the body is read only by handleReportImageUpload`,
+    );
+  });
+
   it("keeps the default Server Function body limit (no global raise)", async () => {
     const { default: config } = await import("../../next.config.ts");
     assert.equal(config.experimental?.serverActions?.bodySizeLimit, undefined);

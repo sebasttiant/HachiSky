@@ -12,7 +12,7 @@ import {
   type Tx,
   touch,
 } from "./service.ts";
-import { REPORT_LIMITS, validateImageText } from "./validation.ts";
+import { REPORT_LIMITS, UUID, validateImageText } from "./validation.ts";
 
 // The figures of a report.
 //
@@ -45,6 +45,18 @@ export interface ReportImageRecord {
   width: number;
   height: number;
   byteSize: number;
+}
+
+/**
+ * Refuses an id that cannot name a row.
+ *
+ * These ids arrive from a URL. Letting a malformed one reach PostgreSQL
+ * turns it into a 22P02 failure, which answers differently from an id that
+ * simply does not exist — and that difference is itself something to probe.
+ * It also reads as an outage when nothing is wrong.
+ */
+function assertId(id: string, code: "not_found" | "image_not_found") {
+  if (!UUID.test(id)) throw new ReportRuleError(code);
 }
 
 /**
@@ -113,6 +125,7 @@ export async function addImage(
   image: StoredImage,
 ): Promise<string> {
   const actor = authorize(rawActor, "edit_report");
+  assertId(reportId, "not_found");
   const result = validateImageText(rawText);
   if (!result.ok) throw new ReportValidationError(result.fieldErrors);
 
@@ -162,6 +175,7 @@ export async function listImages(
   reportId: string,
 ): Promise<ReportImageRecord[]> {
   const actor = authorize(rawActor, "view_reports");
+  assertId(reportId, "not_found");
 
   return deps.db.transaction(async (tx) => {
     await lockReachable(tx, actor, reportId);
@@ -197,6 +211,7 @@ export async function readImageBytes(
   imageId: string,
 ): Promise<{ data: Buffer; sha256: string; byteSize: number }> {
   const actor = authorize(rawActor, "view_reports");
+  assertId(imageId, "image_not_found");
 
   return deps.db.transaction(async (tx) => {
     // Authorize from metadata first. In particular, do not load the image
@@ -237,6 +252,8 @@ export async function updateImageText(
   rawText: unknown,
 ): Promise<void> {
   const actor = authorize(rawActor, "edit_report");
+  assertId(reportId, "not_found");
+  assertId(imageId, "image_not_found");
   const result = validateImageText(rawText);
   if (!result.ok) throw new ReportValidationError(result.fieldErrors);
 
@@ -264,6 +281,8 @@ export async function removeImage(
   imageId: string,
 ): Promise<void> {
   const actor = authorize(rawActor, "edit_report");
+  assertId(reportId, "not_found");
+  assertId(imageId, "image_not_found");
 
   await deps.db.transaction(async (tx) => {
     await lockReachable(tx, actor, reportId);
@@ -290,6 +309,8 @@ export async function moveImage(
   direction: "up" | "down",
 ): Promise<void> {
   const actor = authorize(rawActor, "edit_report");
+  assertId(reportId, "not_found");
+  assertId(imageId, "image_not_found");
 
   await deps.db.transaction(async (tx) => {
     await lockReachable(tx, actor, reportId);

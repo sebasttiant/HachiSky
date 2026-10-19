@@ -13,8 +13,10 @@ first; the templates are built on top of them, and AI assistance last.
 - [x] R4 (done, 745/745): `ReportSheet` and `/reports/[id]/documento`. One document view serves all five templates, rendering each section from its `kind`. See "R4 document evidence" below.
 - [ ] R5: images with title and description. General attachments are NOT included — see the open question below.
   - [x] R5-S1: extract the shared sanitized-image pipeline from Billing. Commit `56a6d41`.
-  - [x] R5-S2: additive `report_image` storage and the authorization-preserving service. Complete: full suite 770/770; independent high-risk verifier PASS. Commit: this S2 work unit.
+  - [x] R5-S2: additive `report_image` storage and the authorization-preserving service. Complete: full suite 770/770; independent high-risk verifier PASS. Commit `8159e80`.
   - [ ] R5-S3: authenticated upload/serve routes and the editing UI.
+    - [x] R5-S3a: the HTTP boundary — guarded upload and private serving. Focused 74/74 plus a billing differential 54/54.
+    - [ ] R5-S3b: section-local editing UI (title, description, delete, reorder).
   - [ ] R5-S4: section-local figures in `ReportSheet` and print.
 - [ ] R6: issued report with a preserved version and author snapshot.
 - [ ] R7: AI assistance with the user's own model. Blocked on a product decision, see below.
@@ -36,6 +38,57 @@ boundaries. Native assessment was unavailable because its package-local binary
 was missing, so the risk-gated independent verifier supplied the outside view.
 Risk: item 2 — authenticated image bytes and mutations cross staff/admin
 ownership boundaries.
+
+## R5-S3a evidence: the HTTP boundary
+
+Two routes, both guarded before anything else happens:
+
+- `POST /api/reports/[id]/sections/[key]/images` — multipart with the image,
+  its title and its optional description.
+- `GET /api/reports/images/[id]` — one stored figure, private headers, a
+  fixed filename. There is no public URL for these bytes.
+
+### Why multipart here, and why that needed a bound first
+
+Billing uploads a raw body, because a logo arrives alone. A figure arrives
+with its text and the title is required, so this route is multipart. That
+matters for one reason: `Request.formData()` has no size limit of its own.
+So the body is read through the shared bounded reader FIRST and the multipart
+is parsed from that buffer, never from the live stream. A client that
+declares no `Content-Length`, or lies about it, still cannot make the server
+hold an unbounded body — there is a test that streams past the bound with no
+declared length and expects 413.
+
+`readLimitedBody` moved from `src/billing/image-upload.ts` to
+`src/images/body.ts` rather than being copied: duplicating the one piece of
+code that stops an unbounded read is how the two copies drift apart. The
+extraction is mechanical, and the billing suites were run against it
+separately (54/54), including "checks the byte limit before reading or
+decoding the upload".
+
+### What the boundary refuses, in order
+
+Origin and `Sec-Fetch-Site`, then session, then role, then media type, then
+the declared length, then the streamed bound — and only then is anything
+parsed. The declared part type and the filename are never trusted: the
+shared pipeline decides from the bytes, so an SVG named `captura.png` with
+`image/png` is refused. Nothing is written for any refusal.
+
+Figure text is never echoed back in an error, and the served response
+carries a fixed `imagen.png`, so nothing the author typed reaches a header.
+
+### Defect found by these tests
+
+An id that is not a uuid reached PostgreSQL as a malformed value and came
+back as a 500. That answered differently from an id that does not exist,
+which is itself something to probe, and it read as an outage when nothing was
+wrong. Fixed in `src/reports/images.ts`, where S2 already owns the rule that
+unreachable and absent answer alike — not in the response layer by sniffing
+Postgres error codes, which does not work anyway because Drizzle wraps the
+driver error.
+
+Risk: item 2 — a new authenticated public surface that serves stored bytes
+and accepts uploads across ownership boundaries.
 
 ## R5 delivery slices
 
