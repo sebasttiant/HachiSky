@@ -3,6 +3,7 @@ import { register } from "node:module";
 import { describe, it } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import type { ReportImageRecord } from "../../src/reports/images.ts";
 import type {
   ItemRecord,
   ReportRecord,
@@ -82,9 +83,25 @@ function report(overrides: Partial<ReportRecord> = {}): ReportRecord {
   };
 }
 
-async function render(value: ReportRecord) {
+function figure(overrides: Partial<ReportImageRecord> = {}): ReportImageRecord {
+  return {
+    id: "11111111-1111-4111-8111-111111111111",
+    sectionKey: "results",
+    position: 0,
+    title: "Pantalla de ingreso",
+    caption: null,
+    width: 800,
+    height: 600,
+    byteSize: 2048,
+    ...overrides,
+  };
+}
+
+async function render(value: ReportRecord, images: ReportImageRecord[] = []) {
   const { ReportSheet } = await import("../../src/reports/ReportSheet.tsx");
-  return renderToStaticMarkup(createElement(ReportSheet, { report: value }));
+  return renderToStaticMarkup(
+    createElement(ReportSheet, { report: value, images }),
+  );
 }
 
 describe("report document", () => {
@@ -232,5 +249,101 @@ describe("report document", () => {
   it("omits the period when the report has none", async () => {
     const html = await render(report({ periodStart: null, periodEnd: null }));
     assert.doesNotMatch(html, /Período/);
+  });
+});
+
+describe("figures in the document", () => {
+  it("prints a figure under the section that holds it", async () => {
+    const html = await render(
+      report({ sections: [section({ body: "Todo operativo." })] }),
+      [figure({ caption: "Menú principal" })],
+    );
+    assert.match(html, /<figure/);
+    assert.match(html, /Pantalla de ingreso/);
+    assert.match(html, /Menú principal/);
+  });
+
+  it("reads the bytes from the authenticated route, never a public URL", async () => {
+    const html = await render(
+      report({ sections: [section({ body: "Todo operativo." })] }),
+      [figure()],
+    );
+    assert.match(
+      html,
+      /src="\/api\/reports\/images\/11111111-1111-4111-8111-111111111111"/,
+    );
+    assert.doesNotMatch(html, /blob:|data:image/);
+  });
+
+  it("keeps a section whose only content is a figure", async () => {
+    // A step explained entirely by its screenshot is not an empty section,
+    // and dropping it would lose the only thing it had to say.
+    const html = await render(report({ sections: [section()] }), [figure()]);
+    assert.match(html, /Resultados/);
+    assert.match(html, /<figure/);
+    assert.doesNotMatch(html, /todavía no tiene contenido/);
+  });
+
+  it("still leaves out a section with neither text nor figures", async () => {
+    const html = await render(
+      report({
+        sections: [section(), section({ key: "next", heading: "Pendientes" })],
+      }),
+      [],
+    );
+    assert.doesNotMatch(html, /Resultados/);
+    assert.doesNotMatch(html, /Pendientes/);
+  });
+
+  it("gives each figure to its own section, in stored order", async () => {
+    const html = await render(
+      report({
+        sections: [
+          section({ key: "results", heading: "Resultados", body: "Listo." }),
+          section({ key: "next", heading: "Pendientes", body: "Nada." }),
+        ],
+      }),
+      [
+        figure({
+          id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          sectionKey: "next",
+          position: 1,
+          title: "Segunda de pendientes",
+        }),
+        figure({
+          id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+          sectionKey: "next",
+          position: 0,
+          title: "Primera de pendientes",
+        }),
+        figure({
+          id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+          sectionKey: "results",
+          position: 0,
+          title: "La de resultados",
+        }),
+      ],
+    );
+    const order = [
+      "La de resultados",
+      "Primera de pendientes",
+      "Segunda de pendientes",
+    ].map((title) => html.indexOf(title));
+    assert.ok(
+      order.every((at) => at > 0),
+      "every figure is printed",
+    );
+    assert.deepEqual(
+      order,
+      [...order].sort((a, b) => a - b),
+    );
+  });
+
+  it("prints no figure markup when the report has none", async () => {
+    const html = await render(
+      report({ sections: [section({ body: "Todo operativo." })] }),
+      [],
+    );
+    assert.doesNotMatch(html, /<figure/);
   });
 });

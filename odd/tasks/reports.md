@@ -58,7 +58,7 @@ verifier reviewed S3a and S3b together and returned PASS on authorization,
 byte exposure, bounded bodies, audit minimization, guarded actions, UI form
 nesting and slice boundaries; its one FAIL was the ordering text corrected
 above. It did not rerun the suite itself.
-  - [ ] R5-S4: section-local figures in `ReportSheet` and print.
+  - [x] R5-S4: section-local figures in `ReportSheet` and print.
 - [ ] R6: issued report with a preserved version and author snapshot.
 - [ ] R7: AI assistance with the user's own model. Blocked on a product decision, see below.
 
@@ -142,6 +142,34 @@ driver error.
 
 Risk: item 2 — a new authenticated public surface that serves stored bytes
 and accepts uploads across ownership boundaries.
+
+## R5-S4 evidence: figures in the document
+
+`ReportSheet` now takes the figures alongside the report and prints each one
+under the section that holds it, in the order the author put them in. A step
+carries its own screenshot; nothing lands in an appendix the reader has to
+hunt for.
+
+Three rules this slice holds to:
+
+- **A figure is content.** `hasContent` counts figures, so a section whose
+  only content is a screenshot still prints. Dropping it would lose the one
+  thing that section had to say. A section with neither text nor figures is
+  still left out.
+- **The title prints, not just the image.** A reference in the text still
+  means something on paper, and a figure that fails to load is still named
+  instead of leaving a blank.
+- **A figure does not split across pages.** `break-inside: avoid` on the
+  figure, and a height bound so a tall screenshot is scaled rather than
+  clipped. A caption stranded away from its image says nothing.
+
+The bytes come from the same authenticated route as the editor, so the
+document has no public URL for them either. `reportImagePath` moved to
+`paths.ts` so the server-rendered document can name the route without
+importing the client component that also uses it.
+
+Test-first: six document tests observed RED before `ReportSheet` accepted
+the prop, then GREEN.
 
 ## R5 delivery slices
 

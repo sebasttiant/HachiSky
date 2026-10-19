@@ -1,4 +1,6 @@
 import { formatDate } from "../shared/format/date.ts";
+import type { ReportImageRecord } from "./images.ts";
+import { reportImagePath } from "./paths.ts";
 import styles from "./ReportSheet.module.css";
 import type { ItemRecord, ReportRecord, SectionRecord } from "./service.ts";
 import {
@@ -124,7 +126,45 @@ function Steps({ items }: { items: readonly ItemRecord[] }) {
   );
 }
 
-function Section({ section }: { section: SectionRecord }) {
+// The figures of a section, printed where they belong: the screenshot of a
+// step sits under that step, not in an appendix the reader has to hunt for.
+//
+// The title is printed as well as the image, so a numbered reference in the
+// text still means something on paper, and a figure that fails to load is
+// still named instead of leaving a blank.
+function Figures({ images }: { images: readonly ReportImageRecord[] }) {
+  if (images.length === 0) return null;
+  return (
+    <div className={styles.figures}>
+      {images.map((image) => (
+        <figure key={image.id} className={styles.figure}>
+          {/* biome-ignore lint/performance/noImgElement: private figure served by an authenticated route; next/image would proxy it through the public optimizer */}
+          <img
+            className={styles.figureImage}
+            src={reportImagePath(image.id)}
+            alt={image.title}
+            width={image.width}
+            height={image.height}
+          />
+          <figcaption className={styles.figureCaption}>
+            <span className={styles.figureTitle}>{image.title}</span>
+            {image.caption ? (
+              <span className={styles.figureText}>{image.caption}</span>
+            ) : null}
+          </figcaption>
+        </figure>
+      ))}
+    </div>
+  );
+}
+
+function Section({
+  section,
+  images,
+}: {
+  section: SectionRecord;
+  images: readonly ReportImageRecord[];
+}) {
   return (
     <section className={styles.section}>
       <h2 className={styles.sectionHeading}>{section.heading}</h2>
@@ -139,22 +179,48 @@ function Section({ section }: { section: SectionRecord }) {
       ) : (
         <Steps items={section.items} />
       )}
+      <Figures images={images} />
     </section>
   );
 }
 
-/** A section with nothing in it is not a section yet. */
-function hasContent(section: SectionRecord) {
+/**
+ * A section with nothing in it is not a section yet.
+ *
+ * A figure counts: a step explained entirely by its screenshot has said
+ * everything it had to say, and dropping it would lose exactly that.
+ */
+function hasContent(
+  section: SectionRecord,
+  images: readonly ReportImageRecord[],
+) {
+  if (images.length > 0) return true;
   return section.kind === "prose"
     ? section.body !== null && section.body.trim() !== ""
     : section.items.length > 0;
 }
 
-export function ReportSheet({ report }: { report: ReportRecord }) {
+export function ReportSheet({
+  report,
+  images,
+}: {
+  report: ReportRecord;
+  images: readonly ReportImageRecord[];
+}) {
   const span = period(report);
+  // Figures hang off their section, and they print in the order the author
+  // put them in.
+  const bySection = new Map<string, ReportImageRecord[]>();
+  for (const image of [...images].sort((a, b) => a.position - b.position)) {
+    const current = bySection.get(image.sectionKey);
+    if (current) current.push(image);
+    else bySection.set(image.sectionKey, [image]);
+  }
   // Empty sections are left out: a document handed to a client does not show
   // hollow headings. The editing screen is where the gaps are visible.
-  const sections = report.sections.filter(hasContent);
+  const sections = report.sections.filter((section) =>
+    hasContent(section, bySection.get(section.key) ?? []),
+  );
 
   return (
     <article className={styles.sheet}>
@@ -190,7 +256,11 @@ export function ReportSheet({ report }: { report: ReportRecord }) {
         </p>
       ) : (
         sections.map((section) => (
-          <Section key={section.key} section={section} />
+          <Section
+            key={section.key}
+            section={section}
+            images={bySection.get(section.key) ?? []}
+          />
         ))
       )}
 

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { requireModule } from "../../../../../src/auth/guard.ts";
 import { PrintButton } from "../../../../../src/billing/PrintButton.tsx";
 import { getDb } from "../../../../../src/db/client.ts";
+import { listImages } from "../../../../../src/reports/images.ts";
 import { reportPath } from "../../../../../src/reports/paths.ts";
 import { ReportSheet } from "../../../../../src/reports/ReportSheet.tsx";
 import { getReport } from "../../../../../src/reports/service.ts";
@@ -19,13 +20,20 @@ export default async function ReportDocumentPage({
 }) {
   const { id } = await params;
   const { user } = await requireModule("reports", `/reports/${id}/documento`);
-  const report = await getReport(
-    { db: getDb() },
-    { id: user.id, role: user.role, ipAddress: null, userAgent: null },
-    id,
-  );
+  const deps = { db: getDb() };
+  const actor = {
+    id: user.id,
+    role: user.role,
+    ipAddress: null,
+    userAgent: null,
+  };
+  const report = await getReport(deps, actor, id);
   // Absent and unreachable answer the same, here as everywhere else.
   if (!report) notFound();
+
+  // Checked again by the service, against the same ownership rule as the
+  // report itself.
+  const images = await listImages(deps, actor, id);
 
   return (
     <div className="container">
@@ -46,7 +54,7 @@ export default async function ReportDocumentPage({
         </p>
       </div>
 
-      <ReportSheet report={report} />
+      <ReportSheet report={report} images={images} />
     </div>
   );
 }

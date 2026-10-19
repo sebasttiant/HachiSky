@@ -7,6 +7,7 @@ import styles from "../users/admin.module.css";
 import { FieldError, FormMessage, fieldProps } from "../users/FormMessage.tsx";
 import { useFormAction } from "../users/useFormAction.ts";
 import type { ReportImageRecord } from "./images.ts";
+import { reportImagePath } from "./paths.ts";
 import figures from "./ReportImagesEditor.module.css";
 import { REPORT_LIMITS } from "./validation.ts";
 
@@ -41,10 +42,6 @@ export interface ReportImagesEditorProps {
 }
 
 const ACCEPT = "image/png,image/jpeg";
-
-export function imagePath(id: string) {
-  return `/api/reports/images/${id}`;
-}
 
 function uploadPath(reportId: string, sectionKey: string) {
   return `/api/reports/${reportId}/sections/${encodeURIComponent(sectionKey)}/images`;
@@ -227,7 +224,7 @@ function Figure({
       {/* biome-ignore lint/performance/noImgElement: private figure served by an authenticated route; next/image would proxy it through the public optimizer */}
       <img
         className={figures.preview}
-        src={imagePath(image.id)}
+        src={reportImagePath(image.id)}
         alt={image.title}
         width={image.width}
         height={image.height}

@@ -260,6 +260,45 @@
   color: var(--color-text-muted);
 }
 
+/* Figures sit inside their section, one per row, so a wide screenshot is
+   readable instead of squeezed beside text. */
+.figures {
+  display: grid;
+  gap: var(--space-4);
+  margin-block-start: var(--space-4);
+}
+
+.figure {
+  margin: 0;
+}
+
+/* Bounded by the page, never by the stored pixels. The intrinsic width and
+   height stay on the element so the layout does not jump while it loads. */
+.figureImage {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.figureCaption {
+  display: block;
+  margin-block-start: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.figureTitle {
+  display: block;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.figureText {
+  display: block;
+}
+
 @media print {
   .sheet {
     max-width: none;
@@ -267,5 +306,17 @@
     border-radius: 0;
     box-shadow: none;
     padding: 0;
+  }
+
+  /* A figure split across two pages is worse than a page break before it,
+     and a caption stranded away from its image says nothing. */
+  .figure {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Never taller than a page, or it would be clipped rather than scaled. */
+  .figureImage {
+    max-height: 60vh;
   }
 }
