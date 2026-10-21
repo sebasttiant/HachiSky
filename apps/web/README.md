@@ -184,14 +184,18 @@ root, create it yourself first: `mkdir -m 700 apps/web/secrets`.
 **Idempotent.** If the installation already has a bootstrap record or any
 administrator, `init-admin` prints `default-admin: already initialized`,
 exits `0` and changes nothing: no file, no password reset. Existing
-installations keep their administrators.
+installations keep their administrators. One exception: if
+`admin@ilasesorias.com` exists as an admin and has no `user_security` row,
+the next start inserts `must_change_password = true` and prints
+`default-admin: repaired the missing forced password change`. It does not
+reset the password or rewrite the file. The following start is a no-op.
 
 | Exit | Meaning |
 |------|---------|
-| 0 | Created, or already initialized (nothing done) |
+| 0 | Created, already initialized (nothing done), or the missing forced-change row was repaired |
 | 1 | Configuration error (database or auth environment, e.g. empty `BETTER_AUTH_SECRET`), unusable secrets directory, or an error before anything was written |
 | 3 | `password_file_exists`: `initial-admin-password` exists but the database is not initialized (for example it was recreated). Nothing is done; the file is never overwritten. Move or delete it, then start again |
-| 4 | Inconsistent: the bootstrap stopped part-way (reasons as in "Admin bootstrap"). The final file is not written. If an account may already use the generated password, the temporary file `initial-admin-password.<random>.tmp` is kept (`0600`) as the only copy; otherwise it is removed. Nothing is deleted or repaired; follow "Manual recovery procedure" |
+| 4 | Inconsistent: the bootstrap stopped part-way (reasons as in "Admin bootstrap"). The final file is not written. If an account may already use the generated password, the temporary file `initial-admin-password.<random>.tmp` is kept (`0600`) as the only copy; otherwise it is removed. Users are not deleted and passwords are not reset. A missing forced-change row for the default admin is repaired on the next start (exit 0). Otherwise follow "Manual recovery procedure" |
 
 The stdin CLI below remains for manual bootstraps (for example an install
 started before this step existed, or a different first administrator).

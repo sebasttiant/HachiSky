@@ -1,7 +1,7 @@
 import { randomBytes, randomInt } from "node:crypto";
 import { chmod, lstat, mkdir, open, rename, rm } from "node:fs/promises";
 import path from "node:path";
-import { sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import * as schema from "../db/schema/index.ts";
 import {
   type BootstrapDeps,
@@ -41,6 +41,7 @@ type InconsistentReason =
 export type DefaultAdminResult =
   | { exitCode: 0; outcome: "created"; userId: string }
   | { exitCode: 0; outcome: "already_initialized" }
+  | { exitCode: 0; outcome: "forced_change_repaired"; userId: string }
   | { exitCode: 1; outcome: "error" }
   | { exitCode: 1; outcome: "secrets_dir_unusable" }
   | { exitCode: 3; outcome: "password_file_exists" }
@@ -54,6 +55,29 @@ export interface DefaultAdminOptions {
 // Bootstrap reasons raised before anything was written: the temporary file
 // holds a password no account uses, so it is removed.
 const PRE_WRITE_REASONS = new Set<InconsistentReason>(["email_exists"]);
+
+// The default admin can exist without user_security when the row insert
+// failed after the account was created. Only that missing row is repaired.
+async function defaultAdminMissingForcedChange(
+  db: BootstrapDeps["db"],
+): Promise<string | null> {
+  const [row] = await db
+    .select({ id: schema.user.id })
+    .from(schema.user)
+    .leftJoin(
+      schema.userSecurity,
+      eq(schema.userSecurity.userId, schema.user.id),
+    )
+    .where(
+      and(
+        sql`lower(${schema.user.email}) = ${DEFAULT_ADMIN.email}`,
+        sql`'admin' = any(string_to_array(${schema.user.role}, ','))`,
+        sql`${schema.userSecurity.userId} is null`,
+      ),
+    )
+    .limit(1);
+  return row?.id ?? null;
+}
 
 async function isInitialized(db: BootstrapDeps["db"]): Promise<boolean> {
   const [records] = await db
@@ -94,28 +118,53 @@ async function writeSecret(file: string, content: string): Promise<void> {
 // Creates the default administrator on a fresh installation.
 //
 // Rules, in order:
-// 1. Initialized means a bootstrap record exists or ANY admin exists. Then
+// 1. If admin@ilasesorias.com exists as an admin and has no user_security
+//    row, insert must_change_password = true and stop (exit 0). A second run
+//    sees the row and does nothing else. No password reset, no file write.
+// 2. Initialized means a bootstrap record exists or ANY admin exists. Then
 //    nothing is done: no directory, no file, no password change (exit 0).
-// 2. The secrets directory is created 0700 (or tightened to 0700).
-// 3. If the final password file already exists while the system is NOT
+// 3. The secrets directory is created 0700 (or tightened to 0700).
+// 4. If the final password file already exists while the system is NOT
 //    initialized, it is refused (exit 3) and the file is left as is. That file
 //    belongs to some earlier installation (for example a database that was
 //    recreated); overwriting it silently would destroy a password someone may
 //    still rely on, and keeping it would point the owner at a wrong password.
 //    The operator decides: move or delete it, then start again.
-// 4. The password is written FIRST to a per-run temporary file, then the
+// 5. The password is written FIRST to a per-run temporary file, then the
 //    admin is created through runBootstrap (same lock and guarantees as the
 //    stdin CLI), flagged must-change, and the file is renamed into place.
 //    A unique temporary name keeps concurrent runs from overwriting each
 //    other's password; only the run that created the admin renames.
-// 5. On failure the final file is never written. The temporary file is
+// 6. On failure the final file is never written. The temporary file is
 //    removed when no account can be using its password (nothing was created);
 //    it is KEPT when an account may already use it, since it is then the only
-//    copy of that password. Users and data are never deleted or repaired.
+//    copy of that password. Users are never deleted and passwords are never
+//    reset. The only repair is rule 1.
 export async function ensureDefaultAdmin(
   deps: BootstrapDeps,
   options: DefaultAdminOptions,
 ): Promise<DefaultAdminResult> {
+  const repairUserId = await defaultAdminMissingForcedChange(deps.db);
+  if (repairUserId) {
+    try {
+      await deps.db
+        .insert(schema.userSecurity)
+        .values({ userId: repairUserId, mustChangePassword: true })
+        .onConflictDoNothing();
+    } catch {
+      return {
+        exitCode: 4,
+        outcome: "inconsistent",
+        reason: "must_change_failed",
+      };
+    }
+    return {
+      exitCode: 0,
+      outcome: "forced_change_repaired",
+      userId: repairUserId,
+    };
+  }
+
   if (await isInitialized(deps.db)) {
     return { exitCode: 0, outcome: "already_initialized" };
   }
