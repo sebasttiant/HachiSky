@@ -35,19 +35,69 @@
   -webkit-print-color-adjust: exact;
 }
 
-.top {
-  padding-bottom: var(--space-4);
+/* The provider's letterhead: logo and name on the left, the kind of
+   document on the right. Whose logo this is comes from the report's
+   provider, so the same sheet serves IL Asesorías or Converfente Digital. */
+.brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.brandIdentity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 44px;
+}
+
+.brandLogo {
+  display: block;
+  max-height: 52px;
+  max-width: 180px;
+  width: auto;
+  height: auto;
+}
+
+.brandName {
+  margin: 0;
+  font-weight: 700;
+  color: var(--color-brand-ink);
+}
+
+.brandMeta {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  text-align: right;
+}
+
+/* The hero: a deep-blue block that states what this is and for whom, the
+   same opening the owner's reference reports use. */
+.hero {
+  background: linear-gradient(
+    135deg,
+    #0b2e4f 0%,
+    var(--color-brand-ink) 55%,
+    #14639e 100%
+  );
+  border-radius: var(--radius-md);
+  padding: var(--space-5) var(--space-6);
   margin-bottom: var(--space-5);
-  border-bottom: 2px solid var(--color-brand-ink);
+  color: #fff;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
 }
 
 .kind {
   margin: 0;
   font-size: var(--text-sm);
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  font-weight: 700;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--color-text-muted);
+  color: #bcd9f5;
 }
 
 /* What this document is about. The reader sees it first. */
@@ -56,7 +106,7 @@
   font-size: var(--text-2xl);
   font-weight: 700;
   line-height: 1.15;
-  color: var(--color-brand-ink);
+  color: #fff;
 }
 
 .facts {
@@ -71,7 +121,7 @@
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--color-text-muted);
+  color: #bcd9f5;
 }
 
 .facts dd {
@@ -91,19 +141,89 @@
   -webkit-print-color-adjust: exact;
 }
 
+.stateIssued {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: var(--radius-sm);
+  background: #d8f3e3;
+  color: #0f5132;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+/* The counted facts of a detailed follow_up. Every number here is counted
+   from the recorded activities — the sheet never invents a figure. */
+.kpis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.kpi {
+  flex: 1 1 10rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-alt);
+  padding: var(--space-3) var(--space-4);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.kpiValue {
+  display: block;
+  font-size: var(--text-2xl);
+  font-weight: 800;
+  color: var(--color-brand-ink);
+}
+
+.kpiLabel {
+  display: block;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* Each section is a numbered card, like the owner's reference reports:
+   the number is a badge, the heading sits beside it. */
 .section {
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5);
   /* Keep a heading with the content it introduces. */
   break-inside: avoid;
 }
 
+.sectionHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.sectionNumber {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-brand-ink);
+  color: #fff;
+  font-weight: 800;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
 .sectionHeading {
-  margin: 0 0 var(--space-3);
-  padding-bottom: var(--space-1);
+  margin: 0;
   font-size: var(--text-lg);
   font-weight: 700;
   color: var(--color-brand-ink);
-  border-bottom: 1px solid var(--color-border);
 }
 
 /* Whatever the author typed, line breaks included. */
@@ -240,11 +360,28 @@
   margin-bottom: var(--space-5);
 }
 
+/* The signer's own signature image, above the name it belongs to. */
+.signatureImage {
+  display: block;
+  margin-inline: auto;
+  max-height: 72px;
+  max-width: 240px;
+  width: auto;
+  height: auto;
+}
+
 .signatureName {
   margin: 0;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.02em;
+}
+
+.signatureId,
+.signatureProvider {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
 }
 
 .signatureRole {

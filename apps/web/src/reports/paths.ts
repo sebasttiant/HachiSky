@@ -13,3 +13,10 @@ export function reportPath(id: string): string {
 export function reportImagePath(id: string): string {
   return `/api/reports/images/${encodeURIComponent(id)}`;
 }
+
+// The provider logo and signer signature printed on a report document.
+// Served by reports, not billing: billing's image route is administrators
+// only, while the author of a report must see their own letterhead.
+export function reportIdentityImagePath(id: string): string {
+  return `/api/reports/identity-images/${encodeURIComponent(id)}`;
+}

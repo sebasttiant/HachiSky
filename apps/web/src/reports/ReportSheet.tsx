@@ -1,6 +1,6 @@
 import { formatDate } from "../shared/format/date.ts";
 import type { ReportImageRecord } from "./images.ts";
-import { reportImagePath } from "./paths.ts";
+import { reportIdentityImagePath, reportImagePath } from "./paths.ts";
 import styles from "./ReportSheet.module.css";
 import type { ItemRecord, ReportRecord, SectionRecord } from "./service.ts";
 import {
@@ -22,6 +22,34 @@ function period(report: ReportRecord) {
   return periodStart
     ? `Desde ${formatDate(periodStart)}`
     : `Hasta ${formatDate(periodEnd as string)}`;
+}
+
+/** "08:30" → minutes since midnight; anything else does not count. */
+function minutesOf(value: string | null): number | null {
+  if (!value) return null;
+  const match = /^(\d{2}):(\d{2})$/.exec(value);
+  if (!match) return null;
+  return Number(match[1]) * 60 + Number(match[2]);
+}
+
+/**
+ * The hours the recorded activities actually carry. An activity without
+ * both times contributes nothing: the document never invents a duration.
+ */
+function recordedHoursLabel(
+  activities: ReportRecord["activities"],
+): string | null {
+  let total = 0;
+  for (const activity of activities) {
+    const start = minutesOf(activity.startedAt);
+    const end = minutesOf(activity.endedAt);
+    if (start !== null && end !== null && end > start) total += end - start;
+  }
+  if (total === 0) return null;
+  const hours = total / 60;
+  return Number.isInteger(hours)
+    ? `${hours} h`
+    : `${hours.toFixed(1).replace(".", ",")} h`;
 }
 
 function StatusChip({ status }: { status: ItemRecord["status"] }) {
@@ -161,13 +189,20 @@ function Figures({ images }: { images: readonly ReportImageRecord[] }) {
 function Section({
   section,
   images,
+  number,
 }: {
   section: SectionRecord;
   images: readonly ReportImageRecord[];
+  number: number;
 }) {
   return (
     <section className={styles.section}>
-      <h2 className={styles.sectionHeading}>{section.heading}</h2>
+      <div className={styles.sectionHead}>
+        <span className={styles.sectionNumber} aria-hidden="true">
+          {String(number).padStart(2, "0")}
+        </span>
+        <h2 className={styles.sectionHeading}>{section.heading}</h2>
+      </div>
       {section.kind === "prose" ? (
         <p className={styles.body}>{section.body}</p>
       ) : section.kind === "findings" ? (
@@ -222,11 +257,39 @@ export function ReportSheet({
     hasContent(section, bySection.get(section.key) ?? []),
   );
 
+  // The two follow_up kinds the owner writes: detailed carries the recorded
+  // activities with their dates, times and hours; summary ("solo datos")
+  // prints the report facts and its sections, nothing counted.
+  const isFollowUp = report.type === "follow_up";
+  const detailed = !isFollowUp || report.detailLevel === "detailed";
+  const showActivities = detailed && report.activities.length > 0;
+  const hoursLabel =
+    isFollowUp && detailed ? recordedHoursLabel(report.activities) : null;
+
   return (
     <article className={styles.sheet}>
       <div className={styles.worlds} aria-hidden="true" />
 
-      <header className={styles.top}>
+      {/* The provider's letterhead: its logo and name, never the platform's.
+          Change the provider and the document changes its letterhead. */}
+      <header className={styles.brand}>
+        <div className={styles.brandIdentity}>
+          {report.provider?.logoImageId ? (
+            // biome-ignore lint/performance/noImgElement: private logo served by an authenticated route; next/image would proxy it through the public optimizer
+            <img
+              className={styles.brandLogo}
+              src={reportIdentityImagePath(report.provider.logoImageId)}
+              alt={report.provider.name}
+            />
+          ) : null}
+          {report.provider ? (
+            <p className={styles.brandName}>{report.provider.name}</p>
+          ) : null}
+        </div>
+        <p className={styles.brandMeta}>{REPORT_TYPE_LABEL[report.type]}</p>
+      </header>
+
+      <div className={styles.hero}>
         <p className={styles.kind}>{REPORT_TYPE_LABEL[report.type]}</p>
         <h1 className={styles.title}>{report.title}</h1>
         <dl className={styles.facts}>
@@ -241,10 +304,14 @@ export function ReportSheet({
             </div>
           ) : null}
           <div>
+            <dt>Autor</dt>
+            <dd>{report.authorName}</dd>
+          </div>
+          <div>
             <dt>Estado</dt>
             <dd>
               {report.status === "issued" ? (
-                <span className={styles.draft}>
+                <span className={styles.stateIssued}>
                   Emitido
                   {report.issuedAt
                     ? ` · ${formatDate(report.issuedAt.toISOString().slice(0, 10))}`
@@ -256,62 +323,108 @@ export function ReportSheet({
             </dd>
           </div>
         </dl>
-      </header>
+      </div>
 
-      {sections.length === 0 ? (
+      {isFollowUp && detailed && report.activities.length > 0 ? (
+        <div className={styles.kpis}>
+          <div className={styles.kpi}>
+            <span className={styles.kpiValue}>{report.activities.length}</span>
+            <span className={styles.kpiLabel}>Actividades registradas</span>
+          </div>
+          {hoursLabel ? (
+            <div className={styles.kpi}>
+              <span className={styles.kpiValue}>{hoursLabel}</span>
+              <span className={styles.kpiLabel}>Horas registradas</span>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {sections.length === 0 && !showActivities ? (
         <p className={styles.empty}>
           Este informe todavía no tiene contenido. Llena sus secciones y vuelve
           a verlo.
         </p>
       ) : (
-        sections.map((section) => (
-          <Section
-            key={section.key}
-            section={section}
-            images={bySection.get(section.key) ?? []}
-          />
-        ))
-      )}
+        <>
+          {sections.map((section, index) => (
+            <Section
+              key={section.key}
+              section={section}
+              number={index + 1}
+              images={bySection.get(section.key) ?? []}
+            />
+          ))}
 
-      {report.activities.length > 0 ? (
-        <section className={styles.section}>
-          <h2 className={styles.sectionHeading}>Actividades registradas</h2>
-          {/* Read from Trabajo, never typed here: the report describes work
-              somebody recorded. */}
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th scope="col">Fecha</th>
-                <th scope="col">Horario</th>
-                <th scope="col">Actividad</th>
-                <th scope="col">Resultado</th>
-              </tr>
-            </thead>
-            <tbody>
-              {report.activities.map((activity) => (
-                <tr key={activity.id}>
-                  <td>{formatDate(activity.performedOn)}</td>
-                  <td>
-                    {activity.startedAt && activity.endedAt
-                      ? `${activity.startedAt}–${activity.endedAt}`
-                      : "Sin horario"}
-                  </td>
-                  <td>
-                    <strong>{activity.title}</strong>
-                  </td>
-                  <td>{activity.outcome}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
-      ) : null}
+          {showActivities ? (
+            <section className={styles.section}>
+              <div className={styles.sectionHead}>
+                <span className={styles.sectionNumber} aria-hidden="true">
+                  {String(sections.length + 1).padStart(2, "0")}
+                </span>
+                <h2 className={styles.sectionHeading}>
+                  Actividades registradas
+                </h2>
+              </div>
+              {/* Read from Trabajo, never typed here: the report describes
+                  work somebody recorded. */}
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th scope="col">Fecha</th>
+                    <th scope="col">Horario</th>
+                    <th scope="col">Actividad</th>
+                    <th scope="col">Resultado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {report.activities.map((activity) => (
+                    <tr key={activity.id}>
+                      <td>{formatDate(activity.performedOn)}</td>
+                      <td>
+                        {activity.startedAt && activity.endedAt
+                          ? `${activity.startedAt}–${activity.endedAt}`
+                          : "Sin horario"}
+                      </td>
+                      <td>
+                        <strong>{activity.title}</strong>
+                      </td>
+                      <td>{activity.outcome}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+          ) : null}
+        </>
+      )}
 
       <footer className={styles.bottom}>
         <div className={styles.signature}>
-          <p className={styles.signatureName}>{report.authorName}</p>
-          {report.authorJobTitle ? (
-            <p className={styles.signatureRole}>{report.authorJobTitle}</p>
+          {report.signer?.signatureImageId ? (
+            // biome-ignore lint/performance/noImgElement: private signature served by an authenticated route; next/image would proxy it through the public optimizer
+            <img
+              className={styles.signatureImage}
+              src={reportIdentityImagePath(report.signer.signatureImageId)}
+              alt={`Firma de ${report.signer.name}`}
+            />
+          ) : null}
+          <p className={styles.signatureName}>
+            {report.signer?.name ?? report.authorName}
+          </p>
+          {report.signer ? (
+            <p className={styles.signatureId}>
+              {report.signer.identificationType}{" "}
+              {report.signer.identificationNumber}
+            </p>
+          ) : null}
+          {report.signer?.jobTitle || report.authorJobTitle ? (
+            <p className={styles.signatureRole}>
+              {report.signer?.jobTitle ?? report.authorJobTitle}
+            </p>
+          ) : null}
+          {report.provider ? (
+            <p className={styles.signatureProvider}>{report.provider.name}</p>
           ) : null}
         </div>
         <p className={styles.generated}>

@@ -79,10 +79,13 @@ above. It did not rerun the suite itself.
     (Detallado / Solo datos). Option lists are reports-scoped (active profiles, name only) because
     billing's lists are admin-only while staff write reports. The issue card names who it goes
     out as, or says what is missing.
-  - [ ] R8-S3: the document at the reference bar — provider logo header, hero facts, numbered
-    section cards, notes/tables/figures as in the references, signature block with the signer's
-    signature image; `detailed` follow_up prints activities with date, start/end times and hours
-    plus figures counted from the recorded activities only; `summary` prints facts only.
+  - [x] R8-S3: the document at the reference bar — provider logo header, hero facts, numbered
+    section cards, tables/figures as before, signature block with the signer's signature image
+    and identification; `detailed` follow_up prints a KPI strip (activity count, recorded hours)
+    and the activities table with date, start/end times and outcome — figures counted from the
+    recorded activities only; `summary` prints facts and sections only. Logo/signature bytes are
+    served by a reports-scoped route (`/api/reports/identity-images/[id]`, only for a report the
+    actor can reach) because billing's image route is administrators-only.
 
 ## R5-S2 evidence
 

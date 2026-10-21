@@ -267,6 +267,96 @@ describe("report document", () => {
     assert.doesNotMatch(html, /Actividades registradas/);
   });
 
+  it("goes out under its provider, with its logo and the signer's signature", async () => {
+    const html = await render(
+      report({
+        provider: {
+          name: "Proveedor Demo S.A.S.",
+          logoImageId: "22222222-2222-4222-8222-222222222222",
+        },
+        signer: {
+          name: "Firmante Demo",
+          identificationType: "CC",
+          identificationNumber: "1000000009",
+          jobTitle: "Representante legal",
+          signatureImageId: "33333333-3333-4333-8333-333333333333",
+        },
+        sections: [section({ body: "Todo operativo." })],
+      }),
+    );
+    assert.match(html, /Proveedor Demo S\.A\.S\./);
+    assert.match(
+      html,
+      /\/api\/reports\/identity-images\/22222222-2222-4222-8222-222222222222/,
+    );
+    assert.match(
+      html,
+      /\/api\/reports\/identity-images\/33333333-3333-4333-8333-333333333333/,
+    );
+    assert.match(html, /Firmante Demo/);
+    assert.match(html, /1000000009/);
+    assert.match(html, /Representante legal/);
+  });
+
+  it("counts only recorded work in the detailed follow_up figures", async () => {
+    const html = await render(
+      report({
+        detailLevel: "detailed",
+        activities: [
+          {
+            id: "a1",
+            title: "Revisión de respaldos",
+            clientName: "Cliente Informes",
+            performedOn: "2026-10-05",
+            startedAt: "08:30",
+            endedAt: "12:00",
+            status: "completed",
+            outcome: "Respaldos verificados.",
+          },
+          {
+            id: "a2",
+            title: "Visita sin horario",
+            clientName: "Cliente Informes",
+            performedOn: "2026-10-06",
+            startedAt: null,
+            endedAt: null,
+            status: "completed",
+            outcome: null,
+          },
+        ],
+      }),
+    );
+    assert.match(html, /Horas registradas/);
+    assert.match(html, /3,5 h/);
+    assert.match(html, /Actividades registradas/);
+  });
+
+  it("prints facts only in the summary follow_up, no activities, no hours", async () => {
+    const html = await render(
+      report({
+        detailLevel: "summary",
+        sections: [section({ body: "Todo operativo." })],
+        activities: [
+          {
+            id: "a1",
+            title: "Revisión de respaldos",
+            clientName: "Cliente Informes",
+            performedOn: "2026-10-05",
+            startedAt: "08:30",
+            endedAt: "12:00",
+            status: "completed",
+            outcome: "Respaldos verificados.",
+          },
+        ],
+      }),
+    );
+    assert.match(html, /Cliente Informes/);
+    assert.match(html, /Todo operativo\./);
+    assert.doesNotMatch(html, /Actividades registradas/);
+    assert.doesNotMatch(html, /Horas registradas/);
+    assert.doesNotMatch(html, /Revisión de respaldos/);
+  });
+
   it("omits the period when the report has none", async () => {
     const html = await render(report({ periodStart: null, periodEnd: null }));
     assert.doesNotMatch(html, /Período/);

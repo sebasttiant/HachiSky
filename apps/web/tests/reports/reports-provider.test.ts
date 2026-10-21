@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { after, before, beforeEach, describe, it } from "node:test";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { createIssuer } from "../../src/billing/issuers.ts";
@@ -7,6 +8,7 @@ import { closeDb, getPool } from "../../src/db/client.ts";
 import { runMigrations } from "../../src/db/migrate.ts";
 import * as schema from "../../src/db/schema/index.ts";
 import { assertTestDatabase } from "../../src/db/test-guard.ts";
+import { readIdentityImageBytes } from "../../src/reports/images.ts";
 import {
   createReport,
   getReport,
@@ -197,6 +199,72 @@ describe("report provider, signer and detail level", () => {
     assert.deepEqual(
       (await listProviderOptions(deps, staff)).map((option) => option.label),
       ["Proveedor Demo S.A.S."],
+    );
+  });
+
+  it("serves the signer's signature only through a reachable report", async () => {
+    const other = await createTestUser(auth, "other@example.test", {
+      role: "staff",
+    });
+    const otherStaff: ReportActor = {
+      id: other.id,
+      role: "staff",
+      ipAddress: null,
+      userAgent: null,
+    };
+    const data = Buffer.from("fake-signature-png");
+    const [image] = await deps.db
+      .insert(schema.billingImage)
+      .values({
+        purpose: "signature",
+        signerProfileId: signerId,
+        data,
+        sha256: createHash("sha256").update(data).digest("hex"),
+        byteSize: data.byteLength,
+        width: 400,
+        height: 120,
+        createdBy: admin.id,
+      })
+      .returning({ id: schema.billingImage.id });
+    if (!image) throw new Error("billing image insert returned no row");
+    await pool.query(
+      "update signer_profile set current_signature_image_id = $1 where id = $2",
+      [image.id, signerId],
+    );
+    await createReport(deps, staff, {
+      ...base,
+      clientId,
+      issuerProfileId: issuerId,
+      signerProfileId: signerId,
+    });
+
+    const served = await readIdentityImageBytes(deps, staff, image.id);
+    assert.equal(served.byteSize, data.byteLength);
+    // A colleague's letterhead is not theirs to read.
+    await assert.rejects(
+      readIdentityImageBytes(deps, otherStaff, image.id),
+      (error: unknown) =>
+        error instanceof ReportRuleError && error.code === "image_not_found",
+    );
+    // And an image no reachable report uses stays invisible to the author.
+    const [orphan] = await deps.db
+      .insert(schema.billingImage)
+      .values({
+        purpose: "signature",
+        signerProfileId: signerId,
+        data,
+        sha256: createHash("sha256").update(data).digest("hex"),
+        byteSize: data.byteLength,
+        width: 400,
+        height: 120,
+        createdBy: admin.id,
+      })
+      .returning({ id: schema.billingImage.id });
+    if (!orphan) throw new Error("billing image insert returned no row");
+    await assert.rejects(
+      readIdentityImageBytes(deps, staff, orphan.id),
+      (error: unknown) =>
+        error instanceof ReportRuleError && error.code === "image_not_found",
     );
   });
 

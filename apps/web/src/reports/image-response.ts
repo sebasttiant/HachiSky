@@ -1,4 +1,4 @@
-import { readImageBytes } from "./images.ts";
+import { readIdentityImageBytes, readImageBytes } from "./images.ts";
 import {
   type ReportActor,
   type ReportDeps,
@@ -38,6 +38,36 @@ export async function reportImageResponse(
       if (error.code === "forbidden") return denied(403);
       // Unreachable, absent, and an id that cannot name a row at all: the
       // service already answers all three the same way.
+      return denied(404);
+    }
+    throw error;
+  }
+  return new Response(new Uint8Array(image.data), {
+    status: 200,
+    headers: {
+      ...PRIVATE_HEADERS,
+      "Content-Type": "image/png",
+      "Content-Length": String(image.data.length),
+      "Content-Disposition": 'inline; filename="imagen.png"',
+    },
+  });
+}
+
+// Same contract as reportImageResponse, for the provider logo and signer
+// signature the document prints: served only when the image belongs to a
+// report this actor may reach (see readIdentityImageBytes).
+export async function reportIdentityImageResponse(
+  deps: ReportDeps,
+  actor: ReportActor | null,
+  id: string,
+): Promise<Response> {
+  let image: Awaited<ReturnType<typeof readIdentityImageBytes>>;
+  try {
+    image = await readIdentityImageBytes(deps, actor, id);
+  } catch (error) {
+    if (error instanceof ReportRuleError) {
+      if (error.code === "unauthenticated") return denied(401);
+      if (error.code === "forbidden") return denied(403);
       return denied(404);
     }
     throw error;

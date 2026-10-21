@@ -1,5 +1,10 @@
 import { and, asc, eq, sql } from "drizzle-orm";
 import {
+  billingImage,
+  issuerProfile,
+  signerProfile,
+} from "../db/schema/billing.ts";
+import {
   report,
   reportImage,
   reportIssuedImage,
@@ -308,6 +313,65 @@ export async function readImageBytes(
       .where(eq(reportImage.id, imageId));
     if (!row) throw new ReportRuleError("image_not_found");
 
+    return row;
+  });
+}
+
+/**
+ * The provider logo or signer signature a report's document prints.
+ *
+ * Those bytes live in billing_image, whose own route is administrators
+ * only — but a staff author must see the letterhead of their own document.
+ * So reports serve them under the report's reach: the image must be the
+ * current logo/signature of a reachable report's provider/signer, or one
+ * frozen into a reachable report's issued version. Anything else — another
+ * author's letterhead included — answers as if it did not exist.
+ */
+export async function readIdentityImageBytes(
+  deps: ReportDeps,
+  rawActor: ReportActor | null | undefined,
+  imageId: string,
+): Promise<{ data: Buffer; sha256: string; byteSize: number }> {
+  const actor = authorize(rawActor, "view_reports");
+  assertId(imageId, "image_not_found");
+
+  return deps.db.transaction(async (tx) => {
+    const refs = await tx
+      .select({
+        authorUserId: report.authorUserId,
+        logoImageId: issuerProfile.currentLogoImageId,
+        signatureImageId: signerProfile.currentSignatureImageId,
+        issuedLogoImageId: reportIssuedVersion.providerLogoImageId,
+        issuedSignatureImageId: reportIssuedVersion.signerSignatureImageId,
+      })
+      .from(report)
+      .leftJoin(issuerProfile, eq(report.issuerProfileId, issuerProfile.id))
+      .leftJoin(signerProfile, eq(report.signerProfileId, signerProfile.id))
+      .leftJoin(
+        reportIssuedVersion,
+        eq(reportIssuedVersion.reportId, report.id),
+      );
+    const reachable = refs.some(
+      (ref) =>
+        canReachReport(actor.role, actor.id, ref.authorUserId) &&
+        [
+          ref.logoImageId,
+          ref.signatureImageId,
+          ref.issuedLogoImageId,
+          ref.issuedSignatureImageId,
+        ].includes(imageId),
+    );
+    if (!reachable) throw new ReportRuleError("image_not_found");
+
+    const [row] = await tx
+      .select({
+        data: billingImage.data,
+        sha256: billingImage.sha256,
+        byteSize: billingImage.byteSize,
+      })
+      .from(billingImage)
+      .where(eq(billingImage.id, imageId));
+    if (!row) throw new ReportRuleError("image_not_found");
     return row;
   });
 }
