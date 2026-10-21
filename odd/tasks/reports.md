@@ -63,6 +63,26 @@ above. It did not rerun the suite itself.
   - [x] R6-S1: storage and service — migration 0013 freezes sections, items, figures, activities and the author snapshot into an issued version; issuing is one-way, and an issued report refuses every edit. Reads and figure bytes come from the frozen copy. Commit `4175d38`.
   - [x] R6-S2: document and screens — the sheet states "Emitido" with its date instead of "Borrador", the list badges follow the state, the detail page offers Emitir while it is a draft and replaces every editor with the issued notice once it went out.
 - [ ] R7: AI assistance with the user's own model. Blocked on a product decision, see below.
+- [ ] R8: provider identity and presentation bar for reports (owner, 2026-10-21, verbatim):
+  "pero recuerda el informe si hago de otra empresa yo puedo cambiar logo y firma soy claro eso son los se seguimientos",
+  corrected to providers, verbatim: "no por empresa si no por proveedor puede hacerlos desde ilasesorias o desde converfente digital",
+  and on the two follow-up kinds, verbatim: "tener la dos opciones con fehca hora y demas solo datos es decir puedo hacer lo 2 tipos de informes de seguimiento detallado con horas y demas y lo otro soy claro".
+  Canonical follow-up references named by the owner (structure only; no client content copied):
+  `Informe_Actividad_DISPRESCO_7_8Oct2026_PBS_PVE2_CentroDatos_ESTRUCTURADO_v2.html` and
+  `Informe_Actividad_Soporte_VM100_DISPRESCO_25Sep2026_v2.html` (both in the DISPRESCO working folder).
+  - [x] R8-S1: storage and service — migration 0015; a report names its provider (`issuer_profile`) and signer
+    (`signer_profile`) reusing the billing profiles, plus `detail_level` (`detailed` | `summary`);
+    issuing requires both and freezes provider name, logo image, signer identity and signature
+    image into the issued version (billing images are immutable, so ids suffice). Unknown or
+    inactive profiles are field errors; issuing without them is `provider_incomplete`.
+  - [x] R8-S2: screens — create/edit choose provider, signer and, for follow_up, the detail level
+    (Detallado / Solo datos). Option lists are reports-scoped (active profiles, name only) because
+    billing's lists are admin-only while staff write reports. The issue card names who it goes
+    out as, or says what is missing.
+  - [ ] R8-S3: the document at the reference bar — provider logo header, hero facts, numbered
+    section cards, notes/tables/figures as in the references, signature block with the signer's
+    signature image; `detailed` follow_up prints activities with date, start/end times and hours
+    plus figures counted from the recorded activities only; `summary` prints facts only.
 
 ## R5-S2 evidence
 

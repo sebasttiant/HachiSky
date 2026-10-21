@@ -92,6 +92,7 @@ const RULE_STATUS: Record<ReportRuleCode, number> = {
   image_limit_reached: 409,
   already_issued: 409,
   report_issued: 409,
+  provider_incomplete: 409,
 };
 
 function json(status: number, body: Record<string, unknown>): Response {

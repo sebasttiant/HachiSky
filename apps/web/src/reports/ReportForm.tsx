@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import type { ActionState } from "../users/action-state.ts";
 import styles from "../users/admin.module.css";
 import { FieldError, FormMessage, fieldProps } from "../users/FormMessage.tsx";
@@ -19,12 +20,20 @@ export interface ReportClientOption {
   label: string;
 }
 
+export interface ReportIdentityOption {
+  id: string;
+  label: string;
+}
+
 export interface ReportFormValues {
   type: ReportType;
   clientId: string;
   periodStart: string | null;
   periodEnd: string | null;
   title: string;
+  issuerProfileId: string | null;
+  signerProfileId: string | null;
+  detailLevel: "detailed" | "summary";
 }
 
 // Shared by new and edit. On edit the type is fixed: it decided which
@@ -32,6 +41,8 @@ export interface ReportFormValues {
 export function ReportForm({
   action,
   clients,
+  providers,
+  signers,
   values,
   lockType,
   submitLabel,
@@ -39,6 +50,8 @@ export function ReportForm({
 }: {
   action: (previous: ActionState, formData: FormData) => Promise<ActionState>;
   clients: readonly ReportClientOption[];
+  providers: readonly ReportIdentityOption[];
+  signers: readonly ReportIdentityOption[];
   values?: ReportFormValues;
   lockType?: boolean;
   submitLabel: string;
@@ -46,6 +59,8 @@ export function ReportForm({
 }) {
   const { state, pending, onSubmit } = useFormAction(action);
   const missingClients = clients.length === 0;
+  // The detail level only exists for follow_up, so it follows the type.
+  const [type, setType] = useState<string>(values?.type ?? "");
 
   return (
     <form className={styles.form} onSubmit={onSubmit} noValidate>
@@ -78,6 +93,7 @@ export function ReportForm({
                 className={styles.select}
                 defaultValue={values?.type ?? ""}
                 required
+                onChange={(event) => setType(event.target.value)}
                 {...fieldProps(state, "type")}
               >
                 <option value="">Elige un tipo</option>
@@ -158,6 +174,81 @@ export function ReportForm({
           {...fieldProps(state, "title")}
         />
         <FieldError state={state} name="title" />
+      </div>
+
+      <div className={styles.formGrid}>
+        <div className={styles.field}>
+          <label htmlFor="report-provider">Proveedor que emite</label>
+          <select
+            id="report-provider"
+            name="issuerProfileId"
+            className={styles.select}
+            defaultValue={values?.issuerProfileId ?? ""}
+            {...fieldProps(state, "issuerProfileId")}
+          >
+            <option value="">Sin definir todavía</option>
+            {providers.map((provider) => (
+              <option key={provider.id} value={provider.id}>
+                {provider.label}
+              </option>
+            ))}
+          </select>
+          <span className={styles.help}>
+            El documento sale con el logo de este proveedor. Para emitir el
+            informe es obligatorio elegirlo.
+          </span>
+          <FieldError state={state} name="issuerProfileId" />
+        </div>
+
+        <div className={styles.field}>
+          <label htmlFor="report-signer">Firmante</label>
+          <select
+            id="report-signer"
+            name="signerProfileId"
+            className={styles.select}
+            defaultValue={values?.signerProfileId ?? ""}
+            {...fieldProps(state, "signerProfileId")}
+          >
+            <option value="">Sin definir todavía</option>
+            {signers.map((signer) => (
+              <option key={signer.id} value={signer.id}>
+                {signer.label}
+              </option>
+            ))}
+          </select>
+          <span className={styles.help}>
+            Su firma y sus datos cierran el documento. También es obligatorio
+            para emitir.
+          </span>
+          <FieldError state={state} name="signerProfileId" />
+        </div>
+
+        {type === "follow_up" ? (
+          <div className={styles.field}>
+            <label htmlFor="report-detail">Nivel de detalle</label>
+            <select
+              id="report-detail"
+              name="detailLevel"
+              className={styles.select}
+              defaultValue={values?.detailLevel ?? "detailed"}
+              {...fieldProps(state, "detailLevel")}
+            >
+              <option value="detailed">
+                Detallado: actividades con fecha, hora y horas
+              </option>
+              <option value="summary">
+                Solo datos: sin detalle de actividades ni horas
+              </option>
+            </select>
+            <FieldError state={state} name="detailLevel" />
+          </div>
+        ) : (
+          <input
+            type="hidden"
+            name="detailLevel"
+            value={values?.detailLevel ?? "detailed"}
+          />
+        )}
       </div>
 
       {lockType ? null : (

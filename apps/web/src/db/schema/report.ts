@@ -13,6 +13,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { user } from "./auth.ts";
+import { billingImage, issuerProfile, signerProfile } from "./billing.ts";
 import { bytea } from "./bytea.ts";
 import { client } from "./client.ts";
 import { workActivity } from "./work.ts";
@@ -49,6 +50,21 @@ export const report = pgTable(
     authorUserId: text("author_user_id")
       .notNull()
       .references(() => user.id, { onDelete: "restrict" }),
+    // The provider the document goes out under and who signs for it — the
+    // same profiles billing keeps, so a report can leave as IL Asesorías or
+    // as Converfente Digital with that provider's logo and signature.
+    // Optional while drafting; issuing requires both and freezes them.
+    issuerProfileId: uuid("issuer_profile_id").references(
+      () => issuerProfile.id,
+      { onDelete: "restrict" },
+    ),
+    signerProfileId: uuid("signer_profile_id").references(
+      () => signerProfile.id,
+      { onDelete: "restrict" },
+    ),
+    // Only follow_up reads this: 'detailed' prints the activities with
+    // dates, times and hours; 'summary' prints the report facts only.
+    detailLevel: text("detail_level").notNull().default("detailed"),
     createdAt: timestamptz("created_at").defaultNow().notNull(),
     updatedAt: timestamptz("updated_at").defaultNow().notNull(),
     createdBy: text("created_by")
@@ -66,6 +82,10 @@ export const report = pgTable(
       sql`${table.type} in ('follow_up', 'diagnostic', 'general', 'infrastructure', 'manual')`,
     ),
     check("report_status_check", sql`${table.status} in ('draft', 'issued')`),
+    check(
+      "report_detail_level_check",
+      sql`${table.detailLevel} in ('detailed', 'summary')`,
+    ),
     check(
       "report_title_check",
       sql`btrim(${table.title}) <> '' and char_length(${table.title}) <= 200`,
@@ -288,10 +308,31 @@ export const reportIssuedVersion = pgTable(
     // The snapshot: who signed, under the name and title held that day.
     authorName: text("author_name").notNull(),
     authorJobTitle: text("author_job_title"),
+    // The provider identity as it stood that day. The image ids point at
+    // billing_image rows, which are immutable versions, so the logo and
+    // signature the client received cannot be swapped afterwards.
+    providerName: text("provider_name"),
+    providerLogoImageId: uuid("provider_logo_image_id").references(
+      () => billingImage.id,
+      { onDelete: "restrict" },
+    ),
+    signerName: text("signer_name"),
+    signerIdentificationType: text("signer_identification_type"),
+    signerIdentificationNumber: text("signer_identification_number"),
+    signerJobTitle: text("signer_job_title"),
+    signerSignatureImageId: uuid("signer_signature_image_id").references(
+      () => billingImage.id,
+      { onDelete: "restrict" },
+    ),
+    detailLevel: text("detail_level").notNull().default("detailed"),
   },
   (table) => [
     unique("report_issued_version_report_unique").on(table.reportId),
     check("report_issued_version_check", sql`${table.version} >= 1`),
+    check(
+      "report_issued_detail_level_check",
+      sql`${table.detailLevel} in ('detailed', 'summary')`,
+    ),
     check(
       "report_issued_title_check",
       sql`btrim(${table.title}) <> '' and char_length(${table.title}) <= 200`,

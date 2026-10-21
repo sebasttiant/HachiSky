@@ -31,6 +31,8 @@ export const REPORT_RULE_MESSAGES: Record<ReportRuleCode, string> = {
   image_not_found: "Esa imagen ya no está disponible.",
   image_limit_reached: "Esa sección ya alcanzó el límite de imágenes.",
   already_issued: "Este informe ya fue emitido.",
+  provider_incomplete:
+    "Para emitir, el informe necesita el proveedor y el firmante: elige de qué proveedor sale y quién lo firma.",
   report_issued: "Este informe ya fue emitido y no se puede modificar.",
 };
 
@@ -41,6 +43,9 @@ const REPORT_FIELDS = [
   "periodStart",
   "periodEnd",
   "title",
+  "issuerProfileId",
+  "signerProfileId",
+  "detailLevel",
 ] as const;
 const SECTION_FIELDS = ["heading", "body"] as const;
 const IMAGE_FIELDS = ["title", "caption"] as const;

@@ -5,6 +5,10 @@ import { listClients } from "../../../../src/clients/service.ts";
 import { getDb } from "../../../../src/db/client.ts";
 import { createReportAction } from "../../../../src/reports/actions.ts";
 import { ReportForm } from "../../../../src/reports/ReportForm.tsx";
+import {
+  listProviderOptions,
+  listSignerOptions,
+} from "../../../../src/reports/service.ts";
 import { PageHeader } from "../../../../src/shell/PageHeader.tsx";
 import styles from "../../../../src/users/admin.module.css";
 import { collectClientPages } from "../../../../src/work/client-options.ts";
@@ -28,6 +32,10 @@ export default async function NewReportPage() {
     id: client.id,
     label: `${client.name} · ${client.identificationType} ${client.identificationNumber}`,
   }));
+  const [providers, signers] = await Promise.all([
+    listProviderOptions(deps, actor),
+    listSignerOptions(deps, actor),
+  ]);
 
   return (
     <div className="container">
@@ -46,6 +54,8 @@ export default async function NewReportPage() {
         <ReportForm
           action={createReportAction}
           clients={clients}
+          providers={providers}
+          signers={signers}
           submitLabel="Crear informe"
           pendingLabel="Creando…"
         />

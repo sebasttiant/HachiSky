@@ -33,12 +33,23 @@ export const REPORT_LIMITS = {
 
 export type ReportFieldErrors = Record<string, string>;
 
+export type DetailLevel = "detailed" | "summary";
+
 export interface ReportInput {
   type: ReportType;
   clientId: string;
   periodStart: string | null;
   periodEnd: string | null;
   title: string;
+  // The provider the document goes out under (IL Asesorías, Converfente
+  // Digital, …) and who signs for it. Both reuse the billing profiles; the
+  // service refuses unknown or inactive ones. Optional while drafting,
+  // required to issue.
+  issuerProfileId: string | null;
+  signerProfileId: string | null;
+  // Only follow_up reads this: `detailed` prints the activities with their
+  // dates, times and hours; `summary` prints the report facts only.
+  detailLevel: DetailLevel;
 }
 
 export interface SectionInput {
@@ -113,6 +124,24 @@ export function validateReport(raw: unknown): Validated<ReportInput> {
       "El fin del período no puede ser anterior al inicio.";
   }
 
+  const issuerProfileId = optionalText(input.issuerProfileId);
+  if (issuerProfileId !== null && !UUID.test(issuerProfileId))
+    fieldErrors.issuerProfileId = "Elige un proveedor válido.";
+
+  const signerProfileId = optionalText(input.signerProfileId);
+  if (signerProfileId !== null && !UUID.test(signerProfileId))
+    fieldErrors.signerProfileId = "Elige un firmante válido.";
+
+  const detailLevelRaw = optionalText(input.detailLevel);
+  const detailLevel: DetailLevel =
+    detailLevelRaw === "summary" ? "summary" : "detailed";
+  if (
+    detailLevelRaw !== null &&
+    detailLevelRaw !== "detailed" &&
+    detailLevelRaw !== "summary"
+  )
+    fieldErrors.detailLevel = "Elige el nivel de detalle.";
+
   if (Object.keys(fieldErrors).length > 0) return { ok: false, fieldErrors };
   return {
     ok: true,
@@ -122,6 +151,9 @@ export function validateReport(raw: unknown): Validated<ReportInput> {
       periodStart,
       periodEnd,
       title,
+      issuerProfileId,
+      signerProfileId,
+      detailLevel,
     },
   };
 }

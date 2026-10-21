@@ -26,6 +26,8 @@ import { ReportForm } from "../../../../src/reports/ReportForm.tsx";
 import { SectionEditor } from "../../../../src/reports/SectionEditor.tsx";
 import {
   getReport,
+  listProviderOptions,
+  listSignerOptions,
   selectableActivities,
 } from "../../../../src/reports/service.ts";
 import {
@@ -69,6 +71,10 @@ export default async function ReportDetailPage({
   if (!clients.some((option) => option.id === report.clientId)) {
     clients.unshift({ id: report.clientId, label: report.clientName });
   }
+  const [providers, signers] = await Promise.all([
+    listProviderOptions(deps, actor),
+    listSignerOptions(deps, actor),
+  ]);
 
   // Only activities this author could open themselves.
   const available = await selectableActivities(deps, actor, report.clientId);
@@ -133,6 +139,8 @@ export default async function ReportDetailPage({
             <ReportForm
               action={updateReportAction.bind(null, report.id)}
               clients={clients}
+              providers={providers}
+              signers={signers}
               values={report}
               lockType
               submitLabel="Guardar cambios"
@@ -181,6 +189,17 @@ export default async function ReportDetailPage({
               las actividades y la firma de hoy — y ya no se podrá editar ni
               eliminar.
             </p>
+            {report.provider && report.signer ? (
+              <p className={styles.cardHint}>
+                Saldrá como <strong>{report.provider.name}</strong>, firmado por{" "}
+                <strong>{report.signer.name}</strong>.
+              </p>
+            ) : (
+              <p className={styles.cardHint}>
+                Todavía falta elegir el proveedor que emite y el firmante en los
+                datos del informe: sin ellos no se puede emitir.
+              </p>
+            )}
             <ConfirmAction
               action={issueReportAction.bind(null, report.id)}
               label="Emitir informe"

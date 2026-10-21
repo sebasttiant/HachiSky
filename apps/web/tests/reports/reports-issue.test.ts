@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { after, before, beforeEach, describe, it } from "node:test";
 import { drizzle } from "drizzle-orm/node-postgres";
+import { createIssuer } from "../../src/billing/issuers.ts";
+import { createSigner } from "../../src/billing/signers.ts";
 import { closeDb, getPool } from "../../src/db/client.ts";
 import { runMigrations } from "../../src/db/migrate.ts";
 import * as schema from "../../src/db/schema/index.ts";
@@ -48,8 +50,11 @@ let staff: ReportActor;
 let otherStaff: ReportActor;
 let staffUserId: string;
 let clientId: string;
+let issuerId: string;
+let signerId: string;
 
-const TABLES = "report, work_activity, client";
+const TABLES =
+  "report, work_activity, client, issuer_profile, signer_profile, billing_image";
 
 const base = {
   type: "follow_up",
@@ -119,6 +124,29 @@ beforeEach(async () => {
     .returning({ id: schema.client.id });
   if (!row) throw new Error("client insert returned no row");
   clientId = row.id;
+  // Every report that will be issued needs its provider and signer.
+  issuerId = (
+    await createIssuer(deps, admin, {
+      legalName: "Proveedor Informes",
+      identificationType: "NIT",
+      identificationNumber: "900.000.777-7",
+      address: "Calle Falsa 123",
+      city: "Ciudad Demo",
+      phone: null,
+      email: "proveedor@example.test",
+      paymentTerms: null,
+    })
+  ).id;
+  signerId = (
+    await createSigner(deps, admin, {
+      fullName: "Firmante Informes",
+      identificationType: "CC",
+      identificationNumber: "1000000777",
+      jobTitle: "Representante legal",
+      email: "firmante@example.test",
+    })
+  ).id;
+  await pool.query("truncate table audit_log");
 });
 
 after(async () => {
@@ -129,7 +157,12 @@ after(async () => {
 describe("issuing a report", () => {
   it("freezes activities, author and title as they were on the day", async () => {
     const activityId = await makeActivity(staff, "Revisión inicial");
-    const id = await createReport(deps, staff, { ...base, clientId });
+    const id = await createReport(deps, staff, {
+      ...base,
+      clientId,
+      issuerProfileId: issuerId,
+      signerProfileId: signerId,
+    });
     await setActivities(deps, staff, id, [activityId]);
     const sectionKey = (await getReport(deps, staff, id))?.sections[0]
       ?.key as string;
@@ -181,7 +214,12 @@ describe("issuing a report", () => {
   });
 
   it("freezes figures: the issued bytes survive losing the draft figure", async () => {
-    const id = await createReport(deps, staff, { ...base, clientId });
+    const id = await createReport(deps, staff, {
+      ...base,
+      clientId,
+      issuerProfileId: issuerId,
+      signerProfileId: signerId,
+    });
     const report = await getReport(deps, staff, id);
     const sectionKey = report?.sections[0]?.key as string;
     const draftImageId = await addImage(
@@ -211,7 +249,12 @@ describe("issuing a report", () => {
   });
 
   it("refuses a second issue and every later edit", async () => {
-    const id = await createReport(deps, staff, { ...base, clientId });
+    const id = await createReport(deps, staff, {
+      ...base,
+      clientId,
+      issuerProfileId: issuerId,
+      signerProfileId: signerId,
+    });
     await issueReport(deps, staff, id);
 
     await assert.rejects(
@@ -220,7 +263,12 @@ describe("issuing a report", () => {
         error instanceof ReportRuleError && error.code === "already_issued",
     );
     await assert.rejects(
-      updateReport(deps, staff, id, { ...base, clientId }),
+      updateReport(deps, staff, id, {
+        ...base,
+        clientId,
+        issuerProfileId: issuerId,
+        signerProfileId: signerId,
+      }),
       (error: unknown) =>
         error instanceof ReportRuleError && error.code === "report_issued",
     );
@@ -254,7 +302,12 @@ describe("issuing a report", () => {
   });
 
   it("keeps the same reach rules and writes a content-free audit row", async () => {
-    const id = await createReport(deps, staff, { ...base, clientId });
+    const id = await createReport(deps, staff, {
+      ...base,
+      clientId,
+      issuerProfileId: issuerId,
+      signerProfileId: signerId,
+    });
     await assert.rejects(
       issueReport(deps, otherStaff, id),
       (error: unknown) =>

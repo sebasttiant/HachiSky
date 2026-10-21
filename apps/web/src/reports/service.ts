@@ -22,6 +22,7 @@ import {
 const {
   auditLog,
   client,
+  issuerProfile,
   report,
   reportActivity,
   reportImage,
@@ -32,6 +33,7 @@ const {
   reportIssuedItem,
   reportIssuedSection,
   reportIssuedVersion,
+  signerProfile,
   user,
   workActivity,
 } = schema;
@@ -70,7 +72,8 @@ export type ReportRuleCode =
   | "image_not_found"
   | "image_limit_reached"
   | "already_issued"
-  | "report_issued";
+  | "report_issued"
+  | "provider_incomplete";
 
 export class ReportRuleError extends Error {
   readonly code: ReportRuleCode;
@@ -129,6 +132,19 @@ export interface LinkedActivity {
   outcome: string | null;
 }
 
+export interface ReportProvider {
+  name: string;
+  logoImageId: string | null;
+}
+
+export interface ReportSigner {
+  name: string;
+  identificationType: string;
+  identificationNumber: string;
+  jobTitle: string | null;
+  signatureImageId: string | null;
+}
+
 export interface ReportRecord extends ReportSummary {
   createdBy: string;
   updatedBy: string;
@@ -136,6 +152,13 @@ export interface ReportRecord extends ReportSummary {
   // issued, the name and title frozen on the day it went out.
   authorName: string;
   authorJobTitle: string | null;
+  // The provider the document goes out under and who signs for it. Read
+  // live from the billing profiles while drafting; frozen at issue.
+  issuerProfileId: string | null;
+  signerProfileId: string | null;
+  provider: ReportProvider | null;
+  signer: ReportSigner | null;
+  detailLevel: "detailed" | "summary";
   // Set only once issued: the preserved version this record was read from.
   issuedAt: Date | null;
   issuedVersion: number | null;
@@ -186,6 +209,40 @@ async function assertClientExists(tx: Tx, clientId: string) {
     .where(eq(client.id, clientId))
     .for("share");
   if (!row) throw new ReportRuleError("client_not_found");
+}
+
+// The provider and the signer are chosen from the billing profiles. An id
+// that names nothing — or a profile since deactivated — is refused as a
+// field error, never quietly stored: a document must not go out under a
+// provider the business no longer uses.
+async function assertProfilesUsable(
+  tx: Tx,
+  input: { issuerProfileId: string | null; signerProfileId: string | null },
+) {
+  if (input.issuerProfileId) {
+    const [row] = await tx
+      .select({ active: issuerProfile.active })
+      .from(issuerProfile)
+      .where(eq(issuerProfile.id, input.issuerProfileId))
+      .for("share");
+    if (!row?.active) {
+      throw new ReportValidationError({
+        issuerProfileId: "Elige un proveedor activo.",
+      });
+    }
+  }
+  if (input.signerProfileId) {
+    const [row] = await tx
+      .select({ active: signerProfile.active })
+      .from(signerProfile)
+      .where(eq(signerProfile.id, input.signerProfileId))
+      .for("share");
+    if (!row?.active) {
+      throw new ReportValidationError({
+        signerProfileId: "Elige un firmante activo.",
+      });
+    }
+  }
 }
 
 // Locks the report and refuses it unless the actor may reach it. Everything
@@ -241,6 +298,7 @@ export async function createReport(
 
   return deps.db.transaction(async (tx) => {
     await assertClientExists(tx, input.clientId);
+    await assertProfilesUsable(tx, input);
     const [row] = await tx
       .insert(report)
       .values({
@@ -251,6 +309,9 @@ export async function createReport(
         title: input.title,
         status: "draft",
         authorUserId: actor.id,
+        issuerProfileId: input.issuerProfileId,
+        signerProfileId: input.signerProfileId,
+        detailLevel: input.detailLevel,
         createdBy: actor.id,
         updatedBy: actor.id,
       })
@@ -315,6 +376,48 @@ export async function listReports(
   return rows.map((row) => ({ ...row, type: row.type as ReportType }));
 }
 
+export interface IdentityOption {
+  id: string;
+  label: string;
+}
+
+// The short lists the report form offers. Billing's own lists stay
+// admin-only (they expose the whole profile); a report author only needs
+// to pick which active provider the document goes out as and who signs it,
+// so this module reads exactly that and nothing more.
+export async function listProviderOptions(
+  deps: ReportDeps,
+  rawActor: ReportActor | null | undefined,
+): Promise<IdentityOption[]> {
+  authorize(rawActor, "view_reports");
+  const rows = await deps.db
+    .select({ id: issuerProfile.id, legalName: issuerProfile.legalName })
+    .from(issuerProfile)
+    .where(eq(issuerProfile.active, true))
+    .orderBy(asc(issuerProfile.legalName));
+  return rows.map((row) => ({ id: row.id, label: row.legalName }));
+}
+
+export async function listSignerOptions(
+  deps: ReportDeps,
+  rawActor: ReportActor | null | undefined,
+): Promise<IdentityOption[]> {
+  authorize(rawActor, "view_reports");
+  const rows = await deps.db
+    .select({
+      id: signerProfile.id,
+      fullName: signerProfile.fullName,
+      jobTitle: signerProfile.jobTitle,
+    })
+    .from(signerProfile)
+    .where(eq(signerProfile.active, true))
+    .orderBy(asc(signerProfile.fullName));
+  return rows.map((row) => ({
+    id: row.id,
+    label: `${row.fullName} · ${row.jobTitle}`,
+  }));
+}
+
 export async function getReport(
   deps: ReportDeps,
   rawActor: ReportActor | null | undefined,
@@ -333,6 +436,9 @@ export async function getReport(
       periodEnd: report.periodEnd,
       status: report.status,
       authorUserId: report.authorUserId,
+      issuerProfileId: report.issuerProfileId,
+      signerProfileId: report.signerProfileId,
+      detailLevel: report.detailLevel,
       createdAt: report.createdAt,
       updatedAt: report.updatedAt,
       createdBy: report.createdBy,
@@ -391,6 +497,24 @@ export async function getReport(
         periodEnd: version.periodEnd,
         authorName: version.authorName,
         authorJobTitle: version.authorJobTitle,
+        issuerProfileId: null,
+        signerProfileId: null,
+        provider: version.providerName
+          ? {
+              name: version.providerName,
+              logoImageId: version.providerLogoImageId,
+            }
+          : null,
+        signer: version.signerName
+          ? {
+              name: version.signerName,
+              identificationType: version.signerIdentificationType ?? "",
+              identificationNumber: version.signerIdentificationNumber ?? "",
+              jobTitle: version.signerJobTitle,
+              signatureImageId: version.signerSignatureImageId,
+            }
+          : null,
+        detailLevel: version.detailLevel as ReportRecord["detailLevel"],
         issuedAt: version.issuedAt,
         issuedVersion: version.version,
         sections: issuedSections.map((section) => ({
@@ -465,9 +589,53 @@ export async function getReport(
     .where(eq(reportActivity.reportId, id))
     .orderBy(asc(reportActivity.position));
 
+  // While drafting, the provider and signer are read live from their
+  // billing profiles, so fixing a logo or a signature fixes the draft.
+  let provider: ReportProvider | null = null;
+  if (row.issuerProfileId) {
+    const [issuer] = await deps.db
+      .select({
+        legalName: issuerProfile.legalName,
+        currentLogoImageId: issuerProfile.currentLogoImageId,
+      })
+      .from(issuerProfile)
+      .where(eq(issuerProfile.id, row.issuerProfileId));
+    if (issuer) {
+      provider = {
+        name: issuer.legalName,
+        logoImageId: issuer.currentLogoImageId,
+      };
+    }
+  }
+  let signer: ReportSigner | null = null;
+  if (row.signerProfileId) {
+    const [signerRow] = await deps.db
+      .select({
+        fullName: signerProfile.fullName,
+        identificationType: signerProfile.identificationType,
+        identificationNumber: signerProfile.identificationNumber,
+        jobTitle: signerProfile.jobTitle,
+        currentSignatureImageId: signerProfile.currentSignatureImageId,
+      })
+      .from(signerProfile)
+      .where(eq(signerProfile.id, row.signerProfileId));
+    if (signerRow) {
+      signer = {
+        name: signerRow.fullName,
+        identificationType: signerRow.identificationType,
+        identificationNumber: signerRow.identificationNumber,
+        jobTitle: signerRow.jobTitle,
+        signatureImageId: signerRow.currentSignatureImageId,
+      };
+    }
+  }
+
   return {
     ...row,
     type: row.type as ReportType,
+    provider,
+    signer,
+    detailLevel: row.detailLevel as ReportRecord["detailLevel"],
     issuedAt: null,
     issuedVersion: null,
     sections: sectionRows.map((section) => ({
@@ -524,9 +692,23 @@ export async function updateReport(
     if (input.clientId !== current.clientId) {
       await assertClientExists(tx, input.clientId);
     }
+    if (
+      input.issuerProfileId !== current.issuerProfileId ||
+      input.signerProfileId !== current.signerProfileId
+    ) {
+      await assertProfilesUsable(tx, input);
+    }
 
     const changed = (
-      ["clientId", "periodStart", "periodEnd", "title"] as const
+      [
+        "clientId",
+        "periodStart",
+        "periodEnd",
+        "title",
+        "issuerProfileId",
+        "signerProfileId",
+        "detailLevel",
+      ] as const
     ).filter((field) => input[field] !== current[field]);
     if (changed.length === 0) return;
 
@@ -537,6 +719,9 @@ export async function updateReport(
         periodStart: input.periodStart,
         periodEnd: input.periodEnd,
         title: input.title,
+        issuerProfileId: input.issuerProfileId,
+        signerProfileId: input.signerProfileId,
+        detailLevel: input.detailLevel,
         updatedAt: new Date(),
         updatedBy: actor.id,
       })
@@ -749,6 +934,31 @@ export async function issueReport(
       .where(eq(client.id, current.clientId));
     if (!author || !clientRow) throw new ReportRuleError("not_found");
 
+    // A document that goes to a client carries who it goes out as: the
+    // provider's logo and the signer's signature are part of the document,
+    // not decoration, so issuing without them is refused.
+    if (!current.issuerProfileId || !current.signerProfileId) {
+      throw new ReportRuleError("provider_incomplete");
+    }
+    const [issuer] = await tx
+      .select({
+        legalName: issuerProfile.legalName,
+        currentLogoImageId: issuerProfile.currentLogoImageId,
+      })
+      .from(issuerProfile)
+      .where(eq(issuerProfile.id, current.issuerProfileId));
+    const [signerRow] = await tx
+      .select({
+        fullName: signerProfile.fullName,
+        identificationType: signerProfile.identificationType,
+        identificationNumber: signerProfile.identificationNumber,
+        jobTitle: signerProfile.jobTitle,
+        currentSignatureImageId: signerProfile.currentSignatureImageId,
+      })
+      .from(signerProfile)
+      .where(eq(signerProfile.id, current.signerProfileId));
+    if (!issuer || !signerRow) throw new ReportRuleError("not_found");
+
     const [version] = await tx
       .insert(reportIssuedVersion)
       .values({
@@ -763,6 +973,14 @@ export async function issueReport(
         authorUserId: current.authorUserId,
         authorName: author.name,
         authorJobTitle: author.jobTitle,
+        providerName: issuer.legalName,
+        providerLogoImageId: issuer.currentLogoImageId,
+        signerName: signerRow.fullName,
+        signerIdentificationType: signerRow.identificationType,
+        signerIdentificationNumber: signerRow.identificationNumber,
+        signerJobTitle: signerRow.jobTitle,
+        signerSignatureImageId: signerRow.currentSignatureImageId,
+        detailLevel: current.detailLevel,
       })
       .returning({
         id: reportIssuedVersion.id,
