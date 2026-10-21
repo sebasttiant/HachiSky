@@ -42,17 +42,23 @@ export default async function DraftDocumentPage({
       {/* Hidden when printing, so the sheet is the whole page. */}
       <div className={styles.toolbar}>
         <div className={styles.toolbarRow}>
-          <Link href={draftPath(id)} className={styles.back}>
-            ← Volver al borrador
-          </Link>
+          {view.status === "issued" ? (
+            <Link href="/billing" className={styles.back}>
+              ← Cuentas de cobro
+            </Link>
+          ) : (
+            <Link href={draftPath(id)} className={styles.back}>
+              ← Volver al borrador
+            </Link>
+          )}
           <PrintButton className={`${ui.button} ${ui.primary}`}>
             Exportar a PDF
           </PrintButton>
         </div>
         <p className={styles.hint}>
-          Así se verá la cuenta de cobro. Todavía no tiene número: se asigna al
-          emitirla. “Exportar a PDF” abre la impresión del navegador; elegí
-          “Guardar como PDF”.
+          {view.status === "issued"
+            ? `Cuenta de cobro emitida${view.number ? ` con el consecutivo ${view.number}` : ""}. “Exportar a PDF” abre la impresión del navegador; elegí “Guardar como PDF”.`
+            : "Así se verá la cuenta de cobro. Todavía no tiene número: se asigna al emitirla. “Exportar a PDF” abre la impresión del navegador; elegí “Guardar como PDF”."}
         </p>
       </div>
 

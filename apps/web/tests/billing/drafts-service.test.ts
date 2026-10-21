@@ -673,12 +673,13 @@ describe("billing_document tables", () => {
     assert.equal(await sqlState(insertLine(id, 51, 10)), "23514");
   });
 
-  it("only knows drafts until issuing exists", async () => {
+  it("knows drafts and issued documents, nothing else", async () => {
     const { id } = await newDraft();
+    // Issuing exists now; an invented third state still does not.
     assert.equal(
       await sqlState(
         pool.query(
-          "update billing_document set status = 'issued' where id = $1",
+          "update billing_document set status = 'annulled' where id = $1",
           [id],
         ),
       ),

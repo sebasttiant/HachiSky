@@ -5,15 +5,18 @@ import { requireModule } from "../../../../../src/auth/guard.ts";
 import { CuentaDeCobroSheet } from "../../../../../src/billing/CuentaDeCobroSheet.tsx";
 import { DraftDiscardSection } from "../../../../../src/billing/DraftDiscardSection.tsx";
 import { DraftEditor } from "../../../../../src/billing/DraftEditor.tsx";
+import { DraftIssueSection } from "../../../../../src/billing/DraftIssueSection.tsx";
 import { getDocumentView } from "../../../../../src/billing/document.ts";
 import {
   discardDraftAction,
+  issueDraftAction,
   updateDraftAction,
 } from "../../../../../src/billing/draft-actions.ts";
 import {
   getDraft,
   getDraftOptions,
 } from "../../../../../src/billing/drafts.ts";
+import { getNumbering } from "../../../../../src/billing/numbering.ts";
 import { draftDocumentPath } from "../../../../../src/billing/paths.ts";
 import { getDb } from "../../../../../src/db/client.ts";
 import { formatDateTime } from "../../../../../src/shared/format/date.ts";
@@ -40,9 +43,10 @@ export default async function DraftPage({
   };
   const draft = await getDraft(deps, actor, id);
   if (!draft) notFound();
-  const [options, view] = await Promise.all([
+  const [options, view, numbering] = await Promise.all([
     getDraftOptions(deps, actor, draft),
     getDocumentView(deps, actor, id),
+    getNumbering(deps, actor, draft.issuerProfileId),
   ]);
   const justCreated = (await searchParams).creado === "1";
 
@@ -91,6 +95,10 @@ export default async function DraftPage({
             action={updateDraftAction.bind(null, draft.id)}
             draft={draft}
             options={options}
+          />
+          <DraftIssueSection
+            issue={issueDraftAction.bind(null, draft.id)}
+            nextFormatted={numbering.nextFormatted}
           />
           <DraftDiscardSection
             discard={discardDraftAction.bind(null, draft.id)}

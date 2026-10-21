@@ -3,6 +3,8 @@ import Link from "next/link";
 import { requireModule } from "../../../src/auth/guard.ts";
 import { DraftList } from "../../../src/billing/DraftList.tsx";
 import { listDrafts } from "../../../src/billing/drafts.ts";
+import { IssuedList } from "../../../src/billing/IssuedList.tsx";
+import { listIssued } from "../../../src/billing/issuance.ts";
 import { NEW_DRAFT_PATH } from "../../../src/billing/paths.ts";
 import { getDb } from "../../../src/db/client.ts";
 import { PageHeader } from "../../../src/shell/PageHeader.tsx";
@@ -16,10 +18,16 @@ export default async function BillingPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { user } = await requireModule("billing", "/billing");
-  const items = await listDrafts(
-    { db: getDb() },
-    { id: user.id, role: user.role, ipAddress: null, userAgent: null },
-  );
+  const actor = {
+    id: user.id,
+    role: user.role,
+    ipAddress: null,
+    userAgent: null,
+  };
+  const [items, issued] = await Promise.all([
+    listDrafts({ db: getDb() }, actor),
+    listIssued({ db: getDb() }, actor),
+  ]);
   const discarded = (await searchParams).descartado === "1";
 
   return (
@@ -48,6 +56,14 @@ export default async function BillingPage({
         </h2>
         <DraftList items={items} />
       </section>
+      {issued.length > 0 ? (
+        <section aria-labelledby="issued-title" className={styles.stack}>
+          <h2 id="issued-title" className={styles.cardTitle}>
+            Emitidas
+          </h2>
+          <IssuedList items={issued} />
+        </section>
+      ) : null}
     </div>
   );
 }

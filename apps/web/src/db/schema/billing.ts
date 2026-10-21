@@ -374,6 +374,11 @@ export const billingDocument = pgTable(
       { onDelete: "restrict" },
     ),
     paymentTerms: text("payment_terms"),
+    // Set only by issuing: the consecutive this document took from its
+    // issuer's series, and when. Null while a draft, and a draft may show
+    // no number in its place — numbering exists only once it is assigned.
+    consecutive: integer("consecutive"),
+    issuedAt: timestamptz("issued_at"),
     createdAt: timestamptz("created_at").defaultNow().notNull(),
     updatedAt: timestamptz("updated_at").defaultNow().notNull(),
     createdBy: text("created_by")
@@ -386,7 +391,19 @@ export const billingDocument = pgTable(
   (table) => [
     index("billing_document_status_idx").on(table.status),
     index("billing_document_client_idx").on(table.clientId),
-    check("billing_document_status_check", sql`${table.status} in ('draft')`),
+    check(
+      "billing_document_status_check",
+      sql`${table.status} in ('draft', 'issued')`,
+    ),
+    check(
+      "billing_document_consecutive_check",
+      sql`${table.consecutive} is null or ${table.consecutive} between 1 and 99999999`,
+    ),
+    // One consecutive per issuer, handed out once. Partial: drafts carry
+    // none and must not collide with each other over it.
+    uniqueIndex("billing_document_consecutive_unique")
+      .on(table.issuerProfileId, table.consecutive)
+      .where(sql`${table.consecutive} is not null`),
     check(
       "billing_document_currency_check",
       sql`${table.currency} in ('COP', 'USD')`,

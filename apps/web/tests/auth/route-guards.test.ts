@@ -507,8 +507,8 @@ describe("billing document Server Functions", () => {
     ];
     assert.equal(
       exported.length,
-      3,
-      "create, update and discard draft actions",
+      4,
+      "create, update, discard and issue draft actions",
     );
     for (const match of exported) {
       const body = source.slice((match.index ?? 0) + match[0].length);

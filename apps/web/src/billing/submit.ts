@@ -5,6 +5,7 @@ import {
   updateDeclaration,
 } from "./declarations.ts";
 import { createDraft, discardDraft, updateDraft } from "./drafts.ts";
+import { issueDraft } from "./issuance.ts";
 import {
   createIssuer,
   setDefaultIssuer,
@@ -54,6 +55,9 @@ export const RULE_MESSAGES: Record<BillingRuleCode, string> = {
   duplicate_declaration:
     "Ya existe una declaración con ese nombre (puede estar inactiva).",
   draft_not_found: "Ese borrador ya no existe.",
+  already_issued: "Esta cuenta de cobro ya fue emitida.",
+  draft_incomplete:
+    "Para emitirla faltan conceptos, firmante o cuenta bancaria.",
   numbering_not_configured:
     "Primero indica desde qué número continúa el consecutivo de este emisor.",
   numbering_backwards:
@@ -441,6 +445,19 @@ export async function submitDiscardDraft(
     return { status: "success", message: "Borrador descartado." };
   } catch (error) {
     return failure("discard_draft", error);
+  }
+}
+
+export async function submitIssueDraft(
+  deps: BillingDeps,
+  actor: BillingActor | null,
+  id: string,
+): Promise<{ state: ActionState; formatted?: string }> {
+  try {
+    const { formatted } = await issueDraft(deps, actor, id);
+    return { state: { status: "success" }, formatted };
+  } catch (error) {
+    return { state: failure("issue_draft", error) };
   }
 }
 

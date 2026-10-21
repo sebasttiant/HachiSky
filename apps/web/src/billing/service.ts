@@ -55,6 +55,10 @@ export type BillingRuleCode =
   | "declaration_not_found"
   | "duplicate_declaration"
   | "draft_not_found"
+  // Issuing was already done: a document takes its number exactly once.
+  | "already_issued"
+  // Issuing needs lines, a signer and a bank account to hand to the client.
+  | "draft_incomplete"
   // The issuer has no consecutive configured yet.
   | "numbering_not_configured"
   // A consecutive may move forward, never back onto a number already passed.

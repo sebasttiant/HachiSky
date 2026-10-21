@@ -10,6 +10,7 @@ import { client } from "../db/schema/client.ts";
 import type { DraftLine } from "./drafts.ts";
 import { selectDocumentLines } from "./drafts.ts";
 import { sumAmounts } from "./money.ts";
+import { formatConsecutive } from "./numbering.ts";
 import {
   authorize,
   type BillingActor,
@@ -22,11 +23,11 @@ const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 // Everything the printed cuenta de cobro shows, resolved in one read. A draft
-// has no number and no issue date: both arrive with issuing (C5), and the
-// system never defaults a number, so they stay null here.
+// has no number and no issue date: both arrive with issuing, and the system
+// never defaults a number, so they stay null until then.
 export interface DocumentView {
   id: string;
-  status: "draft";
+  status: "draft" | "issued";
   number: string | null;
   issuedAt: Date | null;
   currency: Currency;
@@ -106,7 +107,7 @@ export async function getDocumentView(
       issuerProfile,
       eq(issuerProfile.id, billingDocument.issuerProfileId),
     )
-    .where(and(eq(billingDocument.id, id), eq(billingDocument.status, "draft")))
+    .where(eq(billingDocument.id, id))
     .limit(1);
   if (!row) throw new BillingRuleError("draft_not_found");
 
@@ -127,9 +128,12 @@ export async function getDocumentView(
 
   return {
     id: row.document.id,
-    status: "draft",
-    number: null,
-    issuedAt: null,
+    status: row.document.status === "issued" ? "issued" : "draft",
+    number:
+      row.document.consecutive === null
+        ? null
+        : formatConsecutive(row.document.consecutive),
+    issuedAt: row.document.issuedAt,
     currency: row.document.currency as Currency,
     client: row.client,
     issuer: row.issuer,

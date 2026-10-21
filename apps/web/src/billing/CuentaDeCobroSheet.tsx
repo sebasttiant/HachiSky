@@ -1,13 +1,18 @@
+import { formatDate } from "../shared/format/date.ts";
 import styles from "./CuentaDeCobroSheet.module.css";
 import type { DocumentView } from "./document.ts";
 import { formatAmount } from "./money.ts";
 import { billingImagePath } from "./paths.ts";
+import { ACCOUNT_TYPE_LABEL, type AccountType } from "./validation.ts";
 
 // The printed cuenta de cobro, laid out after the owner's reference documents:
-// the issuer's letterhead, a title row carrying the document's own identity
-// (number and date), one recipient block, the item table, the total, the
-// payment note, the signature block with the bank line, and the tax
-// declaration last.
+// the letterhead carries the brand only — the issuer's own data goes at the
+// bottom, with the signature, never at the top (owner, 2026-10-21) and without
+// the address. Then the title row with the document's identity (its
+// consecutive and issue date), one recipient block, the item table, the
+// total, the payment note, the signature block, the bank account to consign
+// to — complete and prominent, because that is what the client acts on — and
+// the tax declaration last.
 //
 // The recipient is stated once. An earlier version greeted the client and
 // then repeated its name and identification inside a boxed grid, which read
@@ -18,16 +23,12 @@ import { billingImagePath } from "./paths.ts";
 // line and the quantity informative, so a PRECIO UND column would imply a
 // multiplication this document does not do.
 //
-// A draft has no number: it says so instead of showing a provisional one,
-// because numbering only exists once issuing does.
+// A draft has no number yet: it says so instead of showing a provisional
+// one. The consecutive exists only from issuing on, and every issued cuenta
+// carries it — code, number and date (owner, 2026-10-21).
 
 function Missing({ children }: { children: string }) {
   return <span className={styles.missing}>{children}</span>;
-}
-
-// Only the last four digits reach the page, the same rule the pickers use.
-function accountTail(accountNumber: string): string {
-  return accountNumber.slice(-4);
 }
 
 export function CuentaDeCobroSheet({ view }: { view: DocumentView }) {
@@ -44,53 +45,45 @@ export function CuentaDeCobroSheet({ view }: { view: DocumentView }) {
     <article className={styles.sheet} aria-label="Cuenta de cobro">
       <div className={styles.worlds} aria-hidden="true" />
 
-      <header className={styles.top}>
-        {issuer.logoImageId ? (
-          // biome-ignore lint/performance/noImgElement: private, per-version image served by an authenticated route; next/image would proxy it through the public optimizer
+      {/* The letterhead is the brand alone. Who issues this — name,
+          identification, title — signs at the bottom of the document. */}
+      {issuer.logoImageId ? (
+        <header className={styles.top}>
+          {/* biome-ignore lint/performance/noImgElement: private, per-version image served by an authenticated route; next/image would proxy it through the public optimizer */}
           <img
             className={styles.logo}
             src={billingImagePath(issuer.logoImageId)}
             alt={issuer.legalName}
           />
-        ) : null}
-        <div className={styles.issuer}>
-          <p className={styles.issuerName}>{issuer.legalName}</p>
-          <p className={styles.issuerLine}>
-            {issuer.identificationType} {issuer.identificationNumber}
-          </p>
-          <p className={styles.issuerLine}>
-            {issuer.address} · {issuer.city}
-          </p>
-          {issuer.email || issuer.phone ? (
-            <p className={styles.issuerLine}>
-              {[issuer.email, issuer.phone].filter(Boolean).join(" · ")}
-            </p>
-          ) : null}
-        </div>
-      </header>
+        </header>
+      ) : null}
 
-      {/* The document's own identity: what it is, and which one it is. A
-          draft has neither a number nor an issue date, and says so quietly
-          instead of filling the space with a provisional one. */}
+      {/* The document's own identity, given the emphasis: what it is, and
+          which one it is. An issued cuenta always carries its consecutive
+          and its date; a draft says it has neither, yet. */}
       <section className={styles.identity}>
         <h1 className={styles.title}>Cuenta de cobro</h1>
         <dl className={styles.identityFacts}>
           <div>
             <dt>N.º</dt>
-            <dd>
-              <Missing>Sin número</Missing>
-            </dd>
+            <dd>{view.number ?? <Missing>Sin número</Missing>}</dd>
           </div>
           <div>
             <dt>Fecha</dt>
             <dd>
-              <Missing>Sin emitir</Missing>
+              {view.issuedAt ? (
+                formatDate(view.issuedAt.toISOString().slice(0, 10))
+              ) : (
+                <Missing>Sin emitir</Missing>
+              )}
             </dd>
           </div>
           <div>
             <dt>Estado</dt>
             <dd>
-              <span className={styles.statusPill}>Borrador</span>
+              <span className={styles.statusPill}>
+                {view.status === "issued" ? "Emitida" : "Borrador"}
+              </span>
             </dd>
           </div>
         </dl>
@@ -199,13 +192,27 @@ export function CuentaDeCobroSheet({ view }: { view: DocumentView }) {
           </p>
         )}
 
-        <p className={styles.bank}>
-          {bankAccount ? (
-            `Favor consignar a la cuenta de ${bankAccount.accountType} ${bankAccount.bankName} N.º ···${accountTail(bankAccount.accountNumber)} · ${bankAccount.holderName} · ${bankAccount.currency}`
-          ) : (
+        {/* Where to pay, complete and prominent: this document exists so
+            the client consigns, so the account number goes in full — the
+            masking rule belongs to the on-screen pickers, not to the paper
+            the client acts on (owner, 2026-10-21). */}
+        {bankAccount ? (
+          <div className={styles.bank}>
+            <p className={styles.bankTitle}>Favor consignar</p>
+            <p className={styles.bankNumber}>
+              {ACCOUNT_TYPE_LABEL[bankAccount.accountType as AccountType] ??
+                bankAccount.accountType}{" "}
+              {bankAccount.bankName} · {bankAccount.accountNumber}
+            </p>
+            <p className={styles.bankLine}>
+              A nombre de {bankAccount.holderName} · {bankAccount.currency}
+            </p>
+          </div>
+        ) : (
+          <p className={styles.bank}>
             <Missing>Sin cuenta bancaria seleccionada</Missing>
-          )}
-        </p>
+          </p>
+        )}
       </footer>
 
       <p className={styles.declaration}>

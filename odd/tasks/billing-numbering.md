@@ -6,8 +6,8 @@ Owner approved continuous per-issuer CC-0001-style numbering, independent of cli
 ## Tasks
 - [x] N1 (done, 681/681): Add per-issuer numbering configuration and advisory reads, with generated migration, authorization, transactional audit and focused tests. No allocation or document status change.
 - [x] N2 (done, 686/686): Numbering card on the issuer page — last registered here, next suggested, and an editable starting number. Browser check still pending.
-- [ ] N3: Implement atomic issuance, immutable snapshots and uniqueness; preserve annulled numbers. Decided (owner, 2026-10-10): a document takes exactly the next number — issuance never leaves gaps. Jumping the series forward stays a settings operation.
-- [ ] N4: Connect issued/draft document rendering and verify browser/print behavior.
+- [x] N3 (done, 2026-10-21): atomic issuance in `src/billing/issuance.ts`. The numbering row is locked with the document, the document takes exactly the next number, and a refused issue consumes nothing — no gaps, and a partial unique index backs it. Annulling (which keeps its number reserved) is not built yet.
+- [x] N4 (done, 2026-10-21): the document view reads issued cuentas with their consecutive and date, the draft page offers Emitir with the next number named, and Facturación lists Emitidas. Document layout per the owner (2026-10-21): letterhead is the brand only — issuer data signs at the bottom with the identification, no address anywhere — the title carries the emphasis, and "Favor consignar" prints the full account number in a prominent panel (masking stays in the pickers only).
 
 ## N1 acceptance
 - Missing configuration is explicit, never an implicit start at one.

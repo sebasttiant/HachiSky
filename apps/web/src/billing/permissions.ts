@@ -34,6 +34,7 @@ export type BillingSettingsOperation =
   | "create_draft"
   | "edit_draft"
   | "discard_draft"
+  | "issue_draft"
   | "view_numbering"
   | "configure_numbering";
 
@@ -70,6 +71,7 @@ export const BILLING_SETTINGS_PERMISSIONS: Record<
   create_draft: ["admin"],
   edit_draft: ["admin"],
   discard_draft: ["admin"],
+  issue_draft: ["admin"],
   // Where each issuer's consecutive stands (owner, 2026-10-10).
   view_numbering: ["admin"],
   configure_numbering: ["admin"],

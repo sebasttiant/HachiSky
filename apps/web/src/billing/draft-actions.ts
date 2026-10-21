@@ -6,11 +6,17 @@ import { redirect } from "next/navigation";
 import { requireModule } from "../auth/guard.ts";
 import { getDb } from "../db/client.ts";
 import type { ActionState } from "../users/action-state.ts";
-import { BILLING_PATH, draftPath, NEW_DRAFT_PATH } from "./paths.ts";
+import {
+  BILLING_PATH,
+  draftDocumentPath,
+  draftPath,
+  NEW_DRAFT_PATH,
+} from "./paths.ts";
 import type { BillingActor, BillingDeps } from "./service.ts";
 import {
   submitCreateDraft,
   submitDiscardDraft,
+  submitIssueDraft,
   submitUpdateDraft,
 } from "./submit.ts";
 
@@ -65,4 +71,17 @@ export async function discardDraftAction(
   if (state.status !== "success") return state;
   revalidatePath(BILLING_PATH, "layout");
   redirect(`${BILLING_PATH}?descartado=1`);
+}
+
+// Issuing is the last step of a borrador: it takes the consecutive and the
+// document stops being editable. The admin lands on the issued document.
+export async function issueDraftAction(
+  id: string,
+  _previous: ActionState,
+): Promise<ActionState> {
+  const { deps, actor } = await draftContext(draftPath(id));
+  const { state } = await submitIssueDraft(deps, actor, id);
+  if (state.status !== "success") return state;
+  revalidatePath(BILLING_PATH, "layout");
+  redirect(`${draftDocumentPath(id)}?emitida=1`);
 }

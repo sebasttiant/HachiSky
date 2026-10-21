@@ -59,24 +59,8 @@
   flex: none;
 }
 
-.issuer {
-  min-width: 0;
-}
-
-/* The letterhead says who issues the document. It is read first because it
-   is at the top, so it does not also need to be the largest thing on the
-   page: the title below carries what the document IS. */
-.issuerName {
-  font-size: var(--text-lg);
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  color: var(--color-brand-navy);
-}
-
-.issuerLine {
-  color: var(--color-text-muted);
-  font-size: var(--text-sm);
-}
+/* The letterhead is the brand mark alone: the issuer's name, identification
+   and title sign at the bottom of the document (owner, 2026-10-21). */
 
 .greeting {
   margin-top: var(--space-5);
@@ -99,10 +83,11 @@
 }
 
 /* What this piece of paper is. On a cuenta de cobro this is the headline:
-   the recipient has to know at a glance what they are being handed. */
+   the recipient has to know at a glance what they are being handed, so it
+   carries the emphasis of the page (owner, 2026-10-21). */
 .title {
   margin: 0;
-  font-size: var(--text-3xl);
+  font-size: 2.6rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -311,9 +296,40 @@
   font-size: var(--text-sm);
 }
 
+/* Where to pay is what the client acts on, so it is a panel, not a line of
+   small print: full account number, bank and holder, impossible to miss. */
 .bank {
-  margin-top: var(--space-4);
+  margin-top: var(--space-5);
+  padding: var(--space-4);
+  background: var(--color-sky-50);
+  border: 1px solid var(--color-sky-100);
+  border-left: 4px solid var(--color-brand-navy);
+  border-radius: var(--radius-md);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.bankTitle {
+  margin: 0;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.bankNumber {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--color-brand-navy);
+  letter-spacing: 0.01em;
+}
+
+.bankLine {
+  margin: var(--space-1) 0 0;
   font-size: var(--text-sm);
+  color: var(--color-text-muted);
 }
 
 .declaration {

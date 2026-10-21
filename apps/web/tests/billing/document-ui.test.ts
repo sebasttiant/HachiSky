@@ -198,10 +198,39 @@ describe("cuenta de cobro sheet", () => {
     assert.match(html, /by IL Asesor[ií]as/i);
   });
 
-  it("never leaks an account number in full", async () => {
+  it("prints the full account number to consign to, prominently", async () => {
+    // The document is what the client acts on: masking the account here
+    // would send them to guess the number they must pay to (owner,
+    // 2026-10-21). The pickers keep their masking; the paper does not.
     const html = await render(FULL);
-    assert.doesNotMatch(html, /00001111222/);
-    // Only the last four digits, like the pickers already do.
-    assert.match(html, /1222/);
+    assert.match(html, /Favor consignar/i);
+    assert.match(html, /00001111222/);
+    assert.match(html, /Banco Demo/);
+    assert.match(html, /Emisora Demo S\.A\.S/);
+  });
+
+  it("keeps the issuer's data at the bottom and omits its address", async () => {
+    // The letterhead is the brand alone: no issuer name or address opens
+    // the document. The signer signs below, with their identification.
+    const html = await render(FULL);
+    assert.doesNotMatch(html, /Carrera Demo 45/);
+    assert.ok(
+      html.indexOf("Emisora Demo S.A.S") > html.indexOf("CORDIALMENTE"),
+      "the issuer is first named only under the signature",
+    );
+    assert.match(html, /Firmante Demo/);
+    assert.match(html, /CC: 1000000001|CC 1000000001|1000000001/);
+  });
+
+  it("carries its consecutive and date once issued", async () => {
+    const html = await render({
+      ...FULL,
+      status: "issued",
+      number: "CC-0045",
+      issuedAt: new Date("2026-10-21T15:00:00.000Z"),
+    });
+    assert.match(html, /CC-0045/);
+    assert.match(html, /Emitida/);
+    assert.doesNotMatch(html, /Sin n[uú]mero/);
   });
 });
