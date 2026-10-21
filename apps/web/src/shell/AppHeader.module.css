@@ -3,7 +3,28 @@
   top: 0;
   z-index: 50;
   background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
+  /* The worlds bar below replaces the flat grey rule as the separator. */
+  box-shadow: var(--shadow-sm);
+}
+
+/* The company signature: the four world colours in the site's order, carried
+   as the header's bottom edge. */
+.header::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--gradient-worlds);
+}
+
+/* Only frost the bar where the browser can actually blur what scrolls under
+   it; otherwise the solid surface above stays. */
+@supports (backdrop-filter: blur(1px)) {
+  .header {
+    background: color-mix(in srgb, var(--color-surface) 86%, transparent);
+    backdrop-filter: blur(0.8rem);
+  }
 }
 
 .bar {
@@ -13,6 +34,13 @@
   justify-content: space-between;
   min-height: 4rem;
   gap: var(--space-4);
+}
+
+.actions {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
 }
 
 .brand {
@@ -27,6 +55,20 @@
 .mark {
   height: 3rem;
   width: auto;
+  transition: transform var(--duration-base) var(--ease-spring);
+}
+
+/* The mark is drawn in brand navy on a transparent background, so on the dark
+   header it needs a light disc behind it to stay readable. This keeps the
+   brand colours instead of recolouring the logo. */
+:global([data-theme="dark"]) .mark {
+  padding: 0.2rem;
+  border-radius: var(--radius-pill);
+  background: rgb(255 255 255 / 0.92);
+}
+
+.brand:hover .mark {
+  transform: scale(1.04);
 }
 
 /* Very narrow phones (320px): keep brand, menu toggle and avatar on one row. */

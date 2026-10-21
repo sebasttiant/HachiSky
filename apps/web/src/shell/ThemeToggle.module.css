@@ -1,0 +1,35 @@
+/* The header surface is light in light mode and dark in dark mode, so this
+   control is built from tokens rather than fixed white. */
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+  font-size: var(--text-lg);
+  line-height: 1;
+  cursor: pointer;
+  transition: var(--transition-interactive);
+}
+
+.toggle:hover {
+  border-color: var(--color-border-strong);
+  color: var(--color-link);
+  transform: translateY(-1px);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

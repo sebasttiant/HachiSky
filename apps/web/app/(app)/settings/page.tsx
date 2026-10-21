@@ -87,6 +87,20 @@ export default async function SettingsPage() {
         </li>
         <li className={styles.hubTile}>
           <span className={styles.hubIcon}>
+            <ModuleIcon id="billing" size={24} />
+          </span>
+          <h2>
+            <Link href="/settings/declarations" className={styles.hubLink}>
+              Declaraciones
+            </Link>
+          </h2>
+          <p>
+            Textos de declaración tributaria para las cuentas de cobro. Ninguno
+            viene incluido. Se desactivan, no se borran.
+          </p>
+        </li>
+        <li className={styles.hubTile}>
+          <span className={styles.hubIcon}>
             <ModuleIcon id="reports" size={24} />
           </span>
           <h2>

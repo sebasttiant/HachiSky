@@ -1,187 +1,459 @@
+/* The report as paper. Same rules as the cuenta de cobro: A4, and the sheet
+   stays light even when the app is in dark mode, because paper is paper. */
+
 .sheet {
-  max-width: 50rem;
+  --sheet-width: 21cm;
+
+  --color-text: #102733;
+  --color-text-muted: #4b626e;
+  --color-border: #d3dfe8;
+  --color-surface-alt: #f3f6f8;
+  --color-brand-ink: #0b3a6e;
+  color-scheme: light;
+
+  position: relative;
+  max-width: var(--sheet-width);
   margin-inline: auto;
-  padding: var(--space-5);
+  padding: var(--space-8) var(--space-7) var(--space-6);
   background: #fff;
+  color: var(--color-text);
   border: 1px solid var(--color-border);
-  border-top: 6px solid var(--color-brand-navy);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
 }
 
-.head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  padding-bottom: var(--space-4);
-  border-bottom: 1px solid var(--color-border);
+.worlds {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 6px;
+  background: var(--gradient-worlds);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
 }
 
+/* The provider's letterhead: logo and name on the left, the kind of
+   document on the right. Whose logo this is comes from the report's
+   provider, so the same sheet serves IL Asesorías or Converfente Digital. */
 .brand {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
 }
 
-.logo {
-  width: 3.5rem;
+.brandIdentity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 44px;
+}
+
+.brandLogo {
+  display: block;
+  max-height: 52px;
+  max-width: 180px;
+  width: auto;
   height: auto;
 }
 
-.by {
-  margin-top: var(--space-1);
+.brandName {
+  margin: 0;
+  font-weight: 700;
+  color: var(--color-brand-ink);
+}
+
+.brandMeta {
+  margin: 0;
+  font-size: var(--text-sm);
   color: var(--color-text-muted);
-  font-size: var(--text-sm);
-  line-height: 1;
+  text-align: right;
 }
 
-.titleBlock {
-  text-align: left;
+/* The hero: a deep-blue block that states what this is and for whom, the
+   same opening the owner's reference reports use. */
+.hero {
+  background: linear-gradient(
+    135deg,
+    #0b2e4f 0%,
+    var(--color-brand-ink) 55%,
+    #14639e 100%
+  );
+  border-radius: var(--radius-md);
+  padding: var(--space-5) var(--space-6);
+  margin-bottom: var(--space-5);
+  color: #fff;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
 }
 
-.stamp {
-  display: inline-block;
-  padding: 0.1rem 0.6rem;
-  border: 2px solid var(--color-warn-text);
-  border-radius: var(--radius-sm);
-  color: var(--color-warn-text);
+.kind {
+  margin: 0;
   font-size: var(--text-sm);
-  font-weight: 800;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #bcd9f5;
+}
+
+/* What this document is about. The reader sees it first. */
+.title {
+  margin: var(--space-1) 0 var(--space-4);
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  line-height: 1.15;
+  color: #fff;
+}
+
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-6);
+  margin: 0;
+}
+
+.facts dt {
+  font-size: var(--text-sm);
+  font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+  color: #bcd9f5;
 }
 
-.titleBlock h2 {
-  margin-top: var(--space-2);
-  font-size: var(--text-xl);
-}
-
-.ref {
-  color: var(--color-text-muted);
-  font-size: var(--text-sm);
-}
-
-.meta {
-  display: grid;
-  gap: var(--space-3);
-  margin: var(--space-4) 0;
-}
-
-.meta dt {
-  color: var(--color-text-muted);
-  font-size: var(--text-sm);
-  font-weight: 600;
-}
-
-.meta dd {
+.facts dd {
   margin: 0;
   font-weight: 600;
+}
+
+/* A draft says so. It must never be mistaken for a delivered report. */
+.draft {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: var(--radius-sm);
+  background: #fff1d0;
+  color: #7a4300;
+  font-size: var(--text-sm);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.stateIssued {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: var(--radius-sm);
+  background: #d8f3e3;
+  color: #0f5132;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+/* The counted facts of a detailed follow_up. Every number here is counted
+   from the recorded activities — the sheet never invents a figure. */
+.kpis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.kpi {
+  flex: 1 1 10rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-alt);
+  padding: var(--space-3) var(--space-4);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.kpiValue {
+  display: block;
+  font-size: var(--text-2xl);
+  font-weight: 800;
+  color: var(--color-brand-ink);
+}
+
+.kpiLabel {
+  display: block;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* Each section is a numbered card, like the owner's reference reports:
+   the number is a badge, the heading sits beside it. */
+.section {
+  margin-bottom: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5);
+  /* Keep a heading with the content it introduces. */
+  break-inside: avoid;
+}
+
+.sectionHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.sectionNumber {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-brand-ink);
+  color: #fff;
+  font-weight: 800;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.sectionHeading {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--color-brand-ink);
+}
+
+/* Whatever the author typed, line breaks included. */
+.body {
+  margin: 0 0 var(--space-2);
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
+.empty {
+  color: var(--color-text-muted);
+  font-style: italic;
 }
 
 .table {
   width: 100%;
   border-collapse: collapse;
+  font-size: var(--text-sm);
 }
 
-.table caption {
+.table th {
   text-align: left;
-  font-weight: 700;
-  color: var(--color-brand-navy);
-  padding-bottom: var(--space-2);
+  padding: var(--space-2);
+  background: var(--color-brand-ink);
+  color: #fff;
+  font-size: var(--text-sm);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
 }
 
-.table th,
 .table td {
-  padding: var(--space-3) var(--space-2);
-  overflow-wrap: break-word;
-  text-align: left;
-  vertical-align: top;
+  padding: var(--space-2);
   border-bottom: 1px solid var(--color-border);
+  vertical-align: top;
 }
 
-.table thead th {
-  background: var(--color-sky-100);
-  color: var(--color-brand-navy);
-  font-size: var(--text-sm);
-}
-
-.table tfoot th,
-.table tfoot td {
-  background: var(--color-sky-50);
-  border-bottom: 0;
-  border-top: 2px solid var(--color-brand-navy);
-}
-
-.table .num {
-  text-align: right;
-  white-space: nowrap;
-}
-
-.date {
-  white-space: nowrap;
-  color: var(--color-text-muted);
-}
-
-.decimal {
-  display: block;
-  color: var(--color-text-muted);
-  font-size: var(--text-sm);
-}
-
-.signatures {
+.findings {
+  margin: 0;
+  padding: 0;
+  list-style: none;
   display: grid;
-  gap: var(--space-6);
-  margin-top: var(--space-7);
+  gap: var(--space-3);
 }
 
-.line {
-  display: block;
-  border-bottom: 1px solid var(--color-text);
-  height: 2rem;
+.finding {
+  padding: var(--space-3);
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-sm);
+  break-inside: avoid;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
 }
 
-.signatures p {
-  margin-top: var(--space-1);
-  color: var(--color-text-muted);
+.findingHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.impact {
+  margin: 0 0 var(--space-2);
   font-size: var(--text-sm);
 }
 
-.foot {
-  margin-top: var(--space-6);
-  padding-top: var(--space-3);
+.impactLabel {
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.steps {
+  margin: 0;
+  padding-left: var(--space-5);
+  display: grid;
+  gap: var(--space-3);
+  line-height: 1.6;
+}
+
+/* A status is read at a glance, so it carries colour as well as a word —
+   never colour alone, which would vanish on a black-and-white print. */
+.chip {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.status_ok {
+  background: #d8f3e3;
+  color: #0f5132;
+}
+
+.status_watch {
+  background: #fff1d0;
+  color: #7a4300;
+}
+
+.status_risk {
+  background: #fcdcdc;
+  color: #842029;
+}
+
+.priority_low {
+  background: #e4eaf0;
+  color: #40535f;
+}
+
+.priority_medium {
+  background: #fff1d0;
+  color: #7a4300;
+}
+
+.priority_high {
+  background: #fcdcdc;
+  color: #842029;
+}
+
+.bottom {
+  margin-top: var(--space-8);
+  padding-top: var(--space-4);
   border-top: 1px solid var(--color-border);
-  color: var(--color-text-muted);
-  font-size: var(--text-sm);
+  break-inside: avoid;
+}
+
+.signature {
   text-align: center;
+  margin-bottom: var(--space-5);
 }
 
-@media (min-width: 40rem) {
+/* The signer's own signature image, above the name it belongs to. */
+.signatureImage {
+  display: block;
+  margin-inline: auto;
+  max-height: 72px;
+  max-width: 240px;
+  width: auto;
+  height: auto;
+}
+
+.signatureName {
+  margin: 0;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.signatureId,
+.signatureProvider {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.signatureRole {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.generated {
+  margin: 0;
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* Figures sit inside their section, one per row, so a wide screenshot is
+   readable instead of squeezed beside text. */
+.figures {
+  display: grid;
+  gap: var(--space-4);
+  margin-block-start: var(--space-4);
+}
+
+.figure {
+  margin: 0;
+}
+
+/* Bounded by the page, never by the stored pixels. The intrinsic width and
+   height stay on the element so the layout does not jump while it loads. */
+.figureImage {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.figureCaption {
+  display: block;
+  margin-block-start: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.figureTitle {
+  display: block;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.figureText {
+  display: block;
+}
+
+@media print {
   .sheet {
-    padding: var(--space-7);
+    max-width: none;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0;
   }
 
-  .meta {
-    grid-template-columns: repeat(2, 1fr);
+  /* A figure split across two pages is worse than a page break before it,
+     and a caption stranded away from its image says nothing. */
+  .figure {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 
-  .signatures {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .titleBlock {
-    text-align: right;
-  }
-}
-
-@media (max-width: 39.99rem) {
-  .table {
-    font-size: var(--text-sm);
-  }
-
-  .table th,
-  .table td {
-    padding: var(--space-2) 0.35rem;
+  /* Never taller than a page, or it would be clipped rather than scaled. */
+  .figureImage {
+    max-height: 60vh;
   }
 }

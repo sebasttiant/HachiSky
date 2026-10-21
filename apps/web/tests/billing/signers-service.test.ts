@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { after, before, beforeEach, describe, it } from "node:test";
 import { drizzle } from "drizzle-orm/node-postgres";
 import sharp from "sharp";
-import { BillingImageError } from "../../src/billing/image.ts";
 import { billingImageResponse } from "../../src/billing/image-response.ts";
 import {
   type BillingActor,
@@ -23,13 +22,14 @@ import { closeDb, getPool } from "../../src/db/client.ts";
 import { runMigrations } from "../../src/db/migrate.ts";
 import * as schema from "../../src/db/schema/index.ts";
 import { assertTestDatabase } from "../../src/db/test-guard.ts";
+import { ImageValidationError } from "../../src/images/pipeline.ts";
 import {
   cleanAuthTables,
   createTestAuth,
   createTestPool,
   createTestUser,
 } from "../auth/support.ts";
-import { SVG, solidJpeg, solidPng, spyDecoder } from "./image-fixtures.ts";
+import { SVG, solidJpeg, solidPng, spyDecoder } from "../images/fixtures.ts";
 
 const pool = createTestPool();
 const auth = createTestAuth(pool);
@@ -95,7 +95,7 @@ async function code(promise: Promise<unknown>) {
     await promise;
   } catch (error) {
     if (error instanceof BillingRuleError) return error.code;
-    if (error instanceof BillingImageError) return `image:${error.reason}`;
+    if (error instanceof ImageValidationError) return `image:${error.reason}`;
     if (error instanceof BillingValidationError) return "validation";
     throw error;
   }

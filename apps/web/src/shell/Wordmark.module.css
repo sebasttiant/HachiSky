@@ -1,5 +1,8 @@
+/* --color-heading is the brand navy in light mode and light ink in dark mode,
+   so the wordmark stays readable on the header without changing its look on
+   a white background. */
 .wordmark {
-  color: var(--color-brand-navy);
+  color: var(--color-heading);
   font-size: 1.6rem;
   font-weight: 800;
   letter-spacing: -0.02em;

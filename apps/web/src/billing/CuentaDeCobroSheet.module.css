@@ -1,0 +1,420 @@
+/* The document sheet. On screen it is a raised page; on paper it is the page.
+   The owner's written decision is A4, while the reference PDFs are US letter —
+   the size lives in one place so switching is a single edit. */
+
+.sheet {
+  --sheet-width: 21cm;
+
+  /* The sheet is paper: it stays light even when the app is in dark mode, so
+     the tokens it uses are pinned to their light values here. */
+  --color-text: #102733;
+  --color-text-muted: #4b626e;
+  --color-border: #d3dfe8;
+  --color-border-strong: #6b8294;
+  --color-sky-50: #f2f8fe;
+  --color-sky-100: #dcedfc;
+  --color-warn-text: #7a4300;
+  --color-warn-surface: #fff1d0;
+  --color-surface-alt: #f3f6f8;
+  --color-brand-ink: #0b3a6e;
+  color-scheme: light;
+
+  position: relative;
+  max-width: var(--sheet-width);
+  margin-inline: auto;
+  padding: var(--space-8) var(--space-7) var(--space-6);
+  background: #fff;
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  /* Keep the brand accents when the browser drops backgrounds for print. */
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+/* The company signature, the same four worlds as the app header. */
+.worlds {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 6px;
+  background: var(--gradient-worlds);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.top {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.logo {
+  width: 5rem;
+  height: auto;
+  flex: none;
+}
+
+/* The letterhead is the brand mark alone: the issuer's name, identification
+   and title sign at the bottom of the document (owner, 2026-10-21). */
+
+.greeting {
+  margin-top: var(--space-5);
+}
+
+/* The title row: what this document is, and which one it is. The facts sit
+   next to the title rather than inside a filled box, so a draft without a
+   number does not become the loudest thing on the page. */
+.identity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-5);
+  margin-top: var(--space-6);
+  padding-bottom: var(--space-3);
+  border-bottom: 2px solid var(--color-brand-navy);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+/* What this piece of paper is. On a cuenta de cobro this is the headline:
+   the recipient has to know at a glance what they are being handed, so it
+   carries the emphasis of the page (owner, 2026-10-21). */
+.title {
+  margin: 0;
+  font-size: 2.6rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-brand-navy);
+  line-height: 1.1;
+}
+
+.identityFacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.identityFacts div {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.identityFacts dt {
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+}
+
+.identityFacts dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.statusPill {
+  display: inline-block;
+  padding: 0.1rem 0.6rem;
+  border-radius: var(--radius-pill);
+  background: var(--color-brand-navy);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+/* One block for the recipient, stated once. */
+.party {
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+  background: var(--color-sky-50);
+  border: 1px solid var(--color-sky-100);
+  border-radius: var(--radius-md);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.partyLabel {
+  margin: 0 0 var(--space-3);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.partyGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-5);
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.partyWide {
+  grid-column: 1 / -1;
+}
+
+.partyGrid dt {
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+}
+
+.partyGrid dd {
+  margin: var(--space-1) 0 0;
+  font-weight: 600;
+}
+
+.partyName {
+  font-size: var(--text-lg);
+  color: var(--color-brand-navy);
+  line-height: 1.2;
+}
+
+.items {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: var(--space-5);
+  font-size: var(--text-sm);
+}
+
+.items th,
+.items td {
+  padding: var(--space-2) var(--space-3);
+  text-align: start;
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: top;
+}
+
+.items thead th {
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fff;
+  background: var(--color-brand-navy);
+  border-bottom: 0;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.items tbody tr:nth-child(even) td {
+  background: var(--color-sky-50);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.amountCol {
+  text-align: end;
+  white-space: nowrap;
+}
+
+.items tfoot th {
+  text-align: end;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  color: var(--color-brand-navy);
+  border-bottom: 0;
+  border-top: 2px solid var(--color-brand-navy);
+}
+
+.total {
+  text-align: end;
+  white-space: nowrap;
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--color-brand-navy);
+  border-bottom: 0;
+  border-top: 2px solid var(--color-brand-navy);
+}
+
+.empty {
+  text-align: center;
+  padding-block: var(--space-5);
+}
+
+.note {
+  margin-top: var(--space-4);
+  padding: var(--space-3);
+  background: var(--color-warn-surface);
+  color: var(--color-warn-text);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+}
+
+.closing {
+  margin-top: var(--space-7);
+  text-align: center;
+}
+
+.cordially {
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.signature {
+  margin-top: var(--space-6);
+}
+
+.signatureImage {
+  display: block;
+  margin-inline: auto;
+  max-height: 4.5rem;
+  width: auto;
+}
+
+.signatureLine {
+  margin-inline: auto;
+  width: min(18rem, 100%);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border-strong);
+}
+
+.signerName {
+  margin-top: var(--space-2);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.signerLine {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+/* Where to pay is what the client acts on, so it is a panel, not a line of
+   small print: full account number, bank and holder, impossible to miss. */
+.bank {
+  margin-top: var(--space-5);
+  padding: var(--space-4);
+  background: var(--color-sky-50);
+  border: 1px solid var(--color-sky-100);
+  border-left: 4px solid var(--color-brand-navy);
+  border-radius: var(--radius-md);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.bankTitle {
+  margin: 0;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.bankNumber {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--color-brand-navy);
+  letter-spacing: 0.01em;
+}
+
+.bankLine {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.declaration {
+  margin-top: var(--space-6);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  text-align: justify;
+}
+
+/* The maker's mark: logo then name, bottom-right, muted grey so it reads as a
+   signature and not a second header. */
+.madeWith {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+  color: var(--color-text-muted);
+}
+
+.madeWithMark {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex: none;
+  opacity: 0.75;
+  filter: grayscale(1);
+}
+
+.madeWithText {
+  display: grid;
+  line-height: 1.15;
+  text-align: end;
+}
+
+.madeWithName {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.madeWithBy {
+  font-size: 0.65rem;
+  letter-spacing: 0.02em;
+}
+
+/* A missing choice is named rather than left as a silent blank, so the admin
+   sees what the document still needs before issuing. */
+.missing {
+  color: var(--color-warn-text);
+  font-style: italic;
+  font-weight: 600;
+}
+
+@media (min-width: 40rem) {
+  .identity {
+    grid-template-columns: 14rem minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+/* Printing: the sheet becomes the page. The app shell is hidden by the page
+   that renders this sheet, not here. */
+@media print {
+  .sheet {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .note {
+    /* Keep the tinted note legible when the browser drops backgrounds. */
+    border: 1px solid #999;
+    background: transparent;
+    color: var(--color-text);
+  }
+
+  .items tr,
+  .closing,
+  .declaration {
+    break-inside: avoid;
+  }
+}

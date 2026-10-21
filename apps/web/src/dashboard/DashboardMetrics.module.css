@@ -1,0 +1,88 @@
+/* The admin summary that opens the home page. Built from the shared tokens, so
+   it follows the light and dark themes without any fixed colour. */
+
+.panel {
+  margin-bottom: var(--space-6);
+}
+
+/* A section heading, one step above the card headings it introduces. */
+.title {
+  font-size: var(--text-xl);
+  margin-bottom: var(--space-3);
+}
+
+.pending {
+  color: var(--color-text-muted);
+}
+
+/* Let the figures flow and fill the row instead of locking a column count:
+   a fixed four-column grid left a hole whenever the number of cards changed. */
+.grid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr));
+}
+
+.metric {
+  display: grid;
+  gap: var(--space-1);
+  align-content: start;
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  /* The brand hairline that marks a card as a figure, not a form. */
+  border-top: 3px solid transparent;
+  border-image: var(--gradient-brand) 1;
+  border-image-width: 3px 0 0 0;
+}
+
+.metricLabel {
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.metricValue {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--color-brand-ink);
+}
+
+.metricHint {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* Several currencies stack inside the one figure; they are never added up. */
+.totalsList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+
+.total {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.totalCurrency {
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.totalValue {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--color-brand-ink);
+}

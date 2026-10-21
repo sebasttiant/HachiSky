@@ -9,6 +9,8 @@ import {
 import {
   type BankAccountFieldErrors,
   type BankAccountInput,
+  type DeclarationFieldErrors,
+  type DraftFieldErrors,
   type IssuerFieldErrors,
   type SignerFieldErrors,
   UUID,
@@ -49,7 +51,20 @@ export type BillingRuleCode =
   | "issuer_not_found"
   | "duplicate_issuer"
   | "issuer_is_default"
-  | "issuer_inactive";
+  | "issuer_inactive"
+  | "declaration_not_found"
+  | "duplicate_declaration"
+  | "draft_not_found"
+  // Issuing was already done: a document takes its number exactly once.
+  | "already_issued"
+  // Issuing needs lines, a signer and a bank account to hand to the client.
+  | "draft_incomplete"
+  // The issuer has no consecutive configured yet.
+  | "numbering_not_configured"
+  // A consecutive may move forward, never back onto a number already passed.
+  | "numbering_backwards"
+  // A document takes the next number; the series runs without gaps.
+  | "numbering_skips_ahead";
 
 export class BillingRuleError extends Error {
   readonly code: BillingRuleCode;
@@ -63,9 +78,16 @@ export class BillingRuleError extends Error {
 export class BillingValidationError extends Error {
   readonly fieldErrors: IssuerFieldErrors &
     BankAccountFieldErrors &
-    SignerFieldErrors;
+    SignerFieldErrors &
+    DeclarationFieldErrors &
+    DraftFieldErrors;
   constructor(
-    fieldErrors: IssuerFieldErrors | BankAccountFieldErrors | SignerFieldErrors,
+    fieldErrors:
+      | IssuerFieldErrors
+      | BankAccountFieldErrors
+      | SignerFieldErrors
+      | DeclarationFieldErrors
+      | DraftFieldErrors,
   ) {
     super("invalid billing settings");
     this.name = "BillingValidationError";

@@ -2,6 +2,14 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { requireModule } from "../../src/auth/guard.ts";
 import { visibleModules } from "../../src/auth/permissions.ts";
+import {
+  DashboardAside,
+  DashboardAsideFallback,
+} from "../../src/dashboard/DashboardAside.tsx";
+import {
+  DashboardMetrics,
+  DashboardMetricsFallback,
+} from "../../src/dashboard/DashboardMetrics.tsx";
 import { AvailabilityBadge } from "../../src/shell/AvailabilityBadge.tsx";
 import { ModuleIcon } from "../../src/shell/icons.tsx";
 import {
@@ -16,12 +24,23 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   const { user } = await requireModule("home", "/");
   const tiles = visibleModules(user.role).filter((m) => m.id !== "home");
+  const isAdmin = user.role === "admin";
   return (
     <div className="container">
       <header className={styles.header}>
         <h1>Inicio</h1>
-        <p>Accede a los módulos de HachiSky y revisa el estado del sistema.</p>
+        <p>
+          {isAdmin
+            ? "Resumen de tu operación y acceso a los módulos de HachiSky."
+            : "Accede a los módulos de HachiSky y revisa el estado del sistema."}
+        </p>
       </header>
+
+      {isAdmin ? (
+        <Suspense fallback={<DashboardMetricsFallback />}>
+          <DashboardMetrics actor={{ id: user.id, role: user.role }} />
+        </Suspense>
+      ) : null}
 
       <div className={styles.layout}>
         <section aria-labelledby="modules-title">
@@ -51,9 +70,15 @@ export default async function HomePage() {
           </ul>
         </section>
 
-        <Suspense fallback={<SystemStatusFallback />}>
-          <SystemStatus />
-        </Suspense>
+        {isAdmin ? (
+          <Suspense fallback={<DashboardAsideFallback />}>
+            <DashboardAside actor={{ id: user.id, role: user.role }} />
+          </Suspense>
+        ) : (
+          <Suspense fallback={<SystemStatusFallback />}>
+            <SystemStatus />
+          </Suspense>
+        )}
       </div>
     </div>
   );

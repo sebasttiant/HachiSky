@@ -1,14 +1,15 @@
 import { sql } from "drizzle-orm";
 import {
   type AnyPgColumn,
+  bigint,
   boolean,
   check,
-  customType,
   foreignKey,
   index,
   integer,
   pgTable,
   primaryKey,
+  smallint,
   text,
   timestamp,
   unique,
@@ -16,13 +17,10 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { user } from "./auth.ts";
+import { bytea } from "./bytea.ts";
+import { client } from "./client.ts";
 
 const timestamptz = (name: string) => timestamp(name, { withTimezone: true });
-
-// node-postgres reads and writes bytea as a Buffer.
-const bytea = customType<{ data: Buffer; driverData: Buffer }>({
-  dataType: () => "bytea",
-});
 
 // Issuer profiles: the entities billing documents are issued for (HachiSky
 // is the platform, not necessarily the issuer). Deactivated, never deleted,
@@ -307,6 +305,197 @@ export const billingImage = pgTable(
     check(
       "billing_image_dimensions_check",
       sql`${table.width} between 1 and 2000 and ${table.height} between 1 and 2000`,
+    ),
+  ],
+);
+
+// Tax declaration texts an admin may attach to a document (owner, 2026-10-01:
+// configurable, none by default, mandatory-or-not still pending). There is no
+// default or preselected text. Deactivated, never deleted; an issued document
+// will freeze the text itself, so editing one never changes issued documents.
+// One label per text, case-insensitive, inactive rows included.
+export const declarationText = pgTable(
+  "declaration_text",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    label: text("label").notNull(),
+    body: text("body").notNull(),
+    active: boolean("active").default(true).notNull(),
+    createdAt: timestamptz("created_at").defaultNow().notNull(),
+    updatedAt: timestamptz("updated_at").defaultNow().notNull(),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    updatedBy: text("updated_by")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+  },
+  (table) => [
+    uniqueIndex("declaration_text_label_unique").on(sql`lower(${table.label})`),
+    index("declaration_text_active_idx").on(table.active),
+    check(
+      "declaration_text_label_check",
+      sql`btrim(${table.label}) <> '' and char_length(${table.label}) <= 120`,
+    ),
+    check(
+      "declaration_text_body_check",
+      sql`btrim(${table.body}, E' \\t\\r\\n') <> '' and char_length(${table.body}) <= 2000`,
+    ),
+  ],
+);
+
+// Cuentas de cobro. Only drafts exist until issuing is built (C5): a draft
+// has no number, can be edited and can be discarded (deleted with its
+// lines). Client, issuer and currency are required from the start; the bank
+// account, signer and declaration are chosen while drafting. RESTRICT keeps
+// every row a document points at. The total is never stored: it is the sum
+// of the lines.
+export const billingDocument = pgTable(
+  "billing_document",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    status: text("status").default("draft").notNull(),
+    clientId: uuid("client_id")
+      .notNull()
+      .references(() => client.id, { onDelete: "restrict" }),
+    issuerProfileId: uuid("issuer_profile_id")
+      .notNull()
+      .references(() => issuerProfile.id, { onDelete: "restrict" }),
+    currency: text("currency").notNull(),
+    bankAccountId: uuid("bank_account_id").references(() => bankAccount.id, {
+      onDelete: "restrict",
+    }),
+    signerProfileId: uuid("signer_profile_id").references(
+      () => signerProfile.id,
+      { onDelete: "restrict" },
+    ),
+    declarationTextId: uuid("declaration_text_id").references(
+      () => declarationText.id,
+      { onDelete: "restrict" },
+    ),
+    paymentTerms: text("payment_terms"),
+    // Set only by issuing: the consecutive this document took from its
+    // issuer's series, and when. Null while a draft, and a draft may show
+    // no number in its place — numbering exists only once it is assigned.
+    consecutive: integer("consecutive"),
+    issuedAt: timestamptz("issued_at"),
+    createdAt: timestamptz("created_at").defaultNow().notNull(),
+    updatedAt: timestamptz("updated_at").defaultNow().notNull(),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    updatedBy: text("updated_by")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+  },
+  (table) => [
+    index("billing_document_status_idx").on(table.status),
+    index("billing_document_client_idx").on(table.clientId),
+    check(
+      "billing_document_status_check",
+      sql`${table.status} in ('draft', 'issued')`,
+    ),
+    check(
+      "billing_document_consecutive_check",
+      sql`${table.consecutive} is null or ${table.consecutive} between 1 and 99999999`,
+    ),
+    // One consecutive per issuer, handed out once. Partial: drafts carry
+    // none and must not collide with each other over it.
+    uniqueIndex("billing_document_consecutive_unique")
+      .on(table.issuerProfileId, table.consecutive)
+      .where(sql`${table.consecutive} is not null`),
+    check(
+      "billing_document_currency_check",
+      sql`${table.currency} in ('COP', 'USD')`,
+    ),
+    check(
+      "billing_document_payment_terms_length",
+      sql`char_length(${table.paymentTerms}) <= 1000`,
+    ),
+  ],
+);
+
+// One row per line, in order. The amount is the line total in minor units
+// (whole pesos or US cents); quantity is informative and never multiplies it.
+export const billingDocumentLine = pgTable(
+  "billing_document_line",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    documentId: uuid("document_id")
+      .notNull()
+      .references(() => billingDocument.id, { onDelete: "cascade" }),
+    position: smallint("position").notNull(),
+    product: text("product").notNull(),
+    description: text("description"),
+    quantity: text("quantity"),
+    amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    unique("billing_document_line_position_unique").on(
+      table.documentId,
+      table.position,
+    ),
+    check(
+      "billing_document_line_position_check",
+      sql`${table.position} between 1 and 50`,
+    ),
+    check(
+      "billing_document_line_product_check",
+      sql`btrim(${table.product}) <> '' and char_length(${table.product}) <= 200`,
+    ),
+    check(
+      "billing_document_line_description_length",
+      sql`char_length(${table.description}) <= 1000`,
+    ),
+    check(
+      "billing_document_line_quantity_length",
+      sql`char_length(${table.quantity}) <= 30`,
+    ),
+    check(
+      "billing_document_line_amount_check",
+      sql`${table.amountMinor} between 1 and 99999999999999`,
+    ),
+  ],
+);
+
+// Where each issuer's consecutive stands. One continuous series per issuer,
+// independent of the client or the site (owner, 2026-10-10). There is no row
+// until an administrator says where the series continues from: an absent row
+// means "sin configurar", never an implicit start at one. `next_number` is
+// the consecutive the next issued document will take; `last_registered` is
+// the last one this platform actually assigned, so a series carried over
+// from outside is never mistaken for documents issued here. Drafts and
+// copies touch neither. RESTRICT keeps the issuer and the authors.
+export const billingNumbering = pgTable(
+  "billing_numbering",
+  {
+    issuerProfileId: uuid("issuer_profile_id")
+      .primaryKey()
+      .references(() => issuerProfile.id, { onDelete: "restrict" }),
+    nextNumber: integer("next_number").notNull(),
+    lastRegistered: integer("last_registered"),
+    createdAt: timestamptz("created_at").defaultNow().notNull(),
+    updatedAt: timestamptz("updated_at").defaultNow().notNull(),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    updatedBy: text("updated_by")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+  },
+  (table) => [
+    check(
+      "billing_numbering_next_number_check",
+      sql`${table.nextNumber} between 1 and 99999999`,
+    ),
+    check(
+      "billing_numbering_last_registered_check",
+      sql`${table.lastRegistered} is null or ${table.lastRegistered} between 1 and 99999999`,
+    ),
+    // The series may never point back into numbers it already handed out.
+    check(
+      "billing_numbering_forward_check",
+      sql`${table.lastRegistered} is null or ${table.nextNumber} > ${table.lastRegistered}`,
     ),
   ],
 );

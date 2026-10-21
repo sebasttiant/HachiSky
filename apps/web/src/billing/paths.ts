@@ -20,6 +20,26 @@ export function signerPath(id: string): string {
   return `${SIGNERS_PATH}/${encodeURIComponent(id)}`;
 }
 
+export const DECLARATIONS_PATH = `${SETTINGS_PATH}/declarations`;
+export const NEW_DECLARATION_PATH = `${DECLARATIONS_PATH}/new`;
+
+export function declarationPath(id: string): string {
+  return `${DECLARATIONS_PATH}/${encodeURIComponent(id)}`;
+}
+
+// Cuentas de cobro (module "billing", administrators only).
+export const BILLING_PATH = "/billing";
+export const NEW_DRAFT_PATH = `${BILLING_PATH}/drafts/new`;
+
+export function draftPath(id: string): string {
+  return `${BILLING_PATH}/drafts/${encodeURIComponent(id)}`;
+}
+
+// Read-only preview of the printed document, for the browser's print to PDF.
+export function draftDocumentPath(id: string): string {
+  return `${draftPath(id)}/documento`;
+}
+
 // Upload route handlers (raw image body, admins only; see image-upload.ts).
 export function issuerLogoUploadPath(id: string): string {
   return `/api/billing/uploads/issuers/${encodeURIComponent(id)}/logo`;

@@ -50,6 +50,69 @@
       "when": 1791151508735,
       "tag": "0006_issuer_profiles",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791417983345,
+      "tag": "0007_declaration_texts",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791465238163,
+      "tag": "0008_billing_drafts",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791669603429,
+      "tag": "0009_billing_numbering",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791685216772,
+      "tag": "0010_work_activities",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791936975409,
+      "tag": "0011_reports",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1792416390679,
+      "tag": "0012_report_images",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792591679200,
+      "tag": "0013_report_issued_version",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1792592582913,
+      "tag": "0014_billing_issuance",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1792600000000,
+      "tag": "0015_report_provider",
+      "breakpoints": true
     }
   ]
 }

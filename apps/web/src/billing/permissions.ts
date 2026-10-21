@@ -1,7 +1,8 @@
 import type { RoleName } from "../auth/session.ts";
 
 // Billing settings (issuer profiles with their logos and default payment
-// terms, bank accounts, signer profiles and their signature images) are for
+// terms, bank accounts, signer profiles and their signature images, tax
+// declaration texts) are for
 // administrators only (owner, 2026-10-01); reading them is admin-only too.
 // The service checks this on every call; the UI only mirrors it.
 export type BillingSettingsOperation =
@@ -23,7 +24,19 @@ export type BillingSettingsOperation =
   | "reactivate_signer"
   | "upload_signature"
   | "upload_issuer_logo"
-  | "view_images";
+  | "view_images"
+  | "view_declarations"
+  | "create_declaration"
+  | "edit_declaration"
+  | "deactivate_declaration"
+  | "reactivate_declaration"
+  | "view_drafts"
+  | "create_draft"
+  | "edit_draft"
+  | "discard_draft"
+  | "issue_draft"
+  | "view_numbering"
+  | "configure_numbering";
 
 export const BILLING_SETTINGS_PERMISSIONS: Record<
   BillingSettingsOperation,
@@ -48,6 +61,20 @@ export const BILLING_SETTINGS_PERMISSIONS: Record<
   upload_signature: ["admin"],
   upload_issuer_logo: ["admin"],
   view_images: ["admin"],
+  view_declarations: ["admin"],
+  create_declaration: ["admin"],
+  edit_declaration: ["admin"],
+  deactivate_declaration: ["admin"],
+  reactivate_declaration: ["admin"],
+  // Cuentas de cobro (module "billing", administrators only).
+  view_drafts: ["admin"],
+  create_draft: ["admin"],
+  edit_draft: ["admin"],
+  discard_draft: ["admin"],
+  issue_draft: ["admin"],
+  // Where each issuer's consecutive stands (owner, 2026-10-10).
+  view_numbering: ["admin"],
+  configure_numbering: ["admin"],
 };
 
 export function canPerformBillingSettingsOperation(

@@ -1,10 +1,18 @@
 import type { ActionState } from "../users/action-state.ts";
 import {
+  createDeclaration,
+  setDeclarationActive,
+  updateDeclaration,
+} from "./declarations.ts";
+import { createDraft, discardDraft, updateDraft } from "./drafts.ts";
+import { issueDraft } from "./issuance.ts";
+import {
   createIssuer,
   setDefaultIssuer,
   setIssuerActive,
   updateIssuer,
 } from "./issuers.ts";
+import { configureNumbering } from "./numbering.ts";
 import {
   type BillingActor,
   type BillingDeps,
@@ -18,6 +26,7 @@ import {
 import { createSigner, setSignerActive, updateSigner } from "./signers.ts";
 import type {
   BankAccountField,
+  DeclarationField,
   IssuerField,
   SignerField,
 } from "./validation.ts";
@@ -42,6 +51,19 @@ export const RULE_MESSAGES: Record<BillingRuleCode, string> = {
     "Este es el emisor predeterminado. Elige primero otro emisor como predeterminado para poder desactivarlo.",
   issuer_inactive:
     "Ese emisor está inactivo. Reactívalo o elige un emisor activo.",
+  declaration_not_found: "Esa declaración ya no existe.",
+  duplicate_declaration:
+    "Ya existe una declaración con ese nombre (puede estar inactiva).",
+  draft_not_found: "Ese borrador ya no existe.",
+  already_issued: "Esta cuenta de cobro ya fue emitida.",
+  draft_incomplete:
+    "Para emitirla faltan conceptos, firmante o cuenta bancaria.",
+  numbering_not_configured:
+    "Primero indica desde qué número continúa el consecutivo de este emisor.",
+  numbering_backwards:
+    "El consecutivo solo puede avanzar: elige un número mayor.",
+  numbering_skips_ahead:
+    "La numeración no deja huecos: usa el siguiente número de la serie.",
 };
 
 const GENERIC_ERROR = "No se pudo completar la acción. Intenta de nuevo.";
@@ -75,6 +97,8 @@ const SIGNER_FIELDS: readonly SignerField[] = [
   "jobTitle",
   "email",
 ];
+
+const DECLARATION_FIELDS: readonly DeclarationField[] = ["label", "body"];
 
 // Only strings are read; a file or a missing field becomes undefined and the
 // service reports it.
@@ -284,5 +308,178 @@ export async function submitSetSignerActive(
     };
   } catch (error) {
     return failure(active ? "activate_signer" : "deactivate_signer", error);
+  }
+}
+
+// ---- Declaration texts ------------------------------------------------------
+
+export async function submitCreateDeclaration(
+  deps: BillingDeps,
+  actor: BillingActor | null,
+  formData: FormData,
+): Promise<{ state: ActionState; id?: string }> {
+  try {
+    const { id } = await createDeclaration(
+      deps,
+      actor,
+      formToRaw(formData, DECLARATION_FIELDS),
+    );
+    return { state: { status: "success" }, id };
+  } catch (error) {
+    return { state: failure("create_declaration", error) };
+  }
+}
+
+export async function submitUpdateDeclaration(
+  deps: BillingDeps,
+  actor: BillingActor | null,
+  id: string,
+  formData: FormData,
+): Promise<ActionState> {
+  try {
+    await updateDeclaration(
+      deps,
+      actor,
+      id,
+      formToRaw(formData, DECLARATION_FIELDS),
+    );
+    return { status: "success", message: "Cambios guardados." };
+  } catch (error) {
+    return failure("update_declaration", error);
+  }
+}
+
+export async function submitSetDeclarationActive(
+  deps: BillingDeps,
+  actor: BillingActor | null,
+  id: string,
+  active: boolean,
+): Promise<ActionState> {
+  try {
+    await setDeclarationActive(deps, actor, id, active);
+    return {
+      status: "success",
+      message: active
+        ? "Declaración reactivada."
+        : "Declaración desactivada. Su texto se conserva.",
+    };
+  } catch (error) {
+    return failure("set_declaration_active", error);
+  }
+}
+
+// ---- Drafts (cuentas de cobro) ----------------------------------------------
+
+const NEW_DRAFT_FIELDS = ["clientId", "issuerProfileId", "currency"] as const;
+const DRAFT_HEADER_FIELDS = [
+  ...NEW_DRAFT_FIELDS,
+  "bankAccountId",
+  "signerProfileId",
+  "declarationTextId",
+  "paymentTerms",
+] as const;
+const LINE_FIELDS = ["product", "description", "quantity", "amount"] as const;
+// Rows are numbered from 0; the form never sends more than 100 rows (the
+// service refuses more than 50 filled ones).
+const LINE_KEY = /^lines\.(\d{1,2})\.(product|description|quantity|amount)$/;
+
+// Line fields arrive as `lines.<row>.<field>`. Rows keep the number the form
+// gave them (gaps become empty rows) so errors point back at the right row.
+export function draftFormToRaw(formData: FormData): Record<string, unknown> {
+  const raw = formToRaw(formData, DRAFT_HEADER_FIELDS);
+  const lines: Record<string, unknown>[] = [];
+  for (const [key, value] of formData.entries()) {
+    const match = LINE_KEY.exec(key);
+    if (!match || typeof value !== "string") continue;
+    const row = Number(match[1]);
+    for (let index = lines.length; index <= row; index += 1) {
+      lines.push(
+        Object.fromEntries(LINE_FIELDS.map((field) => [field, undefined])),
+      );
+    }
+    const target = lines[row];
+    if (target) target[match[2] as string] = value;
+  }
+  raw.lines = lines;
+  return raw;
+}
+
+export async function submitCreateDraft(
+  deps: BillingDeps,
+  actor: BillingActor | null,
+  formData: FormData,
+): Promise<{ state: ActionState; id?: string }> {
+  try {
+    const { id } = await createDraft(
+      deps,
+      actor,
+      formToRaw(formData, NEW_DRAFT_FIELDS),
+    );
+    return { state: { status: "success" }, id };
+  } catch (error) {
+    return { state: failure("create_draft", error) };
+  }
+}
+
+export async function submitUpdateDraft(
+  deps: BillingDeps,
+  actor: BillingActor | null,
+  id: string,
+  formData: FormData,
+): Promise<ActionState> {
+  try {
+    await updateDraft(deps, actor, id, draftFormToRaw(formData));
+    return { status: "success", message: "Borrador guardado." };
+  } catch (error) {
+    return failure("update_draft", error);
+  }
+}
+
+export async function submitDiscardDraft(
+  deps: BillingDeps,
+  actor: BillingActor | null,
+  id: string,
+): Promise<ActionState> {
+  try {
+    await discardDraft(deps, actor, id);
+    return { status: "success", message: "Borrador descartado." };
+  } catch (error) {
+    return failure("discard_draft", error);
+  }
+}
+
+export async function submitIssueDraft(
+  deps: BillingDeps,
+  actor: BillingActor | null,
+  id: string,
+): Promise<{ state: ActionState; formatted?: string }> {
+  try {
+    const { formatted } = await issueDraft(deps, actor, id);
+    return { state: { status: "success" }, formatted };
+  } catch (error) {
+    return { state: failure("issue_draft", error) };
+  }
+}
+
+// ---- Numbering ---------------------------------------------------------------
+
+// Where an issuer's consecutive continues from. The service refuses to walk
+// the series backwards; the form only reports what it said.
+export async function submitConfigureNumbering(
+  deps: BillingDeps,
+  actor: BillingActor | null,
+  issuerProfileId: string,
+  formData: FormData,
+): Promise<ActionState> {
+  try {
+    await configureNumbering(
+      deps,
+      actor,
+      issuerProfileId,
+      formToRaw(formData, ["nextNumber"]),
+    );
+    return { status: "success", message: "Consecutivo actualizado." };
+  } catch (error) {
+    return failure("configure_numbering", error);
   }
 }

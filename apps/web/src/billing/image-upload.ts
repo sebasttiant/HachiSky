@@ -1,12 +1,13 @@
 import type { ModuleAccess } from "../auth/module-access.ts";
+import { readLimitedBody } from "../images/body.ts";
 import {
-  BillingImageError,
   IMAGE_LIMITS,
   IMAGE_REJECTION_MESSAGES,
   type ImageDecoder,
   type ImageRejection,
+  ImageValidationError,
   sharpDecoder,
-} from "./image.ts";
+} from "../images/pipeline.ts";
 import { uploadIssuerLogo } from "./issuers.ts";
 import { canPerformBillingSettingsOperation } from "./permissions.ts";
 import {
@@ -75,6 +76,14 @@ const RULE_STATUS: Record<BillingRuleCode, number> = {
   duplicate_bank_account: 409,
   duplicate_signer: 409,
   duplicate_issuer: 409,
+  declaration_not_found: 404,
+  duplicate_declaration: 409,
+  already_issued: 409,
+  draft_incomplete: 409,
+  draft_not_found: 404,
+  numbering_not_configured: 409,
+  numbering_backwards: 409,
+  numbering_skips_ahead: 409,
 };
 
 function json(status: number, body: Record<string, unknown>): Response {
@@ -128,33 +137,6 @@ function isSameOrigin(headers: Headers, appOrigin: string): boolean {
 
 function mediaType(headers: Headers): string {
   return (headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
-}
-
-type BodyResult =
-  | { ok: true; bytes: Buffer }
-  | { ok: false; reason: "too_large" };
-
-// Reads the body counting bytes; cancels the stream as soon as the count
-// passes the limit, so at most one chunk beyond the limit is ever held.
-export async function readLimitedBody(
-  body: ReadableStream<Uint8Array> | null,
-  limit: number,
-): Promise<BodyResult> {
-  if (!body) return { ok: true, bytes: Buffer.alloc(0) };
-  const reader = body.getReader();
-  const parts: Uint8Array[] = [];
-  let total = 0;
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    total += value.byteLength;
-    if (total > limit) {
-      await reader.cancel().catch(() => {});
-      return { ok: false, reason: "too_large" };
-    }
-    parts.push(value);
-  }
-  return { ok: true, bytes: Buffer.concat(parts, total) };
 }
 
 export async function handleBillingImageUpload(
@@ -232,7 +214,8 @@ export async function handleBillingImageUpload(
       message: SUCCESS_MESSAGES[target.kind],
     });
   } catch (error) {
-    if (error instanceof BillingImageError) return imageRefusal(error.reason);
+    if (error instanceof ImageValidationError)
+      return imageRefusal(error.reason);
     if (error instanceof BillingRuleError) {
       return refuse(
         RULE_STATUS[error.code],

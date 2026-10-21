@@ -1,6 +1,6 @@
 import { asc, count, desc, eq, sql } from "drizzle-orm";
 import * as schema from "../db/schema/index.ts";
-import { type ImageDecoder, sharpDecoder } from "./image.ts";
+import { type ImageDecoder, sharpDecoder } from "../images/pipeline.ts";
 import {
   audit,
   authorize,

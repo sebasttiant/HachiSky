@@ -1,0 +1,60 @@
+.toolbar {
+  display: grid;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+}
+
+.toolbarRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.back {
+  justify-self: start;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.back:hover {
+  text-decoration: underline;
+}
+
+.hint {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  max-width: 44rem;
+}
+
+/* On paper only the sheet remains. The app header, navigation and footer carry
+   data-app-chrome so hiding the chrome never reaches the document's own
+   <header> and <footer>, which are part of the cuenta de cobro. */
+@page {
+  size: A4;
+  margin: 1.5cm;
+}
+
+@media print {
+  .toolbar {
+    display: none;
+  }
+
+  :global([data-app-chrome]) {
+    display: none !important;
+  }
+
+  :global(main) {
+    padding: 0 !important;
+  }
+
+  :global(.container) {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+
+  :global(body) {
+    background: #fff !important;
+  }
+}

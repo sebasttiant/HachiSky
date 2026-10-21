@@ -43,7 +43,7 @@
 }
 
 .control input::placeholder {
-  color: #8a9aa5;
+  color: var(--color-text-muted);
 }
 
 .control input:hover:not(:disabled) {
@@ -78,7 +78,7 @@
 }
 
 .reveal:hover:not(:disabled) {
-  color: var(--color-primary);
+  color: var(--color-brand-ink);
   background: var(--color-sky-50);
 }
 

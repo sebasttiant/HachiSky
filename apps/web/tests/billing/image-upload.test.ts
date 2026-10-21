@@ -29,7 +29,7 @@ import {
   solidJpeg,
   solidPng,
   spyDecoder,
-} from "./image-fixtures.ts";
+} from "../images/fixtures.ts";
 
 // The dedicated upload route (raw image body, not a Server Function): origin
 // and session checks, media type, byte limits enforced up front and while

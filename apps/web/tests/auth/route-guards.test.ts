@@ -77,6 +77,11 @@ describe("page guards", () => {
       "/settings/signers",
       "/settings/signers/new",
       "/settings/signers/[id]",
+      "/settings/declarations",
+      "/settings/declarations/new",
+      "/settings/declarations/[id]",
+      "/billing/drafts/new",
+      "/billing/drafts/[id]",
       "/account/password",
     ]) {
       assert.ok(routes.includes(expected), `missing ${expected} in ${routes}`);
@@ -238,6 +243,54 @@ describe("data entry points", () => {
     assert.doesNotMatch(source, /export const (dynamic|revalidate)\b/);
   });
 
+  it("serves stored report figures only through the reports guard", () => {
+    const file = routeHandlers.find(
+      (handler) => routeOf(handler) === "/api/reports/images/[id]",
+    );
+    assert.ok(file, "app/api/reports/images/[id]/route.ts must exist");
+    const source = stripComments(readFileSync(file, "utf8"));
+    const exported = [...source.matchAll(/export async function (\w+)/g)].map(
+      (match) => match[1],
+    );
+    assert.deepEqual(exported, ["GET"], "only GET is exported");
+    const guard = source.indexOf(
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: the literal source text of the guard call
+      'await requireModule("reports", `/api/reports/images/${id}`)',
+    );
+    assert.ok(
+      guard > 0,
+      'must await requireModule("reports", ...) with its own path',
+    );
+    const serve = source.indexOf("reportImageResponse(");
+    assert.ok(serve > guard, "the response is built only after the guard");
+    assert.doesNotMatch(source, /export const (dynamic|revalidate)\b/);
+  });
+
+  it("uploads report figures only through a dedicated, guarded POST route", () => {
+    const route = "/api/reports/[id]/sections/[key]/images";
+    const file = routeHandlers.find((handler) => routeOf(handler) === route);
+    assert.ok(file, `${route}: route handler must exist`);
+    const source = stripComments(readFileSync(file, "utf8"));
+    const exported = [...source.matchAll(/export async function (\w+)/g)].map(
+      (match) => match[1],
+    );
+    assert.deepEqual(exported, ["POST"], `${route}: only POST is exported`);
+    const guard = source.indexOf(
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: the literal source text of the guard call
+      'await checkModuleAccess("reports", `/api/reports/${id}/sections/${key}/images`)',
+    );
+    assert.ok(guard > 0, `${route}: must check the reports module first`);
+    const handle = source.indexOf("handleReportImageUpload(");
+    assert.ok(handle > guard, `${route}: handled only after the guard`);
+    // The bound lives in the handler; a route that read the body itself
+    // would be reading it without one.
+    assert.doesNotMatch(
+      source,
+      /request\.(formData|arrayBuffer|blob|json|text|body)\b/,
+      `${route}: the body is read only by handleReportImageUpload`,
+    );
+  });
+
   it("keeps the default Server Function body limit (no global raise)", async () => {
     const { default: config } = await import("../../next.config.ts");
     assert.equal(config.experimental?.serverActions?.bodySizeLimit, undefined);
@@ -376,8 +429,8 @@ describe("billing settings Server Functions", () => {
     ];
     assert.equal(
       exported.length,
-      10,
-      "issuer (create, update, set-active, set-default), bank account (create, update, set-active) and signer (create, update, set-active) actions; images upload through route handlers",
+      14,
+      "issuer (create, update, set-active, set-default), bank account (create, update, set-active), signer (create, update, set-active), declaration (create, update, set-active) and numbering (configure) actions; images upload through route handlers",
     );
     for (const match of exported) {
       const body = source.slice((match.index ?? 0) + match[0].length);
@@ -388,5 +441,83 @@ describe("billing settings Server Functions", () => {
       );
     }
     assert.match(source, /await requireModule\("settings", /);
+  });
+});
+
+describe("reports Server Functions", () => {
+  it("every exported Server Function checks the reports module first", () => {
+    const source = stripComments(
+      readFileSync(join(ROOT, "src/reports/actions.ts"), "utf8"),
+    );
+    assert.match(source, /^\s*["']use server["'];?/m);
+    const exported = [
+      ...source.matchAll(/export async function (\w+)\([^)]*\)[^{]*\{/g),
+    ];
+    assert.equal(
+      exported.length,
+      11,
+      "create, update, section, items, activities, delete, issue, the three figure actions and the refresh after an upload",
+    );
+    for (const match of exported) {
+      const body = source.slice((match.index ?? 0) + match[0].length);
+      assert.match(
+        body.trimStart(),
+        /^const (\w+|\{[^}]*\}) = await reportContext\(/,
+        `${match[1]}: must start with await reportContext(...)`,
+      );
+    }
+    assert.match(source, /await requireModule\("reports", /);
+  });
+});
+
+describe("work Server Functions", () => {
+  it("every exported Server Function checks the work module first", () => {
+    const source = stripComments(
+      readFileSync(join(ROOT, "src/work/actions.ts"), "utf8"),
+    );
+    assert.match(source, /^\s*["']use server["'];?/m);
+    const exported = [
+      ...source.matchAll(/export async function (\w+)\([^)]*\)[^{]*\{/g),
+    ];
+    assert.equal(
+      exported.length,
+      3,
+      "activity create, update and delete actions",
+    );
+    for (const match of exported) {
+      const body = source.slice((match.index ?? 0) + match[0].length);
+      assert.match(
+        body.trimStart(),
+        /^const (\w+|\{[^}]*\}) = await workContext\(/,
+        `${match[1]}: must start with await workContext(...)`,
+      );
+    }
+    assert.match(source, /await requireModule\("work", /);
+  });
+});
+
+describe("billing document Server Functions", () => {
+  it("every exported Server Function checks the billing module first", () => {
+    const source = stripComments(
+      readFileSync(join(ROOT, "src/billing/draft-actions.ts"), "utf8"),
+    );
+    assert.match(source, /^\s*["']use server["'];?/m);
+    const exported = [
+      ...source.matchAll(/export async function (\w+)\([^)]*\)[^{]*\{/g),
+    ];
+    assert.equal(
+      exported.length,
+      4,
+      "create, update, discard and issue draft actions",
+    );
+    for (const match of exported) {
+      const body = source.slice((match.index ?? 0) + match[0].length);
+      assert.match(
+        body.trimStart(),
+        /^const (\w+|\{[^}]*\}) = await draftContext\(/,
+        `${match[1]}: must start with await draftContext(...)`,
+      );
+    }
+    assert.match(source, /await requireModule\("billing", /);
   });
 });

@@ -38,6 +38,17 @@ export const ACTION_LABEL: Record<string, string> = {
   "billing.signer_activate": "Reactivó un firmante",
   "billing.signer_signature_upload": "Subió una firma",
   "billing.issuer_logo_upload": "Subió el logo del emisor",
+  "billing.numbering_configure": "Configuró el consecutivo de un emisor",
+  "work.activity_create": "Registró una actividad",
+  "work.activity_update": "Editó una actividad",
+  "work.activity_delete": "Eliminó una actividad",
+  "billing.declaration_create": "Creó una declaración",
+  "billing.declaration_update": "Editó una declaración",
+  "billing.declaration_deactivate": "Desactivó una declaración",
+  "billing.declaration_activate": "Reactivó una declaración",
+  "billing.draft_create": "Creó un borrador de cuenta de cobro",
+  "billing.draft_update": "Editó un borrador de cuenta de cobro",
+  "billing.draft_discard": "Descartó un borrador de cuenta de cobro",
 };
 
 // A `<action>.requested` row without its completion: the change was asked

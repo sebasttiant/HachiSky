@@ -2,10 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
+import { describeLimits, type ImagePurpose } from "../images/limits.ts";
 import { type ActionState, IDLE } from "../users/action-state.ts";
 import styles from "../users/admin.module.css";
 import { FieldError, FormMessage } from "../users/FormMessage.tsx";
-import { describeLimits, type ImagePurpose } from "./image-limits.ts";
 import { uploadBillingImage } from "./image-upload-client.ts";
 
 // Upload of a signature or the issuer logo. The file goes as the raw body of
