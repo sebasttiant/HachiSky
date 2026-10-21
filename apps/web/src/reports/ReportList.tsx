@@ -52,9 +52,15 @@ export function ReportList({ items }: { items: readonly ReportSummary[] }) {
               </span>
             </div>
             <div className={styles.badges}>
-              <span className={`${styles.badge} ${styles.badgePending}`}>
-                Borrador
-              </span>
+              {report.status === "issued" ? (
+                <span className={`${styles.badge} ${styles.badgeActive}`}>
+                  Emitido
+                </span>
+              ) : (
+                <span className={`${styles.badge} ${styles.badgePending}`}>
+                  Borrador
+                </span>
+              )}
             </div>
             <Link
               href={reportPath(report.id)}
@@ -91,9 +97,15 @@ export function ReportList({ items }: { items: readonly ReportSummary[] }) {
                 <td>{REPORT_TYPE_LABEL[report.type]}</td>
                 <td>{period(report)}</td>
                 <td>
-                  <span className={`${styles.badge} ${styles.badgePending}`}>
-                    Borrador
-                  </span>
+                  {report.status === "issued" ? (
+                    <span className={`${styles.badge} ${styles.badgeActive}`}>
+                      Emitido
+                    </span>
+                  ) : (
+                    <span className={`${styles.badge} ${styles.badgePending}`}>
+                      Borrador
+                    </span>
+                  )}
                 </td>
                 <td>
                   <Link

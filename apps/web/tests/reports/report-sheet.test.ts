@@ -126,6 +126,20 @@ describe("report document", () => {
     assert.match(html, /Borrador/);
   });
 
+  it("says when it was issued, with its date, once it went out", async () => {
+    const html = await render(
+      report({
+        status: "issued",
+        issuedAt: new Date("2026-10-21T15:00:00.000Z"),
+        issuedVersion: 1,
+        sections: [section({ body: "Todo operativo." })],
+      }),
+    );
+    assert.match(html, /Emitido/);
+    assert.match(html, /21\/10\/2026|21 de octubre de 2026/);
+    assert.doesNotMatch(html, /Borrador/);
+  });
+
   it("leaves out the sections that have no content", async () => {
     const html = await render(
       report({

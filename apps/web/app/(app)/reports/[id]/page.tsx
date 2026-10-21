@@ -7,6 +7,7 @@ import { getDb } from "../../../../src/db/client.ts";
 import { ActivityPicker } from "../../../../src/reports/ActivityPicker.tsx";
 import {
   deleteReportAction,
+  issueReportAction,
   moveImageAction,
   refreshReportAction,
   removeImageAction,
@@ -103,69 +104,109 @@ export default async function ReportDetailPage({
           </Link>
         }
       />
-      <div className={styles.stack}>
-        <section className={styles.card} aria-labelledby="data-title">
-          <h2 id="data-title" className={styles.cardTitle}>
-            Datos del informe
-          </h2>
-          <ReportForm
-            action={updateReportAction.bind(null, report.id)}
-            clients={clients}
-            values={report}
-            lockType
-            submitLabel="Guardar cambios"
-            pendingLabel="Guardando…"
-          />
-        </section>
-
-        <section className={styles.card} aria-labelledby="activities-title">
-          <h2 id="activities-title" className={styles.cardTitle}>
-            Actividades que describe
-          </h2>
-          <ActivityPicker
-            available={available}
-            selected={selected}
-            action={setActivitiesAction.bind(null, report.id)}
-          />
-        </section>
-
-        <section aria-labelledby="sections-title" className={styles.stack}>
-          <h2 id="sections-title" className={styles.cardTitle}>
-            Contenido
-          </h2>
-          {report.sections.map((section) => (
-            <SectionEditor
-              key={section.key}
-              section={section}
-              hint={hints.get(section.key) ?? ""}
-              saveSection={updateSectionAction.bind(null, report.id)}
-              saveItems={replaceItemsAction.bind(null, report.id)}
-              reportId={report.id}
-              images={bySection.get(section.key) ?? []}
-              updateImageText={updateImageTextAction.bind(null, report.id)}
-              removeImage={removeImageAction.bind(null, report.id)}
-              moveImage={moveImageAction.bind(null, report.id)}
-              refreshImages={refreshReportAction.bind(null, report.id)}
-            />
-          ))}
-        </section>
-
-        <section className={styles.card} aria-labelledby="delete-title">
-          <h2 id="delete-title" className={styles.cardTitle}>
-            Eliminar informe
+      {report.status === "issued" ? (
+        <section className={styles.card} aria-labelledby="issued-title">
+          <h2 id="issued-title" className={styles.cardTitle}>
+            Informe emitido
           </h2>
           <p className={styles.cardHint}>
-            Se borra el informe y todo lo escrito en él. Las actividades
-            registradas en Trabajo no se tocan. No se puede deshacer.
+            Este informe ya salió
+            {report.issuedAt
+              ? ` el ${report.issuedAt.toLocaleDateString("es-CO")}`
+              : ""}
+            . Su contenido quedó guardado tal como se envió y ya no se puede
+            editar ni eliminar. Para corregirlo, crea un informe nuevo.
           </p>
-          <ConfirmAction
-            action={deleteReportAction.bind(null, report.id)}
-            label="Eliminar informe"
-            confirmLabel="Sí, eliminar"
-            warning={`"${report.title}" se eliminará definitivamente.`}
-          />
+          <Link
+            href={`${reportPath(report.id)}/documento`}
+            className={`${styles.button} ${styles.primary}`}
+          >
+            Ver el documento emitido
+          </Link>
         </section>
-      </div>
+      ) : (
+        <div className={styles.stack}>
+          <section className={styles.card} aria-labelledby="data-title">
+            <h2 id="data-title" className={styles.cardTitle}>
+              Datos del informe
+            </h2>
+            <ReportForm
+              action={updateReportAction.bind(null, report.id)}
+              clients={clients}
+              values={report}
+              lockType
+              submitLabel="Guardar cambios"
+              pendingLabel="Guardando…"
+            />
+          </section>
+
+          <section className={styles.card} aria-labelledby="activities-title">
+            <h2 id="activities-title" className={styles.cardTitle}>
+              Actividades que describe
+            </h2>
+            <ActivityPicker
+              available={available}
+              selected={selected}
+              action={setActivitiesAction.bind(null, report.id)}
+            />
+          </section>
+
+          <section aria-labelledby="sections-title" className={styles.stack}>
+            <h2 id="sections-title" className={styles.cardTitle}>
+              Contenido
+            </h2>
+            {report.sections.map((section) => (
+              <SectionEditor
+                key={section.key}
+                section={section}
+                hint={hints.get(section.key) ?? ""}
+                saveSection={updateSectionAction.bind(null, report.id)}
+                saveItems={replaceItemsAction.bind(null, report.id)}
+                reportId={report.id}
+                images={bySection.get(section.key) ?? []}
+                updateImageText={updateImageTextAction.bind(null, report.id)}
+                removeImage={removeImageAction.bind(null, report.id)}
+                moveImage={moveImageAction.bind(null, report.id)}
+                refreshImages={refreshReportAction.bind(null, report.id)}
+              />
+            ))}
+          </section>
+
+          <section className={styles.card} aria-labelledby="issue-title">
+            <h2 id="issue-title" className={styles.cardTitle}>
+              Emitir informe
+            </h2>
+            <p className={styles.cardHint}>
+              Al emitirlo, el contenido queda guardado tal como está hoy — con
+              las actividades y la firma de hoy — y ya no se podrá editar ni
+              eliminar.
+            </p>
+            <ConfirmAction
+              action={issueReportAction.bind(null, report.id)}
+              label="Emitir informe"
+              confirmLabel="Sí, emitir"
+              warning="El informe se emitirá con su contenido actual. Esta acción no se puede deshacer."
+              tone="primary"
+            />
+          </section>
+
+          <section className={styles.card} aria-labelledby="delete-title">
+            <h2 id="delete-title" className={styles.cardTitle}>
+              Eliminar informe
+            </h2>
+            <p className={styles.cardHint}>
+              Se borra el informe y todo lo escrito en él. Las actividades
+              registradas en Trabajo no se tocan. No se puede deshacer.
+            </p>
+            <ConfirmAction
+              action={deleteReportAction.bind(null, report.id)}
+              label="Eliminar informe"
+              confirmLabel="Sí, eliminar"
+              warning={`"${report.title}" se eliminará definitivamente.`}
+            />
+          </section>
+        </div>
+      )}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { moveImage, removeImage, updateImageText } from "./images.ts";
 import {
   createReport,
   deleteReport,
+  issueReport,
   type ReportActor,
   type ReportDeps,
   type ReportRuleCode,
@@ -272,5 +273,18 @@ export async function submitDeleteReport(
     return { status: "success", message: "Informe eliminado." };
   } catch (error) {
     return failure("delete_report", error);
+  }
+}
+
+export async function submitIssueReport(
+  deps: ReportDeps,
+  actor: ReportActor | null,
+  id: string,
+): Promise<ActionState> {
+  try {
+    await issueReport(deps, actor, id);
+    return { status: "success", message: "Informe emitido." };
+  } catch (error) {
+    return failure("issue_report", error);
   }
 }

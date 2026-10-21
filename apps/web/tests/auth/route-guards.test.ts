@@ -455,8 +455,8 @@ describe("reports Server Functions", () => {
     ];
     assert.equal(
       exported.length,
-      10,
-      "create, update, section, items, activities, delete, the three figure actions and the refresh after an upload",
+      11,
+      "create, update, section, items, activities, delete, issue, the three figure actions and the refresh after an upload",
     );
     for (const match of exported) {
       const body = source.slice((match.index ?? 0) + match[0].length);

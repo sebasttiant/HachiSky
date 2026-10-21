@@ -12,6 +12,7 @@ import {
   REPORT_RULE_MESSAGES,
   submitCreateReport,
   submitDeleteReport,
+  submitIssueReport,
   submitMoveImage,
   submitRemoveImage,
   submitReplaceItems,
@@ -147,6 +148,18 @@ export async function refreshReportAction(
   }
   revalidatePath(reportPath(id), "page");
   return { status: "success" };
+}
+
+// Issuing freezes the report as it goes out. The page re-reads itself
+// afterwards, so what the author sees next is the closed, issued state.
+export async function issueReportAction(
+  id: string,
+  _previous: ActionState,
+): Promise<ActionState> {
+  const { deps, actor } = await reportContext(reportPath(id));
+  const state = await submitIssueReport(deps, actor, id);
+  if (state.status === "success") revalidatePath(REPORTS_PATH, "layout");
+  return state;
 }
 
 export async function deleteReportAction(

@@ -243,7 +243,16 @@ export function ReportSheet({
           <div>
             <dt>Estado</dt>
             <dd>
-              <span className={styles.draft}>Borrador</span>
+              {report.status === "issued" ? (
+                <span className={styles.draft}>
+                  Emitido
+                  {report.issuedAt
+                    ? ` · ${formatDate(report.issuedAt.toISOString().slice(0, 10))}`
+                    : ""}
+                </span>
+              ) : (
+                <span className={styles.draft}>Borrador</span>
+              )}
             </dd>
           </div>
         </dl>

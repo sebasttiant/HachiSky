@@ -59,9 +59,9 @@ byte exposure, bounded bodies, audit minimization, guarded actions, UI form
 nesting and slice boundaries; its one FAIL was the ordering text corrected
 above. It did not rerun the suite itself.
   - [x] R5-S4: section-local figures in `ReportSheet` and print.
-- [ ] R6: issued report with a preserved version and author snapshot.
-  - [x] R6-S1 (done, 840+4 tests at the slice): storage and service — migration 0013 freezes sections, items, figures, activities and the author snapshot into an issued version; issuing is one-way, and an issued report refuses every edit. Reads and figure bytes come from the frozen copy. Commit `4175d38`.
-  - [ ] R6-S2: document and screens — the sheet states "Emitido" with its date instead of "Borrador", the detail page stops offering editors once issued and offers the issue action while it is a draft.
+- [x] R6 (done, full suite 851/851): issued report with a preserved version and author snapshot.
+  - [x] R6-S1: storage and service — migration 0013 freezes sections, items, figures, activities and the author snapshot into an issued version; issuing is one-way, and an issued report refuses every edit. Reads and figure bytes come from the frozen copy. Commit `4175d38`.
+  - [x] R6-S2: document and screens — the sheet states "Emitido" with its date instead of "Borrador", the list badges follow the state, the detail page offers Emitir while it is a draft and replaces every editor with the issued notice once it went out.
 - [ ] R7: AI assistance with the user's own model. Blocked on a product decision, see below.
 
 ## R5-S2 evidence
