@@ -15,6 +15,20 @@ const long = new Intl.DateTimeFormat(APP_LOCALE, {
   timeZone: APP_TIME_ZONE,
 });
 
+const dateTime = new Intl.DateTimeFormat(APP_LOCALE, {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  timeZone: APP_TIME_ZONE,
+});
+
+// "29 de sept de 2026, 8:05 p. m." — an instant, always shown in Bogota time.
+export function formatDateTime(instant: Date): string {
+  return dateTime.format(instant);
+}
+
 // Parse a calendar date (yyyy-mm-dd) at noon Bogota time (UTC-5, no DST) so
 // formatting in America/Bogota can never shift the day.
 function parseIsoDate(iso: string): Date {

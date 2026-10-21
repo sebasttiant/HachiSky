@@ -1,0 +1,775 @@
+/* ---- Surfaces ---------------------------------------------------------- */
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  /* Ambient elevation, so a card reads as a sheet above the page instead of
+     an outlined rectangle. */
+  box-shadow: var(--shadow-md);
+  padding: var(--space-5);
+}
+
+.cardTitle {
+  font-size: var(--text-lg);
+  margin-bottom: var(--space-1);
+}
+
+.cardHint {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-4);
+}
+
+.stack {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.narrow {
+  width: min(100%, 34rem);
+  margin-inline: auto;
+}
+
+.lead {
+  margin-block: var(--space-3) var(--space-5);
+}
+
+.breadcrumb {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.75rem;
+  margin-bottom: var(--space-3);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+/* ---- Hub ------------------------------------------------------------- */
+
+.hubGrid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+/* Three to a row divides the hub evenly, so the last row is never a single
+   tile stranded beside empty columns. */
+@media (min-width: 64rem) {
+  .hubGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.hubTile {
+  position: relative;
+  display: grid;
+  gap: var(--space-2);
+  /* Without this the grid stretches its rows to fill the tallest tile in the
+     row, and every heading lands at a different height. */
+  align-content: start;
+  padding: var(--space-5);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition-interactive);
+  overflow: hidden;
+}
+
+.hubTile::before {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 3px;
+  background: var(--gradient-brand);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--duration-base) var(--ease-out);
+}
+
+.hubTile:hover,
+.hubTile:focus-within {
+  border-color: var(--color-world-tic);
+  box-shadow: var(--shadow-lg), var(--shadow-glow-tic);
+  transform: translateY(-2px);
+}
+
+.hubTile:hover::before,
+.hubTile:focus-within::before {
+  transform: scaleX(1);
+}
+
+.hubTile h2 {
+  font-size: var(--text-lg);
+}
+
+.hubTile p {
+  color: var(--color-text-muted);
+}
+
+.hubLink {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* The whole tile is the link target. */
+.hubLink::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+/* A figure inside a navigation tile: it supports the heading, so it must not
+   be set larger than the heading it sits under. */
+.hubStat {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--color-brand-ink);
+}
+
+.hubIcon {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: var(--radius-md);
+  background: var(--color-sky-100);
+  color: var(--color-brand-ink);
+}
+
+/* ---- Toolbar and filters -------------------------------------------- */
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+.toolbarActions {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+/* ---- Forms ------------------------------------------------------------ */
+
+.form {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.formGrid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+}
+
+.field {
+  display: grid;
+  gap: var(--space-1);
+  align-content: start;
+}
+
+.fieldWide {
+  grid-column: 1 / -1;
+}
+
+.textarea {
+  min-height: 7rem;
+  resize: vertical;
+}
+
+.toolbar .field {
+  flex: 1 1 12rem;
+}
+
+.toolbar .search {
+  flex: 3 1 18rem;
+}
+
+.field label,
+.label {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.input,
+.select {
+  width: 100%;
+  min-height: 2.75rem;
+  font: inherit;
+  color: var(--color-text);
+  background: var(--color-surface);
+  padding: 0.55rem 0.8rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+
+/* Without this the browser keeps drawing its own dropdown, which never
+   matches the text inputs standing next to it. */
+.select {
+  appearance: none;
+  padding-right: 2.25rem;
+  background-image: var(--select-arrow);
+  background-repeat: no-repeat;
+  background-position: right 0.85rem center;
+  background-size: 0.75rem auto;
+  cursor: pointer;
+}
+
+.input:hover:not(:disabled),
+.select:hover:not(:disabled) {
+  border-color: var(--color-brand-mid);
+}
+
+/* The focus ring keeps --color-focus for its documented 5.53:1 contrast; the
+   halo is the TIC colour so focus reads as brand, not as a generic outline. */
+.input:focus-visible,
+.select:focus-visible {
+  outline: none;
+  border-color: var(--color-focus);
+  box-shadow: 0 0 0 4px rgb(0 153 255 / 22%);
+}
+
+.input[aria-invalid="true"],
+.select[aria-invalid="true"] {
+  border-color: var(--color-error-text);
+}
+
+.input:disabled,
+.select:disabled {
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
+}
+
+.help {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.fieldError {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-error-text);
+}
+
+.passwordRow {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.passwordRow .input {
+  flex: 1;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  letter-spacing: 0.02em;
+}
+
+.formActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+/* ---- Buttons ---------------------------------------------------------- */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 2.75rem;
+  padding: 0 var(--space-4);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out),
+    filter var(--duration-fast) var(--ease-out);
+}
+
+.button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.primary {
+  color: #fff;
+  background: var(--gradient-brand);
+  box-shadow: 0 6px 20px rgb(0 65 103 / 28%);
+}
+
+.primary:hover:not(:disabled) {
+  color: #fff;
+  filter: brightness(1.08);
+  box-shadow: 0 10px 28px rgb(0 65 103 / 34%);
+  transform: translateY(-1px);
+}
+
+.secondary {
+  color: var(--color-brand-ink);
+  background: var(--color-surface);
+  border-color: var(--color-border-strong);
+}
+
+.secondary:hover:not(:disabled) {
+  border-color: var(--color-world-tic);
+  background: var(--color-sky-50);
+  box-shadow: var(--shadow-glow-tic);
+  transform: translateY(-1px);
+}
+
+.danger {
+  color: #fff;
+  background: var(--color-error-text);
+}
+
+.danger:hover:not(:disabled) {
+  filter: brightness(1.12);
+}
+
+.dangerOutline {
+  color: var(--color-error-text);
+  background: var(--color-surface);
+  border-color: currentColor;
+}
+
+.dangerOutline:hover:not(:disabled) {
+  background: var(--color-error-surface);
+}
+
+/* ---- Messages --------------------------------------------------------- */
+
+.alert {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  font-weight: 500;
+}
+
+.alertError {
+  background: var(--color-error-surface);
+  color: var(--color-error-text);
+}
+
+.alertSuccess {
+  background: var(--color-ok-surface);
+  color: var(--color-ok-text);
+}
+
+.alertWarn {
+  background: var(--color-warn-surface);
+  color: var(--color-warn-text);
+}
+
+.alertInfo {
+  background: var(--color-info-surface);
+  color: var(--color-brand-ink);
+}
+
+/* ---- Badges ----------------------------------------------------------- */
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.1rem 0.6rem;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.badgeAdmin {
+  background: var(--color-sky-100);
+  color: var(--color-brand-ink);
+}
+
+.badgeStaff,
+.badgeInactive {
+  background: var(--color-neutral-surface);
+  color: var(--color-neutral-text);
+}
+
+.badgeActive {
+  background: var(--color-ok-surface);
+  color: var(--color-ok-text);
+}
+
+.badgePending {
+  background: var(--color-warn-surface);
+  color: var(--color-warn-text);
+}
+
+/* ---- Create panel ------------------------------------------------------ */
+
+.createPanel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.createPanel summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 3.25rem;
+  padding: 0 var(--space-5);
+  font-weight: 700;
+  color: var(--color-brand-ink);
+  cursor: pointer;
+  list-style: none;
+  border-radius: inherit;
+}
+
+.createPanel summary::-webkit-details-marker {
+  display: none;
+}
+
+.plus {
+  display: inline-grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  background: var(--color-sky-100);
+  font-size: 1.25rem;
+  line-height: 1;
+  transition: transform 150ms ease;
+}
+
+.createPanel[open] .plus {
+  transform: rotate(45deg);
+}
+
+.createBody {
+  padding: var(--space-5);
+  border-top: 1px solid var(--color-border);
+}
+
+/* ---- User list: cards below 64rem, table above ----------------------- */
+
+.cards {
+  display: grid;
+  gap: var(--space-3);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.userCard {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.userHead {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  min-width: 0;
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 999px;
+  background: var(--color-brand-navy);
+  color: #fff;
+  font-weight: 700;
+  font-size: var(--text-sm);
+}
+
+.avatarInactive {
+  background: var(--color-neutral-surface);
+  color: var(--color-neutral-text);
+}
+
+.identity {
+  display: grid;
+  min-width: 0;
+}
+
+.identity strong {
+  color: var(--color-text);
+}
+
+.muted {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+
+.tableWrap {
+  display: none;
+  overflow: hidden;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.table th {
+  padding: var(--space-3) var(--space-4);
+  text-align: start;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  background: var(--color-surface-alt);
+  /* A hairline of brand colour anchors the header row to the sheet. */
+  border-bottom: 2px solid var(--color-sky-100);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.table td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+}
+
+.table tr:last-child td {
+  border-bottom: 0;
+}
+
+.table tbody tr {
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.table tbody tr:hover {
+  background: var(--color-sky-50);
+  /* Marks the hovered row on its leading edge without shifting the layout. */
+  box-shadow: inset 3px 0 0 var(--color-world-tic);
+}
+
+.rowInactive {
+  color: var(--color-text-muted);
+}
+
+@media (min-width: 64rem) {
+  .cards {
+    display: none;
+  }
+
+  .tableWrap {
+    display: block;
+  }
+}
+
+.pager {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+/* ---- Empty state ------------------------------------------------------ */
+
+.empty {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  padding: var(--space-7) var(--space-4);
+  text-align: center;
+  background: var(--color-surface);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-lg);
+}
+
+.empty h2 {
+  font-size: var(--text-lg);
+}
+
+.empty p {
+  color: var(--color-text-muted);
+  max-width: 32rem;
+}
+
+/* ---- User detail ------------------------------------------------------- */
+
+.detailLayout {
+  display: grid;
+  gap: var(--space-5);
+}
+
+@media (min-width: 64rem) {
+  .detailLayout {
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+.profile {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: center;
+  margin-bottom: var(--space-5);
+}
+
+.profile .avatar {
+  width: 3.5rem;
+  height: 3.5rem;
+  font-size: var(--text-lg);
+}
+
+.profile h1 {
+  font-size: var(--text-2xl);
+}
+
+.facts {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.facts div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.facts dt {
+  color: var(--color-text-muted);
+}
+
+.facts dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: end;
+}
+
+.actionRow {
+  display: grid;
+  gap: var(--space-2);
+  padding-block: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.actionRow:first-of-type {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.actionRow h3 {
+  font-size: var(--text-base);
+}
+
+.confirmBox {
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-warn-surface);
+  color: var(--color-warn-text);
+}
+
+/* ---- Activity --------------------------------------------------------- */
+
+.timeline {
+  display: grid;
+  gap: 0;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.event {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-3);
+  padding-block: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.event:last-child {
+  border-bottom: 0;
+}
+
+.dot {
+  width: 0.625rem;
+  height: 0.625rem;
+  margin-top: 0.45rem;
+  border-radius: 999px;
+  background: var(--color-link);
+}
+
+.dotDanger {
+  background: var(--color-error-text);
+}
+
+.dotOk {
+  background: var(--color-ok-text);
+}
+
+.eventText {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+/* Stored billing image (signature, issuer logo): white backdrop so a
+   transparent PNG stays readable in dark mode, never wider than its card. */
+.imagePreview {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  max-height: 12rem;
+  padding: var(--space-2);
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}

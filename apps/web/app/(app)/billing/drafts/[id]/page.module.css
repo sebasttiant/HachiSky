@@ -1,0 +1,144 @@
+/* The draft workspace: the editor on the left, the live cuenta de cobro on the
+   right. The preview is the server-rendered document (full, secure), so it
+   shows the last saved version and refreshes when the draft is saved. */
+
+/* This workspace earns more width than the reading container: two working
+   columns plus an A4 sheet. It spreads across the screen but stays bounded so
+   it does not stretch edge to edge on very wide monitors. */
+.pageWide {
+  width: 100%;
+  max-width: 110rem;
+  margin-inline: auto;
+  padding-inline: clamp(var(--space-4), 4vw, var(--space-8));
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.headMain {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.headTitle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.headTitle h1 {
+  font-size: var(--text-2xl);
+  line-height: 1.15;
+}
+
+.statusChip {
+  padding: 0.15rem 0.7rem;
+  border-radius: var(--radius-pill);
+  background: var(--color-warn-surface);
+  color: var(--color-warn-text);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.headMeta {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.headActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.workspace {
+  display: grid;
+  gap: var(--space-5);
+  margin-top: var(--space-4);
+}
+
+.editorColumn {
+  display: grid;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.previewColumn {
+  min-width: 0;
+}
+
+.previewPane {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.previewHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+
+.previewTitle {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--color-brand-ink);
+}
+
+.previewMeta {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.previewHint {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+/* The document sheet is A4-wide; inside the column it scales down to fit. A soft
+   frame sets it apart as a page, not another form card. */
+.previewFrame {
+  padding: var(--space-4);
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: auto;
+}
+
+.printLink {
+  font-weight: 600;
+  font-size: var(--text-sm);
+  text-decoration: none;
+}
+
+.printLink:hover {
+  text-decoration: underline;
+}
+
+/* Side by side once there is room; the document stays in view while editing. */
+@media (min-width: 72rem) {
+  .workspace {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .previewColumn {
+    position: sticky;
+    top: var(--space-4);
+    max-height: calc(100vh - var(--space-6));
+    overflow: auto;
+  }
+}

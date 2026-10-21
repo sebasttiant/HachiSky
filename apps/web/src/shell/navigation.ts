@@ -12,7 +12,13 @@ export const AVAILABILITY_LABEL: Record<Availability, string> = {
   unavailable: "No disponible todavía",
 };
 
-export type ModuleId = "home" | "clients" | "work" | "reports" | "billing";
+export type ModuleId =
+  | "home"
+  | "clients"
+  | "work"
+  | "reports"
+  | "billing"
+  | "settings";
 
 export interface AppModule {
   id: ModuleId;
@@ -34,29 +40,43 @@ export const MODULES: readonly AppModule[] = [
     id: "clients",
     label: "Clientes",
     href: "/clients",
-    availability: "unavailable",
+    availability: "available",
     description: "Fichas de clientes, contactos y condiciones de servicio.",
   },
   {
     id: "work",
     label: "Trabajo",
     href: "/work",
-    availability: "preview",
-    description: "Registro de jornadas y actividades realizadas.",
+    // Activities are stored rows now. Reports are built from them, so a
+    // preview here would have meant reports describing invented work.
+    availability: "available",
+    description: "Actividades realizadas para cada cliente, con su resultado.",
   },
   {
     id: "reports",
     label: "Informes",
     href: "/reports",
-    availability: "preview",
-    description: "Informes de actividad listos para compartir con el cliente.",
+    // Reports are written and saved now; the fixed sample is gone.
+    availability: "available",
+    description:
+      "Diagnósticos, seguimientos, informes de gestión, infraestructura y manuales.",
   },
   {
     id: "billing",
     label: "Facturación",
     href: "/billing",
-    availability: "unavailable",
-    description: "Cuentas de cobro, pagos y saldos",
+    // Drafts are stored, edited, previewed and printed for real. Issuing a
+    // numbered document is not built yet, and payments and balances do not
+    // exist, so the description promises neither.
+    availability: "available",
+    description: "Cuentas de cobro: borradores, numeración e impresión.",
+  },
+  {
+    id: "settings",
+    label: "Configuración",
+    href: "/settings",
+    availability: "available",
+    description: "Usuarios del equipo, accesos y actividad de administración.",
   },
 ];
 

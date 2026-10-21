@@ -6,11 +6,13 @@ import { useEffect, useRef, useState } from "react";
 import { AvailabilityBadge } from "./AvailabilityBadge.tsx";
 import { ModuleIcon } from "./icons.tsx";
 import styles from "./MainNav.module.css";
-import { isActive, MODULES } from "./navigation.ts";
+import { isActive, MODULES, type ModuleId } from "./navigation.ts";
 
 const MENU_ID = "main-menu";
 
-export function MainNav() {
+// `allowed` mirrors the server-side module permissions; it hides links only.
+export function MainNav({ allowed }: { allowed: readonly ModuleId[] }) {
+  const modules = MODULES.filter((module) => allowed.includes(module.id));
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const toggleRef = useRef<HTMLButtonElement>(null);
@@ -47,7 +49,7 @@ export function MainNav() {
       </button>
       <nav aria-label="Principal">
         <ul id={MENU_ID} className={styles.list} data-open={open}>
-          {MODULES.map((module) => {
+          {modules.map((module) => {
             const active = isActive(module.href, pathname);
             return (
               <li key={module.id}>

@@ -5,7 +5,18 @@ import {
   APP_TIME_ZONE,
   formatDate,
   formatDateLong,
+  formatDateTime,
 } from "./date.ts";
+
+describe("formatDateTime", () => {
+  it("shows an instant in Bogota time, whatever the process time zone", () => {
+    // 2026-09-30T01:05Z is 29 Sept, 20:05 in Bogota.
+    assert.equal(
+      formatDateTime(new Date("2026-09-30T01:05:00Z")),
+      "29 de sept de 2026, 8:05 p. m.",
+    );
+  });
+});
 
 describe("es-CO date formatting", () => {
   it("declares the Colombian locale and time zone", () => {

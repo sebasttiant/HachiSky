@@ -18,6 +18,17 @@ const PATHS: Record<ModuleId, string[]> = {
     "M9 8.5h2",
   ],
   billing: ["M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2Z", "M9 8h6", "M9 12h6"],
+  settings: [
+    "M4 7h9",
+    "M17 7h3",
+    "M15 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z",
+    "M4 17h3",
+    "M11 17h9",
+    "M9 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z",
+    "M4 12h4",
+    "M12 12h8",
+    "M10 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z",
+  ],
 };
 
 export function ModuleIcon({ id, size = 24 }: { id: ModuleId; size?: number }) {

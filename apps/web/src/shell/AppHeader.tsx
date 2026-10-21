@@ -1,16 +1,21 @@
 import Link from "next/link";
+import type { RoleName } from "../auth/session.ts";
 import styles from "./AppHeader.module.css";
 import { MainNav } from "./MainNav.tsx";
+import type { ModuleId } from "./navigation.ts";
+import { ThemeToggle } from "./ThemeToggle.tsx";
 import { UserArea } from "./UserArea.tsx";
 import { Wordmark } from "./Wordmark.tsx";
 
 export function AppHeader({
   user,
+  modules = [],
 }: {
-  user?: { name: string; jobTitle: string | null };
+  user?: { name: string; role: RoleName; jobTitle: string | null };
+  modules?: readonly ModuleId[];
 }) {
   return (
-    <header className={styles.header}>
+    <header className={styles.header} data-app-chrome="">
       <div className={`container ${styles.bar}`}>
         <Link href="/" className={styles.brand}>
           {/* Decorative: the visible wordmark already names the link. Plain <img>
@@ -28,8 +33,17 @@ export function AppHeader({
           />
           <Wordmark />
         </Link>
-        <MainNav />
-        {user ? <UserArea name={user.name} jobTitle={user.jobTitle} /> : null}
+        <MainNav allowed={modules} />
+        <div className={styles.actions}>
+          <ThemeToggle />
+          {user ? (
+            <UserArea
+              name={user.name}
+              role={user.role}
+              jobTitle={user.jobTitle}
+            />
+          ) : null}
+        </div>
       </div>
     </header>
   );
