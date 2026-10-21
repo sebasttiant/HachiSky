@@ -24,8 +24,14 @@ const {
   client,
   report,
   reportActivity,
+  reportImage,
   reportItem,
   reportSection,
+  reportIssuedActivity,
+  reportIssuedImage,
+  reportIssuedItem,
+  reportIssuedSection,
+  reportIssuedVersion,
   user,
   workActivity,
 } = schema;
@@ -62,7 +68,9 @@ export type ReportRuleCode =
   | "section_not_found"
   | "activity_not_found"
   | "image_not_found"
-  | "image_limit_reached";
+  | "image_limit_reached"
+  | "already_issued"
+  | "report_issued";
 
 export class ReportRuleError extends Error {
   readonly code: ReportRuleCode;
@@ -124,11 +132,13 @@ export interface LinkedActivity {
 export interface ReportRecord extends ReportSummary {
   createdBy: string;
   updatedBy: string;
-  // Who signs the document. Read live while the report is a draft; R6
-  // freezes a snapshot so an issued report keeps the title its author held
-  // on the day it went out.
+  // Who signs the document. Read live while the report is a draft; once
+  // issued, the name and title frozen on the day it went out.
   authorName: string;
   authorJobTitle: string | null;
+  // Set only once issued: the preserved version this record was read from.
+  issuedAt: Date | null;
+  issuedVersion: number | null;
   sections: SectionRecord[];
   activities: LinkedActivity[];
 }
@@ -196,6 +206,19 @@ export async function lockReachable(tx: Tx, actor: ReportActor, id: string) {
   if (!row || !canReachReport(actor.role, actor.id, row.authorUserId)) {
     throw new ReportRuleError("not_found");
   }
+  return row;
+}
+
+/**
+ * The report, locked, and still a draft. Every write goes through here, so
+ * an issued report refuses edits in one place: what went out must not be
+ * rewritten from any screen. Reads keep using lockReachable.
+ *
+ * Exported for images.ts, which writes figures under the same rule.
+ */
+export async function lockEditable(tx: Tx, actor: ReportActor, id: string) {
+  const row = await lockReachable(tx, actor, id);
+  if (row.status === "issued") throw new ReportRuleError("report_issued");
   return row;
 }
 
@@ -327,6 +350,81 @@ export async function getReport(
     return null;
   }
 
+  // An issued report is read from its preserved version, never from the
+  // draft rows: what the client received cannot be rewritten afterwards by
+  // correcting an activity, renaming a client or changing a job title.
+  if (row.status === "issued") {
+    const [version] = await deps.db
+      .select()
+      .from(reportIssuedVersion)
+      .where(eq(reportIssuedVersion.reportId, id));
+    if (version) {
+      const issuedSections = await deps.db
+        .select()
+        .from(reportIssuedSection)
+        .where(eq(reportIssuedSection.versionId, version.id))
+        .orderBy(asc(reportIssuedSection.position));
+      const issuedItems =
+        issuedSections.length === 0
+          ? []
+          : await deps.db
+              .select()
+              .from(reportIssuedItem)
+              .where(
+                inArray(
+                  reportIssuedItem.sectionId,
+                  issuedSections.map((section) => section.id),
+                ),
+              )
+              .orderBy(asc(reportIssuedItem.position));
+      const issuedActivities = await deps.db
+        .select()
+        .from(reportIssuedActivity)
+        .where(eq(reportIssuedActivity.versionId, version.id))
+        .orderBy(asc(reportIssuedActivity.position));
+      return {
+        ...row,
+        type: version.type as ReportType,
+        clientName: version.clientName,
+        title: version.title,
+        periodStart: version.periodStart,
+        periodEnd: version.periodEnd,
+        authorName: version.authorName,
+        authorJobTitle: version.authorJobTitle,
+        issuedAt: version.issuedAt,
+        issuedVersion: version.version,
+        sections: issuedSections.map((section) => ({
+          id: section.id,
+          key: section.key,
+          kind: section.kind as SectionKind,
+          heading: section.heading,
+          body: section.body,
+          items: issuedItems
+            .filter((item) => item.sectionId === section.id)
+            .map((item) => ({
+              id: item.id,
+              position: item.position,
+              label: item.label,
+              body: item.body,
+              status: item.status as ItemRecord["status"],
+              priority: item.priority as ItemRecord["priority"],
+              impact: item.impact,
+            })),
+        })),
+        activities: issuedActivities.map((activity) => ({
+          id: activity.id,
+          title: activity.title,
+          clientName: activity.clientName,
+          performedOn: activity.performedOn,
+          startedAt: shortTime(activity.startedAt),
+          endedAt: shortTime(activity.endedAt),
+          status: activity.status,
+          outcome: activity.outcome,
+        })),
+      };
+    }
+  }
+
   const sectionRows = await deps.db
     .select()
     .from(reportSection)
@@ -370,6 +468,8 @@ export async function getReport(
   return {
     ...row,
     type: row.type as ReportType,
+    issuedAt: null,
+    issuedVersion: null,
     sections: sectionRows.map((section) => ({
       id: section.id,
       key: section.key,
@@ -413,7 +513,7 @@ export async function updateReport(
   const input = result.data;
 
   await deps.db.transaction(async (tx) => {
-    const current = await lockReachable(tx, actor, id);
+    const current = await lockEditable(tx, actor, id);
     // The type decides which sections exist, so changing it would orphan
     // what the author already wrote. A different type is a different report.
     if (input.type !== current.type) {
@@ -464,7 +564,7 @@ export async function updateSection(
   const input: SectionInput = result.data;
 
   await deps.db.transaction(async (tx) => {
-    await lockReachable(tx, actor, reportId);
+    await lockEditable(tx, actor, reportId);
     const [section] = await tx
       .select()
       .from(reportSection)
@@ -502,7 +602,7 @@ export async function replaceItems(
   const actor = authorize(rawActor, "edit_report");
 
   await deps.db.transaction(async (tx) => {
-    await lockReachable(tx, actor, reportId);
+    await lockEditable(tx, actor, reportId);
     const [section] = await tx
       .select()
       .from(reportSection)
@@ -553,7 +653,7 @@ export async function setActivities(
   const ids = result.data;
 
   await deps.db.transaction(async (tx) => {
-    await lockReachable(tx, actor, reportId);
+    await lockEditable(tx, actor, reportId);
 
     if (ids.length > 0) {
       const rows = await tx
@@ -608,11 +708,189 @@ export async function deleteReport(
   const actor = authorize(rawActor, "delete_report");
 
   await deps.db.transaction(async (tx) => {
-    await lockReachable(tx, actor, id);
+    await lockEditable(tx, actor, id);
     // Sections, items and activity links go with it by cascade; the
     // activities themselves are untouched.
     await tx.delete(report).where(eq(report.id, id));
     await audit(tx, actor, "report.delete", { reportId: id });
+  });
+}
+
+/**
+ * Issue the report: freeze the version the client receives.
+ *
+ * Everything the document shows is copied in the same transaction that
+ * flips the status — sections, items, figures with their bytes, the
+ * activities as they read today, and the author's name and title today.
+ * From then on the report answers only from that copy (see getReport) and
+ * refuses every edit (see lockEditable). Issuing twice is refused rather
+ * than freezing a second, different "final" version.
+ */
+export async function issueReport(
+  deps: ReportDeps,
+  rawActor: ReportActor | null | undefined,
+  id: string,
+): Promise<{ version: number; issuedAt: Date }> {
+  const actor = authorize(rawActor, "issue_report");
+
+  return deps.db.transaction(async (tx) => {
+    const current = await lockReachable(tx, actor, id);
+    if (current.status === "issued") {
+      throw new ReportRuleError("already_issued");
+    }
+
+    const [author] = await tx
+      .select({ name: user.name, jobTitle: user.jobTitle })
+      .from(user)
+      .where(eq(user.id, current.authorUserId));
+    const [clientRow] = await tx
+      .select({ name: client.name })
+      .from(client)
+      .where(eq(client.id, current.clientId));
+    if (!author || !clientRow) throw new ReportRuleError("not_found");
+
+    const [version] = await tx
+      .insert(reportIssuedVersion)
+      .values({
+        reportId: id,
+        version: 1,
+        issuedBy: actor.id,
+        type: current.type,
+        clientName: clientRow.name,
+        periodStart: current.periodStart,
+        periodEnd: current.periodEnd,
+        title: current.title,
+        authorUserId: current.authorUserId,
+        authorName: author.name,
+        authorJobTitle: author.jobTitle,
+      })
+      .returning({
+        id: reportIssuedVersion.id,
+        issuedAt: reportIssuedVersion.issuedAt,
+      });
+    if (!version) throw new Error("issued version insert returned no row");
+
+    const sectionRows = await tx
+      .select()
+      .from(reportSection)
+      .where(eq(reportSection.reportId, id))
+      .orderBy(asc(reportSection.position));
+    const itemRows =
+      sectionRows.length === 0
+        ? []
+        : await tx
+            .select()
+            .from(reportItem)
+            .where(
+              inArray(
+                reportItem.sectionId,
+                sectionRows.map((section) => section.id),
+              ),
+            )
+            .orderBy(asc(reportItem.position));
+    const imageRows =
+      sectionRows.length === 0
+        ? []
+        : await tx
+            .select()
+            .from(reportImage)
+            .where(
+              inArray(
+                reportImage.sectionId,
+                sectionRows.map((section) => section.id),
+              ),
+            )
+            .orderBy(asc(reportImage.position));
+
+    for (const section of sectionRows) {
+      const [issuedSection] = await tx
+        .insert(reportIssuedSection)
+        .values({
+          versionId: version.id,
+          position: section.position,
+          key: section.key,
+          kind: section.kind,
+          heading: section.heading,
+          body: section.body,
+        })
+        .returning({ id: reportIssuedSection.id });
+      if (!issuedSection) throw new Error("issued section insert failed");
+      const items = itemRows.filter((item) => item.sectionId === section.id);
+      if (items.length > 0) {
+        await tx.insert(reportIssuedItem).values(
+          items.map((item) => ({
+            sectionId: issuedSection.id,
+            position: item.position,
+            label: item.label,
+            body: item.body,
+            status: item.status,
+            priority: item.priority,
+            impact: item.impact,
+          })),
+        );
+      }
+      const images = imageRows.filter(
+        (image) => image.sectionId === section.id,
+      );
+      if (images.length > 0) {
+        await tx.insert(reportIssuedImage).values(
+          images.map((image) => ({
+            sectionId: issuedSection.id,
+            position: image.position,
+            title: image.title,
+            caption: image.caption,
+            data: image.data,
+            sha256: image.sha256,
+            byteSize: image.byteSize,
+            width: image.width,
+            height: image.height,
+          })),
+        );
+      }
+    }
+
+    // The activities as values, read live for the last time: after this
+    // transaction the issued report never joins work_activity again.
+    const activityRows = await tx
+      .select({
+        title: workActivity.title,
+        clientName: client.name,
+        performedOn: workActivity.performedOn,
+        startedAt: workActivity.startedAt,
+        endedAt: workActivity.endedAt,
+        status: workActivity.status,
+        outcome: workActivity.outcome,
+        position: reportActivity.position,
+      })
+      .from(reportActivity)
+      .innerJoin(workActivity, eq(workActivity.id, reportActivity.activityId))
+      .innerJoin(client, eq(client.id, workActivity.clientId))
+      .where(eq(reportActivity.reportId, id))
+      .orderBy(asc(reportActivity.position));
+    if (activityRows.length > 0) {
+      await tx.insert(reportIssuedActivity).values(
+        activityRows.map((activity) => ({
+          versionId: version.id,
+          position: activity.position,
+          title: activity.title,
+          clientName: activity.clientName,
+          performedOn: activity.performedOn,
+          startedAt: activity.startedAt,
+          endedAt: activity.endedAt,
+          status: activity.status,
+          outcome: activity.outcome,
+        })),
+      );
+    }
+
+    await tx
+      .update(report)
+      .set({ status: "issued", updatedAt: new Date(), updatedBy: actor.id })
+      .where(eq(report.id, id));
+    // Ids and the version only: an audit row is permanent, so none of what
+    // the author wrote goes into it.
+    await audit(tx, actor, "report.issue", { reportId: id, version: 1 });
+    return { version: 1, issuedAt: version.issuedAt };
   });
 }
 

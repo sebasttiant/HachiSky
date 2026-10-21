@@ -1,9 +1,17 @@
 import { and, asc, eq, sql } from "drizzle-orm";
-import { report, reportImage, reportSection } from "../db/schema/report.ts";
+import {
+  report,
+  reportImage,
+  reportIssuedImage,
+  reportIssuedSection,
+  reportIssuedVersion,
+  reportSection,
+} from "../db/schema/report.ts";
 import { canReachReport } from "./permissions.ts";
 import {
   audit,
   authorize,
+  lockEditable,
   lockReachable,
   type ReportActor,
   type ReportDeps,
@@ -130,7 +138,7 @@ export async function addImage(
   if (!result.ok) throw new ReportValidationError(result.fieldErrors);
 
   return deps.db.transaction(async (tx) => {
-    await lockReachable(tx, actor, reportId);
+    await lockEditable(tx, actor, reportId);
     const section = await lockSection(tx, reportId, sectionKey);
 
     const [{ count }] = await tx
@@ -178,7 +186,37 @@ export async function listImages(
   assertId(reportId, "not_found");
 
   return deps.db.transaction(async (tx) => {
-    await lockReachable(tx, actor, reportId);
+    const current = await lockReachable(tx, actor, reportId);
+    // Once issued, the figures are the frozen copies: the draft figure may
+    // be gone, and the document must still print what went out.
+    if (current.status === "issued") {
+      const [version] = await tx
+        .select({ id: reportIssuedVersion.id })
+        .from(reportIssuedVersion)
+        .where(eq(reportIssuedVersion.reportId, reportId));
+      if (!version) return [];
+      return tx
+        .select({
+          id: reportIssuedImage.id,
+          sectionKey: reportIssuedSection.key,
+          position: reportIssuedImage.position,
+          title: reportIssuedImage.title,
+          caption: reportIssuedImage.caption,
+          width: reportIssuedImage.width,
+          height: reportIssuedImage.height,
+          byteSize: reportIssuedImage.byteSize,
+        })
+        .from(reportIssuedImage)
+        .innerJoin(
+          reportIssuedSection,
+          eq(reportIssuedImage.sectionId, reportIssuedSection.id),
+        )
+        .where(eq(reportIssuedSection.versionId, version.id))
+        .orderBy(
+          asc(reportIssuedSection.position),
+          asc(reportIssuedImage.position),
+        );
+    }
     const rows = await tx
       .select({
         id: reportImage.id,
@@ -217,6 +255,36 @@ export async function readImageBytes(
     // Authorize from metadata first. In particular, do not load the image
     // bytes into application memory and only then discover that this actor
     // may not reach the report.
+    // The frozen figure of an issued report first: its id names the copy
+    // that went out, and its reach follows the report's author as before.
+    const [issuedOwner] = await tx
+      .select({ authorUserId: report.authorUserId })
+      .from(reportIssuedImage)
+      .innerJoin(
+        reportIssuedSection,
+        eq(reportIssuedImage.sectionId, reportIssuedSection.id),
+      )
+      .innerJoin(
+        reportIssuedVersion,
+        eq(reportIssuedSection.versionId, reportIssuedVersion.id),
+      )
+      .innerJoin(report, eq(reportIssuedVersion.reportId, report.id))
+      .where(eq(reportIssuedImage.id, imageId));
+    if (issuedOwner) {
+      if (!canReachReport(actor.role, actor.id, issuedOwner.authorUserId)) {
+        throw new ReportRuleError("image_not_found");
+      }
+      const [row] = await tx
+        .select({
+          data: reportIssuedImage.data,
+          sha256: reportIssuedImage.sha256,
+          byteSize: reportIssuedImage.byteSize,
+        })
+        .from(reportIssuedImage)
+        .where(eq(reportIssuedImage.id, imageId));
+      if (!row) throw new ReportRuleError("image_not_found");
+      return row;
+    }
     const [owner] = await tx
       .select({
         reportId: reportSection.reportId,
@@ -258,7 +326,7 @@ export async function updateImageText(
   if (!result.ok) throw new ReportValidationError(result.fieldErrors);
 
   await deps.db.transaction(async (tx) => {
-    await lockReachable(tx, actor, reportId);
+    await lockEditable(tx, actor, reportId);
     const image = await lockImage(tx, reportId, imageId);
 
     await tx
@@ -285,7 +353,7 @@ export async function removeImage(
   assertId(imageId, "image_not_found");
 
   await deps.db.transaction(async (tx) => {
-    await lockReachable(tx, actor, reportId);
+    await lockEditable(tx, actor, reportId);
     const image = await lockImage(tx, reportId, imageId);
 
     await tx.delete(reportImage).where(eq(reportImage.id, image.id));
@@ -313,7 +381,7 @@ export async function moveImage(
   assertId(imageId, "image_not_found");
 
   await deps.db.transaction(async (tx) => {
-    await lockReachable(tx, actor, reportId);
+    await lockEditable(tx, actor, reportId);
     const image = await lockImage(tx, reportId, imageId);
 
     const target = image.position + (direction === "up" ? -1 : 1);

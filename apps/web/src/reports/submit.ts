@@ -29,6 +29,8 @@ export const REPORT_RULE_MESSAGES: Record<ReportRuleCode, string> = {
   activity_not_found: "Una de las actividades ya no está disponible.",
   image_not_found: "Esa imagen ya no está disponible.",
   image_limit_reached: "Esa sección ya alcanzó el límite de imágenes.",
+  already_issued: "Este informe ya fue emitido.",
+  report_issued: "Este informe ya fue emitido y no se puede modificar.",
 };
 
 const GENERIC_ERROR = "No se pudo completar la acción. Intenta de nuevo.";

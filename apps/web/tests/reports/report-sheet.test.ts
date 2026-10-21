@@ -80,6 +80,8 @@ function report(overrides: Partial<ReportRecord> = {}): ReportRecord {
     sections: [],
     activities: [],
     ...overrides,
+    issuedAt: overrides.issuedAt ?? null,
+    issuedVersion: overrides.issuedVersion ?? null,
   };
 }
 

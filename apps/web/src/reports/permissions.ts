@@ -9,6 +9,7 @@ export type ReportOperation =
   | "view_reports"
   | "create_report"
   | "edit_report"
+  | "issue_report"
   | "delete_report";
 
 export const REPORT_PERMISSIONS: Record<ReportOperation, readonly RoleName[]> =
@@ -16,6 +17,7 @@ export const REPORT_PERMISSIONS: Record<ReportOperation, readonly RoleName[]> =
     view_reports: ["admin", "staff"],
     create_report: ["admin", "staff"],
     edit_report: ["admin", "staff"],
+    issue_report: ["admin", "staff"],
     delete_report: ["admin", "staff"],
   };
 

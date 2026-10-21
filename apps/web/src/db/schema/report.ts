@@ -7,6 +7,7 @@ import {
   pgTable,
   primaryKey,
   text,
+  time,
   timestamp,
   unique,
   uuid,
@@ -41,8 +42,9 @@ export const report = pgTable(
     periodStart: date("period_start"),
     periodEnd: date("period_end"),
     title: text("title").notNull(),
-    // Only 'draft' exists today. The issued version arrives in R6 and must
-    // preserve its own copy, so nothing here is treated as immutable yet.
+    // 'draft' while it is written; 'issued' once R6 froze the version the
+    // client received into the report_issued_* tables below. The draft rows
+    // stay as the author's working copy and stop being editable.
     status: text("status").notNull().default("draft"),
     authorUserId: text("author_user_id")
       .notNull()
@@ -63,7 +65,7 @@ export const report = pgTable(
       "report_type_check",
       sql`${table.type} in ('follow_up', 'diagnostic', 'general', 'infrastructure', 'manual')`,
     ),
-    check("report_status_check", sql`${table.status} in ('draft')`),
+    check("report_status_check", sql`${table.status} in ('draft', 'issued')`),
     check(
       "report_title_check",
       sql`btrim(${table.title}) <> '' and char_length(${table.title}) <= 200`,
@@ -251,5 +253,169 @@ export const reportActivity = pgTable(
     primaryKey({ columns: [table.reportId, table.activityId] }),
     index("report_activity_report_idx").on(table.reportId, table.position),
     check("report_activity_position_check", sql`${table.position} >= 0`),
+  ],
+);
+
+// The issued version: the copy the client actually received.
+//
+// Issuing copies everything the document shows — the author snapshot, the
+// sections and their items, the figures with their bytes, and the activities
+// as they read that day — into these tables, and nothing afterwards writes
+// to them. The draft rows stay behind as the working copy, so correcting an
+// activity, renaming a client or changing a job title cannot rewrite a
+// document that already went out. One version per report: issuing is the
+// last state of a report, not a step it can repeat.
+export const reportIssuedVersion = pgTable(
+  "report_issued_version",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    reportId: uuid("report_id")
+      .notNull()
+      .references(() => report.id, { onDelete: "cascade" }),
+    version: integer("version").notNull().default(1),
+    issuedAt: timestamptz("issued_at").defaultNow().notNull(),
+    issuedBy: text("issued_by")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    type: text("type").notNull(),
+    clientName: text("client_name").notNull(),
+    periodStart: date("period_start"),
+    periodEnd: date("period_end"),
+    title: text("title").notNull(),
+    authorUserId: text("author_user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    // The snapshot: who signed, under the name and title held that day.
+    authorName: text("author_name").notNull(),
+    authorJobTitle: text("author_job_title"),
+  },
+  (table) => [
+    unique("report_issued_version_report_unique").on(table.reportId),
+    check("report_issued_version_check", sql`${table.version} >= 1`),
+    check(
+      "report_issued_title_check",
+      sql`btrim(${table.title}) <> '' and char_length(${table.title}) <= 200`,
+    ),
+  ],
+);
+
+export const reportIssuedSection = pgTable(
+  "report_issued_section",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    versionId: uuid("version_id")
+      .notNull()
+      .references(() => reportIssuedVersion.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+    key: text("key").notNull(),
+    kind: text("kind").notNull().default("prose"),
+    heading: text("heading").notNull(),
+    body: text("body"),
+  },
+  (table) => [
+    index("report_issued_section_version_idx").on(
+      table.versionId,
+      table.position,
+    ),
+    unique("report_issued_section_key_unique").on(table.versionId, table.key),
+    check(
+      "report_issued_section_kind_check",
+      sql`${table.kind} in ('prose', 'findings', 'status_table', 'inventory', 'steps')`,
+    ),
+    check("report_issued_section_position_check", sql`${table.position} >= 0`),
+  ],
+);
+
+export const reportIssuedItem = pgTable(
+  "report_issued_item",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    sectionId: uuid("section_id")
+      .notNull()
+      .references(() => reportIssuedSection.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+    label: text("label").notNull(),
+    body: text("body"),
+    status: text("status"),
+    priority: text("priority"),
+    impact: text("impact"),
+  },
+  (table) => [
+    index("report_issued_item_section_idx").on(table.sectionId, table.position),
+    check(
+      "report_issued_item_status_check",
+      sql`${table.status} is null or ${table.status} in ('ok', 'watch', 'risk')`,
+    ),
+    check(
+      "report_issued_item_priority_check",
+      sql`${table.priority} is null or ${table.priority} in ('low', 'medium', 'high')`,
+    ),
+    check("report_issued_item_position_check", sql`${table.position} >= 0`),
+  ],
+);
+
+// The frozen figure: same bounds as the draft figure it was copied from.
+export const reportIssuedImage = pgTable(
+  "report_issued_image",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    sectionId: uuid("section_id")
+      .notNull()
+      .references(() => reportIssuedSection.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+    title: text("title").notNull(),
+    caption: text("caption"),
+    data: bytea("data").notNull(),
+    sha256: text("sha256").notNull(),
+    byteSize: integer("byte_size").notNull(),
+    width: integer("width").notNull(),
+    height: integer("height").notNull(),
+  },
+  (table) => [
+    index("report_issued_image_section_idx").on(
+      table.sectionId,
+      table.position,
+    ),
+    check("report_issued_image_position_check", sql`${table.position} >= 0`),
+    check(
+      "report_issued_image_sha256_hex",
+      sql`${table.sha256} ~ '^[0-9a-f]{64}$'`,
+    ),
+    check(
+      "report_issued_image_byte_size_check",
+      sql`${table.byteSize} = octet_length(${table.data}) and ${table.byteSize} between 1 and 524288`,
+    ),
+    check(
+      "report_issued_image_dimensions_check",
+      sql`${table.width} between 1 and 2000 and ${table.height} between 1 and 2000`,
+    ),
+  ],
+);
+
+// The activities as they read on the day of issue. Values, not a link: the
+// record in Trabajo may be corrected or deleted afterwards, and neither may
+// change what this document asserts was done.
+export const reportIssuedActivity = pgTable(
+  "report_issued_activity",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    versionId: uuid("version_id")
+      .notNull()
+      .references(() => reportIssuedVersion.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+    title: text("title").notNull(),
+    clientName: text("client_name").notNull(),
+    performedOn: date("performed_on").notNull(),
+    startedAt: time("started_at"),
+    endedAt: time("ended_at"),
+    status: text("status").notNull(),
+    outcome: text("outcome"),
+  },
+  (table) => [
+    index("report_issued_activity_version_idx").on(
+      table.versionId,
+      table.position,
+    ),
+    check("report_issued_activity_position_check", sql`${table.position} >= 0`),
   ],
 );

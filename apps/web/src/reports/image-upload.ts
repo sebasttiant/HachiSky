@@ -90,6 +90,8 @@ const RULE_STATUS: Record<ReportRuleCode, number> = {
   activity_not_found: 404,
   image_not_found: 404,
   image_limit_reached: 409,
+  already_issued: 409,
+  report_issued: 409,
 };
 
 function json(status: number, body: Record<string, unknown>): Response {
