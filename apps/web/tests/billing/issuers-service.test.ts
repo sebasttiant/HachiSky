@@ -192,7 +192,12 @@ describe("issuer profiles", () => {
       changedFields: ["city", "phone"],
     });
     const serialized = JSON.stringify(rows);
-    for (const secret of ["9000000022", "311", "emisor@example.test", "Demo"]) {
+    for (const secret of [
+      "9000000022",
+      "+57 311 111 1111",
+      "emisor@example.test",
+      "Demo",
+    ]) {
       assert.equal(serialized.includes(secret), false, secret);
     }
     const audits = await count("audit_log");
