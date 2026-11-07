@@ -8,7 +8,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 
-// Better Auth 1.7.6 tables (core + admin plugin + the `jobTitle` additional
+// Better Auth 1.7.18 tables (core + admin plugin + the `jobTitle` additional
 // field). Column names and types follow what `auth generate` emits for the
 // configuration in src/auth/auth.ts, with two deliberate differences:
 //   - every timestamp is `timestamp with time zone`, so a value keeps its

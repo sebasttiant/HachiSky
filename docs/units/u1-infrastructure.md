@@ -10,16 +10,18 @@ prueba con Docker. No entrega pantallas de negocio ni autenticación.
 
 | Componente | Versión |
 | --- | --- |
-| Next.js | 16.3.6 |
-| React / React DOM | 19.3.0 |
+| Next.js | 16.4.5 |
+| React / React DOM | 19.3.1 |
 | TypeScript | 7.0.2 |
-| Node.js | 24.21.0 (imagen `node:24.21.0-trixie-slim`, fijada por digest) |
-| pnpm | 12.6.0 (vía Corepack) |
-| Biome | 2.5.14 |
-| drizzle-orm | 0.45.3 |
+| Node.js | 26.13.0 (imagen `node:26.13.0-trixie-slim`, fijada por digest) |
+| pnpm | 12.18.0 (instalado explícitamente; Node 26 no incluye Corepack) |
+| Biome | 2.6.6 |
+| Better Auth / CLI | 1.7.18 |
+| drizzle-orm | 0.45.4 |
 | drizzle-kit | 0.31.11 |
-| pg | 8.23.0 |
-| zod | 4.6.5 |
+| pg | 8.23.1 |
+| sharp | 0.35.5 |
+| zod | 4.6.7 |
 | PostgreSQL | 18.6 (imagen `postgres:18.6-trixie`, fijada por digest) |
 
 Base del sistema operativo: Debian 13 (trixie). Solo `amd64` está validado.
@@ -73,11 +75,15 @@ compara contra el journal local).
 
 - `apps/web/pnpm-workspace.yaml` aprueba explícitamente scripts de instalación
   solo para `esbuild` (`allowBuilds: { esbuild: true }`), decisión del
-  propietario del 2026-09-27. Cubre las versiones transitivas de `esbuild`
-  que trae `drizzle-kit` (0.25.12, 0.28.2 vía `tsx`, y 0.18.20 vía
-  `@esbuild-kit/core-utils`, marcado obsoleto por su propio mantenedor). Sin
-  exclusiones de antigüedad de versión configuradas.
-- Instalación reproducible con `--frozen-lockfile`.
+  propietario del 2026-09-27.
+- Overrides acotados reemplazan `esbuild@0.18.20` por `0.25.12` y
+  `source-map-js@1.2.1` por `1.2.2`, cerrando sus advisories sin ampliar el
+  rango de otras dependencias. `drizzle-kit check` y las pruebas de migración
+  validan el override de esbuild.
+- Las excepciones de antigüedad enumeran únicamente Biome 2.6.6 y sus binarios
+  por plataforma; versiones futuras continúan sujetas a la política de pnpm.
+- Instalación reproducible con `--frozen-lockfile`; `pnpm audit` reporta cero
+  vulnerabilidades conocidas para el lockfile actualizado.
 
 ## Evidencia de verificación
 
@@ -152,8 +158,9 @@ reducido de `globals.css`.
    abierto, merge pendiente de decisión.
    GitHub respalda código y documentación, no la base de datos, `.env` ni
    otros archivos locales excluidos; su respaldo es una tarea separada.
-2. Unidad 2: planificación de autenticación y permisos (Better Auth 1.7.6
-   propuesto, no aprobado; roles y reglas por definir en esa unidad).
+2. Registro histórico: Unidad 2 comenzó con Better Auth 1.7.6. La aplicación
+   actual usa Better Auth 1.7.18 con autenticación y permisos implementados y
+   verificados; consultar la referencia técnica de `apps/web`.
 3. Unidad 3: cliente → jornada → actividades persistidas.
 4. Unidades posteriores: Informes, Facturación (cuentas de cobro), tablero.
 

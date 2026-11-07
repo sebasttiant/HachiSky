@@ -86,7 +86,7 @@ Actividades pendientes/vencidas, informes pendientes, total emitido, cobrado, sa
 **TypeScript 7 es obligatorio. No sustituir por TypeScript 6 sin decisión explícita del propietario.**
 
 - Next.js, React, pnpm y PostgreSQL: versiones estables actuales y compatibles, verificadas antes de su adopción.
-- Node: línea 24 LTS; preferencia expresada por 24.21.0 al preparar el spike.
+- Node: la aplicación actual usa Node 26.13.0 LTS; el spike histórico conserva Node 24.21.0 para reproducibilidad.
 - Docker para desarrollo, pruebas y despliegue. Preferencia Debian 13 slim.
 - No beta, RC, canary, etiquetas flotantes `latest`, `--force` ni desactivación de chequeos para ocultar incompatibilidades.
 - Fijar versiones y lockfile. No actualizar el spike durante su revisión: preservar reproducibilidad.
@@ -158,7 +158,7 @@ Un commit conserva código; **no sustituye evidencia de ejecución**.
 - `useTypeScriptCli` de Next reportado experimental y activo por defecto: configuración vacía no elimina ese riesgo. Aprobación para producción sigue pendiente.
 - `types: ["node"]` observado necesario: comprobar cobertura de tipos conforme se agreguen herramientas.
 - Excepción acotada `minimumReleaseAgeExclude` para `@types/node@24.19.0` en `spikes/ts7-compat/pnpm-workspace.yaml`: sigue presente en el spike; revisar necesidad y justificación en tarea separada. Que pnpm la genere no equivale a aprobación de seguridad.
-- U1 (`apps/web/pnpm-workspace.yaml`) no configura exclusiones de antigüedad. Solo aprueba scripts de instalación para `esbuild` (`allowBuilds: { esbuild: true }`), decisión del propietario del 2026-09-27, cubriendo las versiones transitivas que trae `drizzle-kit`.
+- U1 (`apps/web/pnpm-workspace.yaml`) aprueba scripts de instalación solo para `esbuild`, fija overrides acotados para las versiones vulnerables de `esbuild` y `source-map-js`, y exceptúa de la antigüedad mínima únicamente Biome 2.6.6 y sus binarios exactos. El lockfile actualizado pasa `pnpm audit` sin vulnerabilidades conocidas.
 - Biome no equivale a todas las reglas de typescript-eslint; documentar controles faltantes.
 - Runtime no root no prueba sandbox Chromium. Aislamiento, límites, privacidad, autenticación y respaldos no están validados por el spike.
 - No tocar, borrar ni publicar `.atl/` por suposición.
@@ -203,7 +203,7 @@ Límites:
 
 Zona horaria y jornadas que cruzan medianoche; moneda y redondeo; serie histórica/nueva; autenticación, almacenamiento y política de retención. Resolver cada una antes de implementar la funcionalidad que depende de ella, no frenar el prototipo por decisiones de etapas posteriores.
 
-**Actualizado al implementar U1**: el ORM ya no está diferido — se adoptó Drizzle ORM (`drizzle-orm` 0.45.3 + `drizzle-kit` 0.31.11) sobre PostgreSQL 18.6, con migraciones versionadas en `apps/web/drizzle/`. Autenticación, almacenamiento y política de retención siguen diferidos.
+**Actualizado al implementar U1 y la migración de runtime**: el ORM ya no está diferido — se usa Drizzle ORM (`drizzle-orm` 0.45.4 + `drizzle-kit` 0.31.11) sobre PostgreSQL 18.6, con migraciones versionadas en `apps/web/drizzle/`. La autenticación está implementada con Better Auth 1.7.18; almacenamiento externo y política de retención siguen diferidos.
 
 ## 7. Seguridad y coordinación
 
@@ -244,9 +244,9 @@ prototipo puramente visual.
    (detalle en `docs/units/u1-infrastructure.md`); PR #2 hacia `main` abierto,
    merge pendiente de decisión.
    Respaldo de la base de datos y de archivos locales: pendiente, por separado.
-2. Unidad 2: autenticación y permisos — solo planificación por ahora (Better
-   Auth 1.7.6 propuesto, no aprobado; roles y reglas por definir en esa
-   unidad).
+2. Unidad 2: autenticación y permisos implementados; la aplicación actual usa
+   Better Auth 1.7.18 con roles, sesiones, bloqueo y cambio forzado de
+   contraseña verificados.
 3. Unidad 3: cliente → jornada → actividades persistidas.
 4. Unidades posteriores: Informes, Facturación (cuentas de cobro), tablero.
 5. Identidad visual: unidad separada, todavía no integrada.
