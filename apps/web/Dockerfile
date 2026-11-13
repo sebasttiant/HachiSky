@@ -1,9 +1,9 @@
 # syntax=docker/dockerfile:1
-FROM node:24.21.0-trixie-slim@sha256:8ec5d7557396cfe32d21c3f9c13072355ceab22b584578ca4bb28af31120cffe AS base
+FROM node:26.13.0-trixie-slim@sha256:5adad64f9a1fca2d51972caa65983634c8a774eb300d72b20f7f2a0f60368072 AS base
 
-# pnpm via corepack (bundled with this Node image), pinned to the exact
-# version declared in package.json's packageManager field.
-RUN corepack enable && corepack prepare pnpm@12.6.0 --activate
+# Node 26 no longer bundles Corepack. Install the exact pnpm version declared
+# in package.json so local and container dependency resolution stay aligned.
+RUN npm install --global pnpm@12.18.0 --no-audit --no-fund
 
 WORKDIR /app
 RUN chown -R node:node /app
