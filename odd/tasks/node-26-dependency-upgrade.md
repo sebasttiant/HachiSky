@@ -5,6 +5,7 @@ Keep runtime/toolchain, framework, data/auth, and remaining dependency changes r
 ## Specs
 1. **S1** — "Node 26 y dependencias"
 2. **S2** — "quiero subir todo a lo ultimo estable seguro y demas tambien typescript todo"
+3. **S3** — "Preparar PR correctamente (recomendado)"
 
 ## Tasks
 - **T1** — S1-S2 — Establish registry-verified stable targets, migration risks, and the feature branch. Route: parent exploration/planning. Commit: `e42a634`.
@@ -14,7 +15,7 @@ Keep runtime/toolchain, framework, data/auth, and remaining dependency changes r
 - **T5** — S1-S2 — Upgrade Better Auth/auth; prove schema stability and preserve authentication, cookie, session, rate-limit, ban, and password-reset security behavior. Route: parent checks plus independent verifier. Commit: `e42a634`; verification passed on the corrected Node 26 image.
 - **T6** — S2 — Upgrade Zod, Sharp, and every remaining direct dependency; preserve validation and image-processing behavior. Route: parent verification. Commit: `e42a634`; verification passed on the corrected Node 26 image.
 - **T7** — S1-S2 — Run audit, typecheck, lint, 864+ tests, production build, native module checks, and Docker/Compose verification without touching production data or named volumes; update version documentation. Route: independent verifier. Commit: `3a447d4`; verification passed.
-- **T8** — S1-S2 — Review the complete branch, reconcile findings, create reviewable commits, and prepare delivery without deploying production. Route: native four-lens review. Evidence: commits `e42a634` and `3a447d4`; review `review-0ce564107c62e2b0` approved and acknowledged.
+- **T8** — S1-S3 — Review the complete branch, add the repository's minimum issue-first governance, create and approve the linked issue, and open a policy-compliant pull request without deploying production. Route: parent implementation and delivery checks. Commit: pending governance work unit; prior review `review-0ce564107c62e2b0` remains evidence for the Node 26 candidate.
 
 ## Log
 - **L1** — "quiero subir todo a lo ultimo estable seguro y demas tambien typescript todo"
@@ -29,3 +30,4 @@ Keep runtime/toolchain, framework, data/auth, and remaining dependency changes r
 - **L10** — Replacement evidence used absolute context `/home/sebastian/Documentos/DEV/ILASESORIAS/HachiSky-worktrees/auth-hardening/apps/web` and Compose project `hachisky-node26-upgrade`. The rebuilt image asserted Node 26.13.0 and every requested dependency pin, then passed T4 58/58 tests across 11 files, T5 198/198 across 15 files, and T6 174/174 across 13 files. Only disposable `db-test` tmpfs was recreated and removed.
 - **L11** — Full corrected Node 26 release gate passed: production and test images rebuilt from the absolute worktree; `pnpm audit`, typecheck, lint, and complete tests exited 0; 865/865 tests passed across 217 suites; Next.js production build generated 24/24 static pages; Sharp 0.35.5/libvips 8.18.7 loaded and produced PNG bytes. The extra test over the 864 baseline is the new runtime-version contract. No production database, credentials, named volume, or tracked source was mutated.
 - **L12** — Native four-lens review `review-0ce564107c62e2b0` approved the committed `origin/main..HEAD` candidate and its acknowledgement burned the authority. Informational follow-ups only: stronger pnpm installation integrity, release-age exception review, runtime-contract test expansion, and minor comment/path/readability cleanup. No correction was opened and no blocker remains.
+- **L13** — "Preparar PR correctamente (recomendado)"
